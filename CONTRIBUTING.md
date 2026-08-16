@@ -54,8 +54,19 @@ A theme is one CSS file and no Swift. It must:
 
 - One logical change per PR; keep diffs reviewable
 - Explain *why* in the commit body, not *what* — the diff already says what
-- Update `ROADMAP.md` if you complete something on it
-- Update `CHANGELOG.md` under `[Unreleased]` for anything user-visible
+
+### Before pushing
+
+- [ ] `swift build` compiles clean
+- [ ] `swift run foolscap-selftest` passes (see *Tests* above)
+- [ ] `bash scripts/check-core-boundary.sh` reports `OK`
+- [ ] Code matches the surrounding style — comment *why*, not *what*; no unrequested
+      refactors mixed into a functional change
+- [ ] `ROADMAP.md` updated if you completed, changed, or dropped something on it
+- [ ] `CHANGELOG.md` updated under `[Unreleased]` for anything user-visible
+- [ ] `DECISIONS.md` given a new entry if this makes or reverses an architectural or
+      product decision — see that file's own header for the format, and its
+      "Supersedes" convention when a change reverses an earlier entry
 
 ## Scope
 
