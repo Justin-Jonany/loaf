@@ -13,15 +13,17 @@ Everything that doesn't serve that is below the fold.
 The bar: you keep it open for a week without reaching for another app, and Claude
 can edit a note while you watch.
 
-### Window
-- [x] Non-activating `NSPanel` — clicking the note must not deactivate the frontmost app
-- [x] Normal window level (`.normal`, `collectionBehavior = [.canJoinAllSpaces]`) — other
-      windows can cover the note, and it's present on every Space (available on whatever
-      desktop you're on). Not an always-on-top float; only `.nonactivatingPanel`
-      (click-through-to-frontmost) is kept from that original goal.
-- [ ] Borderless with a custom drag region; `isMovableByWindowBackground`
+### Window — a desktop widget
+The note pins to the macOS desktop layer (behind all app windows, present on every Space), like
+a system desktop widget. See [DECISIONS.md](DECISIONS.md) (2026-08-16) for the rationale and the
+editing trade-off. The panel code currently on this branch (`.normal` level, `canJoinAllSpaces`,
+the top drag-strip) is interim and will be reworked to this model.
+- [ ] Desktop-level window: sits behind app windows, never on top, never over fullscreen apps
+- [ ] Present on all Spaces (`canJoinAllSpaces`, `.stationary`)
+- [ ] Borderless; `isMovableByWindowBackground` to reposition when the desktop is visible
 - [ ] Frame persisted across restarts (`setFrameAutosaveName`)
 - [ ] Menu-bar `NSStatusItem` to show/hide, quit, and open the vault in Finder
+- [ ] Investigate whether checkbox clicks register at desktop level; text editing is via the file
 
 ### Vault
 - [ ] Load `*.md` from the configured directory; ignore dotfiles and `attachments/`
