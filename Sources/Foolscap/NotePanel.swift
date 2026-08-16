@@ -7,8 +7,8 @@ import WebKit
 /// does not deactivate whatever app you were in, so your cursor and menu bar stay put.
 /// A panel does not accept key input by default, so `canBecomeKey` is overridden —
 /// without it the text view silently refuses to take a keystroke. Despite the panel
-/// styleMask, the window sits at ordinary (`.normal`) level and on one Space — it is
-/// not an always-on-top float, and other windows can cover it.
+/// styleMask, the window sits at ordinary (`.normal`) level, present on every Space —
+/// it is not an always-on-top float, and other windows can still cover it.
 final class NotePanel: NSPanel {
     let webView: WKWebView
 
@@ -30,12 +30,14 @@ final class NotePanel: NSPanel {
             defer: false
         )
 
-        // Ordinary window behavior: lives on one Space, and other windows can cover it.
+        // Ordinary window behavior: normal level, and other windows can cover it.
         // `.nonactivatingPanel` above and `hidesOnDeactivate = false` below are the only
         // pieces of "special panel" behavior kept from the original always-on-top design.
+        // `.canJoinAllSpaces` just means the note follows you to whatever desktop is
+        // current — independent of level/floating, so it still isn't always-on-top.
         isFloatingPanel = false
         level = .normal
-        collectionBehavior = []
+        collectionBehavior = [.canJoinAllSpaces]
 
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
@@ -53,9 +55,19 @@ final class NotePanel: NSPanel {
         effectView.state = .active
         effectView.autoresizingMask = [.width, .height]
 
-        webView.frame = effectView.bounds
-        webView.autoresizingMask = [.width, .height]
+        // Inset the web view 30px below the top of the window. That leaves a bare strip
+        // of the NSVisualEffectView showing under the (hidden-titlebar) traffic lights:
+        // it's the drag region (isMovableByWindowBackground needs real window background
+        // to grab), and it doubles as a mask so scrolled note content clips at the web
+        // view's top edge instead of sliding up underneath the window buttons.
+        webView.translatesAutoresizingMaskIntoConstraints = false
         effectView.addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.topAnchor.constraint(equalTo: effectView.topAnchor, constant: 30),
+            webView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
+            webView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
+        ])
         contentView = effectView
 
         setFrameAutosaveName("FoolscapPanel")

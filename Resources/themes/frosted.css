@@ -25,9 +25,7 @@
 
 body {
   margin: 0;
-  /* Extra top padding so the note's first line clears the ~28px traffic-light region:
-     titlebarAppearsTransparent + titleVisibility hidden still reserve that space. */
-  padding: 34px 15px 15px;
+  padding: 13px 15px;
   font: 13.5px/1.5 var(--font);
   color: var(--ink);
   background: transparent; /* NSVisualEffectView shows through */

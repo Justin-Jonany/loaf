@@ -15,9 +15,10 @@ can edit a note while you watch.
 
 ### Window
 - [x] Non-activating `NSPanel` — clicking the note must not deactivate the frontmost app
-- [x] Normal window level (`.normal`, `collectionBehavior = []`) — other windows can cover
-      the note, and it lives on one Space. Not an always-on-top float; only
-      `.nonactivatingPanel` (click-through-to-frontmost) is kept from that original goal.
+- [x] Normal window level (`.normal`, `collectionBehavior = [.canJoinAllSpaces]`) — other
+      windows can cover the note, and it's present on every Space (available on whatever
+      desktop you're on). Not an always-on-top float; only `.nonactivatingPanel`
+      (click-through-to-frontmost) is kept from that original goal.
 - [ ] Borderless with a custom drag region; `isMovableByWindowBackground`
 - [ ] Frame persisted across restarts (`setFrameAutosaveName`)
 - [ ] Menu-bar `NSStatusItem` to show/hide, quit, and open the vault in Finder
