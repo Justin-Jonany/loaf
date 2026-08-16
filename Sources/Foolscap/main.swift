@@ -44,7 +44,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         menu.addItem(NSMenuItem(title: "Open Vault in Finder", action: #selector(openVaultInFinder), keyEquivalent: "o"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Foolscap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        menu.items.forEach { $0.target = self }
+        // Quit's target stays nil so terminate: routes down the responder chain to NSApp, which implements it.
+        menu.items.forEach { item in
+            item.target = (item.action == #selector(NSApplication.terminate(_:))) ? nil : self
+        }
         return menu
     }
 
