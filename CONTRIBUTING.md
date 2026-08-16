@@ -3,7 +3,7 @@
 ## Getting set up
 
 ```bash
-git clone https://github.com/<you>/foolscap
+git clone https://github.com/Justin-Jonany/foolscap
 cd foolscap
 swift build
 swift run foolscap-selftest

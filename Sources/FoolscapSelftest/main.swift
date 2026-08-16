@@ -123,6 +123,111 @@ expect(urgency("2026-08-14"), .soon, "within two days is soon")
 expect(urgency("2026-08-19"), .later, "beyond two days is later")
 expect(TaskLine.parse("- [x] x due:2026-08-10")!.urgency(on: today), .none, "done tasks are never urgent")
 
+// MARK: - Vault
+
+func tempVaultDir() -> URL {
+    // Resolved once up front: /tmp (and macOS's real temp dir) are themselves symlinks,
+    // so an unresolved URL here would never string-compare equal to the paths FileManager
+    // hands back from directory enumeration later.
+    FileManager.default.temporaryDirectory
+        .appendingPathComponent("foolscap-selftest-\(UUID().uuidString)")
+        .resolvingSymlinksInPath()
+}
+
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+
+    try vault.bootstrapIfEmpty()
+    let claudePath = dir.appendingPathComponent("CLAUDE.md")
+    expect(FileManager.default.fileExists(atPath: claudePath.path), true, "bootstrap creates CLAUDE.md")
+    let seeded = (try? String(contentsOf: claudePath, encoding: .utf8)) ?? ""
+    expect(seeded.contains("Foolscap vault"), true, "bootstrapped CLAUDE.md carries the vault contract")
+
+    // A second bootstrap must not clobber a CLAUDE.md the user has since edited.
+    try vault.writeAtomically("edited by user", to: claudePath)
+    try vault.bootstrapIfEmpty()
+    let after = (try? String(contentsOf: claudePath, encoding: .utf8)) ?? ""
+    expect(after, "edited by user", "bootstrap does not overwrite an existing CLAUDE.md")
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("Vault bootstrap threw: \(error)")
+}
+
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+
+    try vault.writeAtomically("# Todo\n", to: dir.appendingPathComponent("todo.md"))
+    try vault.writeAtomically("# Hidden\n", to: dir.appendingPathComponent(".hidden.md"))
+    try vault.writeAtomically("# Daily\n", to: dir.appendingPathComponent("daily/2026-08-15.md"))
+    try vault.writeAtomically("not a note\n", to: dir.appendingPathComponent("attachments/note.md"))
+    try Data().write(to: dir.appendingPathComponent("attachments/photo.png"))
+
+    // Compared by suffix, not by stripping `dir.path` as a prefix: macOS's real temp
+    // directory sits behind a `/private` symlink that directory enumeration resolves
+    // but a freshly-built (not-yet-existing-on-disk) URL does not.
+    let paths = vault.notePaths().map(\.path)
+    expect(paths.count, 2, "notePaths returns exactly the two real notes")
+    expect(paths.contains { $0.hasSuffix("/todo.md") }, true, "notePaths includes todo.md")
+    expect(paths.contains { $0.hasSuffix("/daily/2026-08-15.md") }, true, "notePaths includes daily/2026-08-15.md")
+    expect(paths.contains { $0.hasSuffix("/.hidden.md") }, false, "notePaths ignores dotfiles")
+    expect(paths.contains { $0.contains("/attachments/") }, false, "notePaths ignores attachments/")
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("Vault notePaths threw: \(error)")
+}
+
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+    let path = dir.appendingPathComponent("todo.md")
+
+    try vault.writeAtomically("- [ ] one\n", to: path)
+    expect(try vault.read(path), "- [ ] one\n", "writeAtomically round-trips content")
+    expect(vault.wasSelfWrite(path: path.path), true, "registry flags the just-written path")
+    expect(vault.wasSelfWrite(path: path.path), false, "registry entry is consumed after one check")
+    expect(
+        vault.wasSelfWrite(path: dir.appendingPathComponent("nonexistent.md").path),
+        false,
+        "registry doesn't flag a path we never wrote"
+    )
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("Vault writeAtomically threw: \(error)")
+}
+
+// MARK: - MarkdownRenderer
+
+let overdueHTML = MarkdownRenderer.renderHTML(
+    from: "- [ ] Ask about compactness due:2026-08-10\n",
+    today: date("2026-08-12")
+)
+expect(overdueHTML.contains("<input type=\"checkbox\""), true, "renders a real checkbox for a task line")
+expect(overdueHTML.contains("class=\"due due-over\""), true, "overdue due date carries the due-over class")
+expect(overdueHTML.contains("Ask about compactness"), true, "task text survives into the label")
+
+let doneHTML = MarkdownRenderer.renderHTML(from: "- [x] done thing\n")
+expect(doneHTML.contains("checkbox\" checked"), true, "checked box renders the checked attribute")
+expect(doneHTML.contains("class=\"task done\""), true, "done task carries the done class")
+
+let soonHTML = MarkdownRenderer.renderHTML(from: "- [ ] soon due:2026-08-13\n", today: date("2026-08-12"))
+expect(soonHTML.contains("class=\"due due-soon\""), true, "soon due date carries the due-soon class")
+
+let laterHTML = MarkdownRenderer.renderHTML(from: "- [ ] later due:2026-08-30\n", today: date("2026-08-12"))
+expect(laterHTML.contains("due-soon"), false, "a distant due date carries no urgency class")
+expect(laterHTML.contains("due-over"), false, "a distant due date carries no urgency class")
+
+expect(MarkdownRenderer.renderHTML(from: "# Title\n"), "<h1>Title</h1>\n", "heading renders")
+expect(MarkdownRenderer.renderHTML(from: "Just some prose.\n"), "<p>Just some prose.</p>\n", "plain paragraph renders")
+
+let escapedHTML = MarkdownRenderer.renderHTML(from: "5 < 6 & 7 > 4\n")
+expect(escapedHTML.contains("&lt;"), true, "escapes < in text")
+expect(escapedHTML.contains("&amp;"), true, "escapes & in text")
+
 // MARK: - Report
 
 if failures.isEmpty {

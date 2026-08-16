@@ -100,7 +100,7 @@ hotkey     = "cmd+shift+space"
 Requires macOS 14+ and a working Swift toolchain.
 
 ```bash
-git clone https://github.com/<you>/foolscap
+git clone https://github.com/Justin-Jonany/foolscap
 cd foolscap
 ./build.sh
 cp -R dist/Foolscap.app ~/Applications/
