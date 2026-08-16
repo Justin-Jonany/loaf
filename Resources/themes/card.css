@@ -1,0 +1,43 @@
+/* card — opaque paper with ruled lines. Legible on any wallpaper. */
+
+:root {
+  --paper:     #FBF8F1;
+  --ink:       #2B2721;
+  --rule:      rgba(43, 39, 33, 0.09);
+  --margin:    rgba(199, 87, 63, 0.28);
+  --due-soon:  #8A5A18;
+  --due-over:  #97372C;
+  --font: "Iowan Old Style", Palatino, Georgia, serif;
+}
+
+body {
+  margin: 0;
+  padding: 13px 16px 13px 34px;
+  font: 14px/1.6 var(--font);
+  color: var(--ink);
+  background:
+    linear-gradient(90deg, transparent 25px, var(--margin) 25px, var(--margin) 26px, transparent 26px),
+    repeating-linear-gradient(180deg, transparent 0 25px, var(--rule) 25px 26px),
+    var(--paper);
+}
+
+h1, h2, h3 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+
+.task { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0; }
+.task.done .label { text-decoration: line-through; opacity: 0.45; }
+
+.due {
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.due-soon { color: var(--due-soon); background: rgba(138, 90, 24, 0.13); }
+.due-over { color: var(--due-over); background: rgba(151, 55, 44, 0.13); }
+
+img { max-width: 100%; border-radius: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

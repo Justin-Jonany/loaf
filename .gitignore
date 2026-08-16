@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+*.xcodeproj
+dist/
+Foolscap.app/
+.DS_Store

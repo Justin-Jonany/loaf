@@ -1,0 +1,38 @@
+/* console — dense, monospaced, shows the file rather than a rendering of it. */
+
+:root {
+  --bg:        rgba(12, 15, 19, 0.90);
+  --ink:       #C6D0DA;
+  --dim:       #5F6B78;
+  --accent:    #8FB4C9;
+  --due-soon:  #C9A76B;
+  --due-over:  #D98A7E;
+  --font: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+body {
+  margin: 0;
+  padding: 11px 13px;
+  font: 12px/1.55 var(--font);
+  color: var(--ink);
+  background: transparent;
+}
+
+h1, h2, h3 { font-size: 12.5px; font-weight: 500; color: var(--accent); margin: 0 0 6px; }
+hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.07); margin: 9px 0; }
+
+.task { display: flex; align-items: flex-start; gap: 7px; margin: 6px 0; }
+.task .box { color: var(--dim); flex-shrink: 0; }
+.task .box .tick { color: var(--accent); }
+.task.done .label { text-decoration: line-through; opacity: 0.45; }
+
+.due { font-size: 11px; white-space: nowrap; color: var(--dim); }
+.due-soon { color: var(--due-soon); }
+.due-over { color: var(--due-over); }
+
+img { max-width: 100%; border-radius: 3px; }
+pre { overflow-x: auto; color: var(--dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

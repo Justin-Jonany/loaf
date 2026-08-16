@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # FoolscapCore is UI-free, so the logic suite runs without a GUI session
+    # and without Xcode.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: swift --version
+      - name: Build
+        run: swift build -v
+      - name: Self-test
+        # Not `swift test`: XCTest ships only with Xcode, so the suite is a plain
+        # executable that any Command Line Tools install can run.
+        run: swift run foolscap-selftest
+
+  app:
+    needs: test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble Foolscap.app
+        run: ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Foolscap-app-unsigned
+          path: dist/Foolscap.app

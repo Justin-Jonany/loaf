@@ -1,0 +1,753 @@
+<title>Foolscap — Design</title>
+
+<style>
+  :root {
+    --ground:    #EEF0F3;
+    --surface:   #FFFFFF;
+    --surface-2: #F6F8FA;
+    --ink:       #171B21;
+    --ink-2:     #575F6B;
+    --ink-3:     #878F9C;
+    --line:      #DBE0E6;
+    --line-soft: #E8ECF1;
+    --accent:    #3E6394;
+    --signal:    #A8702C;
+    --warn:      #A8702C;
+    --crit:      #A6453C;
+
+    --sans: -apple-system, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+    --measure: 66ch;
+    --radius: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:    #0F1216;
+      --surface:   #181C22;
+      --surface-2: #1E232A;
+      --ink:       #E5E9ED;
+      --ink-2:     #A2AAB6;
+      --ink-3:     #6D7785;
+      --line:      #282E36;
+      --line-soft: #21262D;
+      --accent:    #82A6D6;
+      --signal:    #D6A05C;
+      --warn:      #D6A05C;
+      --crit:      #D97C71;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:    #0F1216;
+    --surface:   #181C22;
+    --surface-2: #1E232A;
+    --ink:       #E5E9ED;
+    --ink-2:     #A2AAB6;
+    --ink-3:     #6D7785;
+    --line:      #282E36;
+    --line-soft: #21262D;
+    --accent:    #82A6D6;
+    --signal:    #D6A05C;
+    --warn:      #D6A05C;
+    --crit:      #D97C71;
+  }
+
+  :root[data-theme="light"] {
+    --ground:    #EEF0F3;
+    --surface:   #FFFFFF;
+    --surface-2: #F6F8FA;
+    --ink:       #171B21;
+    --ink-2:     #575F6B;
+    --ink-3:     #878F9C;
+    --line:      #DBE0E6;
+    --line-soft: #E8ECF1;
+    --accent:    #3E6394;
+    --signal:    #A8702C;
+    --warn:      #A8702C;
+    --crit:      #A6453C;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 56px 28px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 72px;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead { display: flex; flex-direction: column; gap: 18px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  h1 {
+    font-size: clamp(30px, 4.4vw, 44px);
+    line-height: 1.1;
+    letter-spacing: -0.021em;
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .lede { max-width: var(--measure); color: var(--ink-2); font-size: 17px; margin: 0; }
+  .lede em { color: var(--ink); font-style: normal; font-weight: 600; }
+
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 10px; margin-top: 6px;
+  }
+
+  .controls-label {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-3); margin-right: 4px;
+  }
+
+  .swatch {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 8px;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--surface); color: var(--ink-2);
+    font-family: var(--sans); font-size: 13px; cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .swatch:hover { border-color: var(--ink-3); color: var(--ink); }
+  .swatch[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
+  .swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .swatch .chip { width: 16px; height: 16px; border-radius: 5px; border: 1px solid rgba(0,0,0,.14); }
+  .chip-dawn     { background: linear-gradient(150deg,#F4DAC4,#C6A6C8 55%,#7C91BE); }
+  .chip-dusk     { background: linear-gradient(150deg,#2E3D59,#4B3C5D 55%,#7A5057); }
+  .chip-graphite { background: linear-gradient(150deg,#212528,#2C3238 55%,#15181C); }
+
+  /* ---------- sections ---------- */
+
+  section { display: flex; flex-direction: column; gap: 22px; }
+
+  h2 {
+    font-size: 13px; font-family: var(--mono); font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
+    margin: 0; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+
+  h3 { font-size: 21px; font-weight: 600; letter-spacing: -0.013em; margin: 0; }
+  p { margin: 0; }
+
+  .split {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) minmax(300px, 1.1fr);
+    gap: 30px; align-items: start;
+  }
+
+  .tree {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.85;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px 22px;
+    overflow-x: auto; margin: 0; color: var(--ink-2);
+  }
+  .tree b { color: var(--ink); font-weight: 600; }
+  .tree i { color: var(--ink-3); font-style: normal; }
+
+  .notes { display: flex; flex-direction: column; gap: 16px; }
+  .notes p { color: var(--ink-2); max-width: 52ch; }
+  .notes strong { color: var(--ink); font-weight: 600; }
+
+  code {
+    font-family: var(--mono); font-size: 0.87em;
+    background: var(--surface-2); border: 1px solid var(--line-soft);
+    border-radius: 4px; padding: 1px 5px; color: var(--ink);
+  }
+  pre code { border: 0; background: none; padding: 0; font-size: 12.5px; }
+  pre.block {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.8;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px 20px;
+    overflow-x: auto; margin: 0; color: var(--ink-2);
+  }
+  pre.block b { color: var(--ink); font-weight: 600; }
+  pre.block i { color: var(--ink-3); font-style: normal; }
+  pre.block u { color: var(--accent); text-decoration: none; }
+
+  /* ---------- specimen ---------- */
+
+  .specimen {
+    display: grid;
+    grid-template-columns: minmax(420px, 1fr) minmax(280px, 340px);
+    gap: 36px; align-items: start;
+  }
+
+  .desktop {
+    position: relative; border-radius: var(--radius); overflow: hidden;
+    min-height: 590px; display: grid; place-items: center;
+    padding: 46px 20px 28px; border: 1px solid var(--line);
+    transition: background .45s ease;
+  }
+
+  :root[data-wall="dawn"] .desktop {
+    background:
+      radial-gradient(120% 90% at 18% 8%, rgba(255,255,255,.42), transparent 55%),
+      linear-gradient(158deg, #F4DAC4 0%, #DBB9C6 32%, #A99BC4 62%, #7C91BE 100%);
+  }
+  :root[data-wall="dusk"] .desktop {
+    background:
+      radial-gradient(120% 90% at 80% 10%, rgba(255,190,150,.22), transparent 58%),
+      linear-gradient(162deg, #2E3D59 0%, #3E3A5C 40%, #5C4459 70%, #7A5057 100%);
+  }
+  :root[data-wall="graphite"] .desktop {
+    background:
+      radial-gradient(110% 80% at 30% 5%, rgba(255,255,255,.10), transparent 55%),
+      linear-gradient(168deg, #212528 0%, #2C3238 48%, #15181C 100%);
+  }
+
+  .menubar {
+    position: absolute; inset: 0 0 auto 0; height: 26px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; font-size: 11.5px; font-weight: 500;
+    color: rgba(255,255,255,.92); background: rgba(0,0,0,.18);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  :root[data-wall="dawn"] .menubar { color: rgba(30,26,34,.82); background: rgba(255,255,255,.24); }
+  .menubar .mb-right { display: flex; gap: 12px; opacity: .88; font-variant-numeric: tabular-nums; }
+
+  /* ---------- widget frame ---------- */
+
+  .widget {
+    width: 340px; height: 486px;
+    display: flex; flex-direction: column; overflow: hidden;
+    font-size: 13.5px;
+    transition: transform .3s cubic-bezier(.2,.7,.3,1);
+  }
+  .desktop:hover .widget { transform: translateY(-3px); }
+
+  .w-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
+  .w-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 11px; }
+  .w-foot { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; font-size: 11px; }
+
+  .todo { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .todo li { display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
+  .todo input[type="checkbox"] { margin: 1px 0 0; flex-shrink: 0; cursor: pointer; }
+  .todo .txt.done { text-decoration: line-through; opacity: .45; }
+
+  /* date pills — semantic, independent of theme accent */
+  .due {
+    font-size: 10.5px; letter-spacing: .01em; white-space: nowrap;
+    padding: 1px 6px; border-radius: 4px; flex-shrink: 0;
+    font-variant-numeric: tabular-nums; align-self: flex-start; margin-top: 1px;
+  }
+  .due-soon { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+  .due-over { color: var(--crit); background: color-mix(in srgb, var(--crit) 16%, transparent); }
+  .due-far  { opacity: .5; }
+
+  .fig { display: flex; flex-direction: column; gap: 5px; margin: 0; }
+  .fig svg { width: 100%; height: auto; display: block; }
+  .fig figcaption { font-size: 10.5px; }
+
+  .thumb {
+    width: 100%; height: 58px; border-radius: 5px;
+    background:
+      linear-gradient(115deg, rgba(255,255,255,.16), transparent 60%),
+      linear-gradient(30deg, #5C7A9E, #9E7C8C 55%, #C8A46E);
+    display: flex; align-items: flex-end; padding: 5px 7px;
+    font-size: 10px; color: rgba(255,255,255,.94);
+  }
+
+  /* ---------- theme · frosted ---------- */
+
+  .w-frost {
+    border-radius: 15px; padding: 13px 15px 11px; gap: 11px;
+    backdrop-filter: blur(34px) saturate(180%);
+    -webkit-backdrop-filter: blur(34px) saturate(180%);
+    box-shadow: 0 26px 56px rgba(0,0,0,.30), 0 3px 10px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.42);
+    background: rgba(252,252,253,.62); color: #1B1E24;
+    border: .5px solid rgba(255,255,255,.30);
+  }
+  :root[data-wall="dusk"] .w-frost,
+  :root[data-wall="graphite"] .w-frost {
+    background: rgba(34,37,43,.58); color: #EDEFF2;
+    border-color: rgba(255,255,255,.13);
+    box-shadow: 0 26px 56px rgba(0,0,0,.46), 0 3px 10px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.13);
+  }
+  .w-frost .w-head { font-size: 12px; }
+  .w-frost h4 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .w-frost .sub { font-size: 11px; opacity: .55; font-weight: 400; }
+  .w-frost .seg { display: flex; gap: 1px; padding: 1.5px; background: rgba(128,128,128,.20); border-radius: 6px; }
+  .w-frost .seg span { padding: 2px 8px; border-radius: 5px; font-size: 10.5px; }
+  .w-frost .seg .on { background: rgba(255,255,255,.80); color: #1B1E24; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  :root[data-wall="dusk"] .w-frost .seg .on,
+  :root[data-wall="graphite"] .w-frost .seg .on { background: rgba(255,255,255,.22); color: #EDEFF2; }
+  .w-frost .fig figcaption { opacity: .55; }
+  .w-frost .w-foot { opacity: .5; }
+  .w-frost hr { border: 0; border-top: .5px solid currentColor; opacity: .14; margin: 1px 0; }
+  .w-frost .due-soon { color: #9A5F1E; background: rgba(168,112,44,.16); }
+  .w-frost .due-over { color: #9E3F35; background: rgba(166,69,60,.16); }
+  :root[data-wall="dusk"] .w-frost .due-soon,
+  :root[data-wall="graphite"] .w-frost .due-soon { color: #E8B87A; background: rgba(214,160,92,.18); }
+  :root[data-wall="dusk"] .w-frost .due-over,
+  :root[data-wall="graphite"] .w-frost .due-over { color: #E89086; background: rgba(217,124,113,.18); }
+
+  /* ---------- theme · card ---------- */
+
+  .w-card {
+    border-radius: 5px; padding: 0 0 11px; gap: 0;
+    background: #FBF8F1; color: #2B2721;
+    font-family: var(--serif); font-size: 14px;
+    transform: rotate(-.55deg);
+    box-shadow: 0 14px 30px rgba(0,0,0,.26), 0 2px 5px rgba(0,0,0,.14);
+    border: 1px solid rgba(0,0,0,.10);
+  }
+  .desktop:hover .w-card { transform: rotate(-.55deg) translateY(-3px); }
+  :root[data-theme="dark"] .w-card { background: #EFEAE0; }
+
+  .w-card .tab {
+    height: 32px; background: #C7573F;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px; color: #FDF6EE;
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: .07em; text-transform: uppercase; flex-shrink: 0;
+  }
+  .w-card .rule {
+    flex: 1; padding: 13px 16px 0 34px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 11px;
+    background:
+      linear-gradient(90deg, transparent 25px, rgba(199,87,63,.28) 25px, rgba(199,87,63,.28) 26px, transparent 26px),
+      repeating-linear-gradient(180deg, transparent 0 25px, rgba(43,39,33,.09) 25px 26px);
+    background-attachment: local;
+  }
+  .w-card .todo li { font-size: 13.5px; }
+  .w-card .fig figcaption { font-family: var(--sans); color: #6E655A; }
+  .w-card .due { font-family: var(--sans); }
+  .w-card .due-soon { color: #8A5A18; background: rgba(138,90,24,.13); }
+  .w-card .due-over { color: #97372C; background: rgba(151,55,44,.13); }
+  .w-card .w-foot {
+    padding: 8px 16px 0 34px; font-family: var(--sans); color: #8A8175;
+    border-top: 1px solid rgba(43,39,33,.10); margin-top: 4px;
+  }
+
+  /* ---------- theme · console ---------- */
+
+  .w-console {
+    border-radius: 9px; padding: 11px 13px; gap: 10px;
+    background: rgba(12,15,19,.90);
+    backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+    color: #C6D0DA; font-family: var(--mono); font-size: 12px; line-height: 1.55;
+    border: 1px solid rgba(255,255,255,.09);
+    box-shadow: 0 22px 46px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .w-console .w-head { color: #6E7C8A; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; }
+  .w-console h4 { margin: 0; font-size: 12.5px; font-weight: 500; color: #8FB4C9; }
+  .w-console .tick { color: #8FB4C9; }
+  .w-console .box { color: #6E7C8A; flex-shrink: 0; }
+  .w-console .fig figcaption { color: #5F6B78; }
+  .w-console .w-foot { color: #5F6B78; font-size: 10.5px; border-top: 1px solid rgba(255,255,255,.07); padding-top: 8px; }
+  .w-console .dim { color: #5F6B78; }
+  .w-console .due { background: none; padding: 1px 0; }
+  .w-console .due-soon { color: #C9A76B; }
+  .w-console .due-over { color: #D98A7E; }
+
+  /* ---------- spec column ---------- */
+
+  .spec { display: flex; flex-direction: column; gap: 16px; padding-top: 4px; }
+  .spec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .spec-idx { font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .1em; }
+  .thesis { color: var(--ink-2); max-width: 46ch; }
+
+  .badge {
+    display: inline-block; font-family: var(--mono); font-size: 10px;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--signal);
+    border: 1px solid color-mix(in srgb, var(--signal) 40%, transparent);
+    border-radius: 999px; padding: 2px 9px;
+  }
+
+  dl { margin: 0; display: flex; flex-direction: column; gap: 11px; }
+  .row { display: grid; grid-template-columns: 74px 1fr; gap: 12px; align-items: baseline; }
+  dt { font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+  dd { margin: 0; font-size: 14px; color: var(--ink-2); }
+  dd strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- tables ---------- */
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 580px; }
+  th, td { text-align: left; padding: 13px 18px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+  td:first-child { color: var(--ink); font-weight: 500; width: 32%; }
+  td:last-child { color: var(--ink-2); }
+  td code { white-space: nowrap; }
+
+  /* ---------- close ---------- */
+
+  .close { border-top: 1px solid var(--line); padding-top: 26px; display: flex; flex-direction: column; gap: 12px; }
+  .close p { color: var(--ink-2); max-width: var(--measure); }
+
+  @media (max-width: 900px) {
+    .specimen, .split { grid-template-columns: 1fr; gap: 26px; }
+    .desktop { min-height: 560px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Design · v0.1 · 12 Aug 2026</div>
+    <h1>Foolscap</h1>
+    <p class="lede">
+      A note widget that floats on your macOS desktop, backed by plain markdown in a folder you
+      own. Dates are text. Themes are CSS. <em>The storage format is designed so a coding agent
+      can edit your notes with ordinary file tools</em> — no API, no plugin, no sync service.
+    </p>
+    <div class="controls">
+      <span class="controls-label">Wallpaper</span>
+      <button class="swatch" data-wall-btn="dawn" aria-pressed="true"><span class="chip chip-dawn"></span>Dawn</button>
+      <button class="swatch" data-wall-btn="dusk" aria-pressed="false"><span class="chip chip-dusk"></span>Dusk</button>
+      <button class="swatch" data-wall-btn="graphite" aria-pressed="false"><span class="chip chip-graphite"></span>Graphite</button>
+    </div>
+  </header>
+
+  <section>
+    <h2>The vault</h2>
+    <div class="split">
+      <pre class="tree"><b>~/Notes/</b>              <i># configurable</i>
+├── <b>todo.md</b>
+├── <b>thesis.md</b>          <i># ```mermaid fences</i>
+├── <b>daily/</b>
+│   ├── <i>2026-08-11.md</i>
+│   └── <b>2026-08-12.md</b>  <i># today, auto-created</i>
+├── <b>attachments/</b>
+│   └── <i>filtration.png</i>
+└── <b>CLAUDE.md</b>          <i># the format, documented</i></pre>
+      <div class="notes">
+        <p>
+          <strong>There is no API.</strong> Notes are markdown files in one folder. An agent edits
+          them with ordinary file tools — nothing to install, no IPC layer, nothing to break when
+          either side changes.
+        </p>
+        <p>
+          The widget watches the folder with <code>FSEvents</code> and reloads the moment a file
+          changes, so an edit made in a Claude session appears on your desktop within a frame.
+          Edits travel both ways: what you type is just markdown on disk.
+        </p>
+        <p>
+          <code>CLAUDE.md</code> ships as a template and is written into the vault on first run,
+          so any future session picks up the conventions unprompted.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Dates</h2>
+    <div class="split">
+      <pre class="block"><i># todo.md</i>
+- [ ] Ask about compactness  <u>due:2026-08-12</u>
+- [ ] Send Mei the sketch    <u>due:2026-08-10</u>
+- [ ] Submit ethics form     <u>due:2026-08-19</u>
+- [ ] Water the plants       <u>every:week</u>
+- [x] Re-read §3.2           <u>done:2026-08-11</u></pre>
+      <div class="notes">
+        <p>
+          <strong>Dates are plain text, not metadata.</strong> Inline <code>key:value</code> in
+          ISO 8601 — greppable, typeable, no emoji, and still readable if the renderer is gone.
+          The widget shows them relatively (<em>today</em>, <em>2d overdue</em>) with the absolute
+          date on hover.
+        </p>
+        <p>
+          Ticking a box stamps <code>done:</code> automatically. A <code>every:</code> line
+          rewrites itself to the next occurrence instead of being crossed off.
+        </p>
+        <p>
+          Type <code>due:friday</code> and it normalises to the ISO date on save — so both you and
+          an agent can write loosely and the file stays canonical.
+        </p>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Field</th><th>Accepts</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td><code>due:</code></td><td><code>2026-08-19</code>, <code>2026-08-19T14:00</code>, <code>friday</code>, <code>+3d</code></td><td>Sorts the Today view; colours amber within 2 days, red once overdue</td></tr>
+          <tr><td><code>done:</code></td><td><code>2026-08-11</code></td><td>Written when you tick the box; never entered by hand</td></tr>
+          <tr><td><code>every:</code></td><td><code>day</code>, <code>week</code>, <code>2weeks</code>, <code>month</code>, <code>mon,thu</code></td><td>On completion the line is rewritten with the next <code>due:</code></td></tr>
+          <tr><td><code>daily/</code></td><td><code>YYYY-MM-DD.md</code></td><td>Today's note created on first write, from a configurable template</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="thesis" style="max-width: var(--measure);">
+      Dates are date-only and timezone-naive — <strong>never</strong> shifted across zones. A task
+      due the 19th is due the 19th in Melbourne and in Reykjavík. This is the single most common
+      bug in todo apps and it's a one-line decision to avoid it.
+    </p>
+  </section>
+
+  <section>
+    <h2>Theme · frosted <span style="text-transform:none;letter-spacing:0;font-family:var(--sans)">(default)</span></h2>
+    <div class="specimen">
+      <div class="desktop">
+        <div class="menubar">
+          <span>&#63743;&nbsp;&nbsp;Foolscap</span>
+          <span class="mb-right"><span>100%</span><span>Wed 09:14</span></span>
+        </div>
+        <div class="widget w-frost">
+          <div class="w-head">
+            <div><h4>Today</h4><div class="sub">Wed 12 August</div></div>
+            <div class="seg"><span class="on">Preview</span><span>Source</span></div>
+          </div>
+          <div class="w-body">
+            <ul class="todo">
+              <li><input type="checkbox"><span class="txt">Ask about the compactness assumption</span><span class="due due-soon">today</span></li>
+              <li><input type="checkbox"><span class="txt">Send Mei the filtration sketch</span><span class="due due-over">2d over</span></li>
+              <li><input type="checkbox"><span class="txt">Submit ethics form</span><span class="due due-far">19 Aug</span></li>
+              <li><input type="checkbox" checked><span class="txt done">Re-read §3.2</span><span class="due due-far">yest.</span></li>
+            </ul>
+            <hr>
+            <figure class="fig">
+              <svg viewBox="0 0 300 62" role="img" aria-label="ambiguity to filtration to persistence">
+                <g fill="none" stroke="currentColor" stroke-width="1.1" opacity=".55">
+                  <rect x="1" y="18" width="80" height="26" rx="6"></rect>
+                  <rect x="110" y="18" width="80" height="26" rx="6"></rect>
+                  <rect x="219" y="18" width="80" height="26" rx="6"></rect>
+                  <path d="M81 31h24m0 0-5-4m5 4-5 4"></path>
+                  <path d="M190 31h24m0 0-5-4m5 4-5 4"></path>
+                </g>
+                <g fill="currentColor" font-size="9.5" text-anchor="middle" font-family="-apple-system, system-ui">
+                  <text x="41" y="35">ambiguity</text>
+                  <text x="150" y="35">filtration</text>
+                  <text x="259" y="35">persistence</text>
+                </g>
+              </svg>
+              <figcaption>thesis.md — mermaid fence, rendered</figcaption>
+            </figure>
+          </div>
+          <div class="w-foot"><span>2 due today</span><span>saved</span></div>
+        </div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><span class="spec-idx">01</span><h3>frosted.css</h3><span class="badge">Default</span></div>
+        <p class="thesis">
+          The first-party answer. Real vibrancy, no chrome, content is the whole surface. It
+          disappears into the desktop until you look at it — what you want from something always
+          on screen.
+        </p>
+        <dl>
+          <div class="row"><dt>Reads as</dt><dd>Part of the OS</dd></div>
+          <div class="row"><dt>Ground</dt><dd><strong>Translucent</strong> — retints to what's behind it</dd></div>
+          <div class="row"><dt>Risk</dt><dd>Busy wallpapers cost legibility; ships with an opacity slider</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Theme · card</h2>
+    <div class="specimen">
+      <div class="desktop">
+        <div class="menubar">
+          <span>&#63743;&nbsp;&nbsp;Foolscap</span>
+          <span class="mb-right"><span>100%</span><span>Wed 09:14</span></span>
+        </div>
+        <div class="widget w-card">
+          <div class="tab"><span>Today</span><span>12 Aug</span></div>
+          <div class="rule">
+            <ul class="todo">
+              <li><input type="checkbox"><span class="txt">Ask about compactness</span><span class="due due-soon">today</span></li>
+              <li><input type="checkbox"><span class="txt">Send Mei the sketch</span><span class="due due-over">2d over</span></li>
+              <li><input type="checkbox"><span class="txt">Submit ethics form</span><span class="due due-far">19 Aug</span></li>
+              <li><input type="checkbox" checked><span class="txt done">Re-read §3.2</span></li>
+            </ul>
+            <figure class="fig">
+              <div class="thumb">filtration.png</div>
+              <figcaption>attachments/ — dropped in, referenced inline</figcaption>
+            </figure>
+          </div>
+          <div class="w-foot"><span>2 due today</span><span>saved</span></div>
+        </div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><span class="spec-idx">02</span><h3>card.css</h3></div>
+        <p class="thesis">
+          An object resting on the desk rather than a pane of glass. Opaque paper, ruled lines, a
+          coloured tab, half a degree of tilt. The serif slows reading slightly — which suits notes
+          you actually think in.
+        </p>
+        <dl>
+          <div class="row"><dt>Reads as</dt><dd>A thing you own</dd></div>
+          <div class="row"><dt>Ground</dt><dd><strong>Opaque</strong> — legible on any wallpaper</dd></div>
+          <div class="row"><dt>Risk</dt><dd>Skeuomorphism dates fast; the tilt fights window snapping</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Theme · console</h2>
+    <div class="specimen">
+      <div class="desktop">
+        <div class="menubar">
+          <span>&#63743;&nbsp;&nbsp;Foolscap</span>
+          <span class="mb-right"><span>100%</span><span>Wed 09:14</span></span>
+        </div>
+        <div class="widget w-console">
+          <div class="w-head"><span>~/Notes</span><span>2026-08-12</span></div>
+          <div class="w-body">
+            <h4>todo.md</h4>
+            <ul class="todo">
+              <li><span class="box">[ ]</span><span class="txt">ask re: compactness</span><span class="due due-soon">today</span></li>
+              <li><span class="box">[ ]</span><span class="txt">send Mei the sketch</span><span class="due due-over">-2d</span></li>
+              <li><span class="box">[ ]</span><span class="txt">submit ethics form</span><span class="due due-far">+7d</span></li>
+              <li><span class="box">[<span class="tick">x</span>]</span><span class="txt done">re-read §3.2</span></li>
+            </ul>
+            <figure class="fig">
+              <svg viewBox="0 0 300 62" role="img" aria-label="ambiguity to filtration to persistence">
+                <g fill="none" stroke="#8FB4C9" stroke-width="1" opacity=".7">
+                  <rect x="1" y="18" width="80" height="26" rx="3"></rect>
+                  <rect x="110" y="18" width="80" height="26" rx="3"></rect>
+                  <rect x="219" y="18" width="80" height="26" rx="3"></rect>
+                  <path d="M81 31h24m0 0-5-4m5 4-5 4"></path>
+                  <path d="M190 31h24m0 0-5-4m5 4-5 4"></path>
+                </g>
+                <g fill="#C6D0DA" font-size="9" text-anchor="middle" font-family="ui-monospace, Menlo, monospace">
+                  <text x="41" y="35">ambiguity</text>
+                  <text x="150" y="35">filtration</text>
+                  <text x="259" y="35">persistence</text>
+                </g>
+              </svg>
+              <figcaption>```mermaid → rendered in place</figcaption>
+            </figure>
+            <p class="dim">watching · 5 files</p>
+          </div>
+          <div class="w-foot"><span>⌥⌘N new</span><span>saved 09:12</span></div>
+        </div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><span class="spec-idx">03</span><h3>console.css</h3></div>
+        <p class="thesis">
+          Shows the file, not a rendering of it. Monospaced, dense, checkboxes drawn as the literal
+          <code>[ ]</code> on disk and dates as raw offsets. Honest that an agent is the other
+          author, and the most legible at small sizes.
+        </p>
+        <dl>
+          <div class="row"><dt>Reads as</dt><dd>Another pane of your editor</dd></div>
+          <div class="row"><dt>Ground</dt><dd><strong>Near-opaque</strong> dark; ignores the wallpaper</dd></div>
+          <div class="row"><dt>Risk</dt><dd>Always dark — jarring on a light desktop</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>True of every theme</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Behaviour</th><th>How</th></tr></thead>
+        <tbody>
+          <tr><td>Never steals focus</td><td>Non-activating <code>NSPanel</code> — clicking the note doesn't pull you out of the app you're in</td></tr>
+          <tr><td>Follows you everywhere</td><td>Floating window level, joins all Spaces, stays visible over full-screen apps</td></tr>
+          <tr><td>Live-reloads external edits</td><td><code>FSEvents</code> on the vault, coalesced so a burst of writes repaints once</td></tr>
+          <tr><td>Never loses a keystroke</td><td>Debounced write ~600 ms after you stop typing, plus a flush on quit and on sleep</td></tr>
+          <tr><td>Diagrams and images</td><td>Markdown in a <code>WKWebView</code>; mermaid fences and <code>attachments/</code> images inline</td></tr>
+          <tr><td>Stays out of the Dock</td><td><code>LSUIElement</code> agent app with a menu-bar icon to show and hide</td></tr>
+          <tr><td>Remembers itself</td><td>Window frame, active theme, and last-open note restored across restarts</td></tr>
+          <tr><td>Rolls over at midnight</td><td>Relative dates recompute on a wake and calendar-day-change notification, not a timer</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Shipping it</h2>
+    <div class="split">
+      <pre class="tree"><b>foolscap/</b>
+├── <b>Sources/FoolscapCore/</b>  <i># no UI — testable</i>
+│   ├── <i>Vault.swift</i>
+│   ├── <i>TaskLine.swift</i>     <i># due: / every:</i>
+│   └── <i>Recurrence.swift</i>
+├── <b>Sources/Foolscap/</b>      <i># NSPanel, WKWebView</i>
+├── <b>Tests/</b>
+├── <b>Resources/themes/</b>      <i># *.css</i>
+├── <b>templates/CLAUDE.md</b>
+├── <b>.github/workflows/</b>     <i># macOS runner</i>
+├── <i>build.sh · README.md · LICENSE</i></pre>
+      <div class="notes">
+        <p>
+          <strong>Split the core out of the UI.</strong> Date parsing, recurrence, and the vault
+          model go in a module with no AppKit import, so they're unit-testable in CI without a
+          GUI. This is the difference between a personal script and something a stranger will
+          send a pull request to.
+        </p>
+        <p>
+          <strong>Nothing hardcoded.</strong> Vault path, theme, and start mode come from
+          <code>~/.config/foolscap/config.toml</code>, overridable by <code>$FOOLSCAP_VAULT</code>.
+          User themes drop into the same config directory and appear in the menu.
+        </p>
+        <p>
+          <strong>Gatekeeper is the real distribution cost.</strong> Unsigned builds are blocked on
+          first launch. Either document the <code>xattr</code> workaround in the README or pay for
+          an Apple Developer account to notarise — worth deciding before the first release, not
+          after.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="close">
+    <h2>Open questions</h2>
+    <p>
+      <strong>The name.</strong> <em>Foolscap</em> is a sheet of writing paper — it fits, and it's
+      almost certainly unclaimed. It's a placeholder in exactly one place, so say the word and it
+      changes.
+    </p>
+    <p>
+      <strong>Preview or source on open?</strong> Preview reads better if an agent writes most of
+      the content; source is better if you type most of it yourself.
+    </p>
+    <p>
+      <strong>Scope discipline for v1.</strong> No plugin system, no cross-platform, no sync.
+      macOS, markdown, themes — and ship it.
+    </p>
+  </footer>
+
+</div>
+
+<script>
+  const root = document.documentElement;
+  root.setAttribute("data-wall", "dawn");
+
+  for (const btn of document.querySelectorAll("[data-wall-btn]")) {
+    btn.addEventListener("click", () => {
+      root.setAttribute("data-wall", btn.dataset.wallBtn);
+      for (const other of document.querySelectorAll("[data-wall-btn]")) {
+        other.setAttribute("aria-pressed", String(other === btn));
+      }
+    });
+  }
+
+  for (const box of document.querySelectorAll('.todo input[type="checkbox"]')) {
+    box.addEventListener("change", () => {
+      const txt = box.parentElement.querySelector(".txt");
+      if (txt) txt.classList.toggle("done", box.checked);
+    });
+  }
+</script>

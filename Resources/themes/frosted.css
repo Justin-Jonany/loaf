@@ -1,0 +1,66 @@
+/* frosted — translucent, retints to the wallpaper behind it. The default. */
+
+:root {
+  --ink:        #1B1E24;
+  --ink-soft:   rgba(27, 30, 36, 0.55);
+  --rule:       rgba(27, 30, 36, 0.14);
+  --due-soon:   #9A5F1E;
+  --due-soon-bg: rgba(168, 112, 44, 0.16);
+  --due-over:   #9E3F35;
+  --due-over-bg: rgba(166, 69, 60, 0.16);
+  --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink:        #EDEFF2;
+    --ink-soft:   rgba(237, 239, 242, 0.55);
+    --rule:       rgba(255, 255, 255, 0.14);
+    --due-soon:   #E8B87A;
+    --due-soon-bg: rgba(214, 160, 92, 0.18);
+    --due-over:   #E89086;
+    --due-over-bg: rgba(217, 124, 113, 0.18);
+  }
+}
+
+body {
+  margin: 0;
+  padding: 13px 15px;
+  font: 13.5px/1.5 var(--font);
+  color: var(--ink);
+  background: transparent; /* NSVisualEffectView shows through */
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
+hr { border: 0; border-top: 0.5px solid var(--rule); margin: 10px 0; }
+a { color: inherit; }
+
+.task { display: flex; align-items: flex-start; gap: 8px; margin: 7px 0; }
+.task input[type="checkbox"] { margin: 1px 0 0; flex-shrink: 0; }
+.task.done .label { text-decoration: line-through; opacity: 0.45; }
+
+.due {
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+}
+.due-soon { color: var(--due-soon); background: var(--due-soon-bg); opacity: 1; }
+.due-over { color: var(--due-over); background: var(--due-over-bg); opacity: 1; }
+
+img { max-width: 100%; border-radius: 5px; }
+pre { overflow-x: auto; font-size: 12px; }
+.mermaid { color: var(--ink-soft); }
+
+/* Reduce Transparency is handled in Swift by disabling vibrancy; this keeps the
+   text readable against the resulting solid background. */
+@media (prefers-reduced-transparency: reduce) {
+  body { background: Canvas; color: CanvasText; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
