@@ -1,14 +1,20 @@
 import AppKit
+import CoreGraphics
 import WebKit
 
-/// The note window: a normal-level, non-activating `NSPanel`.
+/// The note window: pinned to the macOS desktop layer, like a system desktop widget.
+/// See DECISIONS.md (2026-08-16) for the rationale and the editing trade-off this
+/// implies — desktop-level windows never receive keyboard focus, so in-widget text
+/// editing does not work; editing is by editing the `.md` file directly (the user in
+/// any editor, or an agent). `canBecomeKey`/`canBecomeMain` are false accordingly.
 ///
-/// `.nonactivatingPanel` is the whole reason this is a native app: clicking the note
-/// does not deactivate whatever app you were in, so your cursor and menu bar stay put.
-/// A panel does not accept key input by default, so `canBecomeKey` is overridden —
-/// without it the text view silently refuses to take a keystroke. Despite the panel
-/// styleMask, the window sits at ordinary (`.normal`) level, present on every Space —
-/// it is not an always-on-top float, and other windows can still cover it.
+/// `level` sits one above `kCGDesktopWindowLevel` — above the wallpaper, behind every
+/// ordinary app window and the Dock, and never over a fullscreen app. `.stationary`
+/// keeps it out of the Spaces-switch animation (it doesn't travel to the active
+/// Space — it's simply present on all of them), matching how desktop icons behave.
+/// `.nonactivatingPanel` is kept on the styleMask so that, if a click ever *is*
+/// delivered to it (see the checkbox-click investigation in ROADMAP.md), it doesn't
+/// steal focus from whatever app you were in.
 final class NotePanel: NSPanel {
     let webView: WKWebView
 
@@ -25,29 +31,20 @@ final class NotePanel: NSPanel {
 
         super.init(
             contentRect: contentRect,
-            styleMask: [.nonactivatingPanel, .titled, .closable, .resizable, .fullSizeContentView],
+            styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
             defer: false
         )
 
-        // Ordinary window behavior: normal level, and other windows can cover it.
-        // `.nonactivatingPanel` above and `hidesOnDeactivate = false` below are the only
-        // pieces of "special panel" behavior kept from the original always-on-top design.
-        // `.canJoinAllSpaces` just means the note follows you to whatever desktop is
-        // current — independent of level/floating, so it still isn't always-on-top.
         isFloatingPanel = false
-        level = .normal
-        collectionBehavior = [.canJoinAllSpaces]
+        // One level above the desktop/wallpaper layer, below every ordinary window.
+        level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
+        collectionBehavior = [.canJoinAllSpaces, .stationary]
 
-        titlebarAppearsTransparent = true
-        titleVisibility = .hidden
         isMovableByWindowBackground = true
         isOpaque = false
         backgroundColor = .clear
         hidesOnDeactivate = false
-
-        standardWindowButton(.miniaturizeButton)?.isHidden = true
-        standardWindowButton(.zoomButton)?.isHidden = true
 
         let effectView = NSVisualEffectView(frame: contentRect)
         effectView.blendingMode = .behindWindow
@@ -55,18 +52,18 @@ final class NotePanel: NSPanel {
         effectView.state = .active
         effectView.autoresizingMask = [.width, .height]
 
-        // Inset the web view 30px below the top of the window. That leaves a bare strip
-        // of the NSVisualEffectView showing under the (hidden-titlebar) traffic lights:
-        // it's the drag region (isMovableByWindowBackground needs real window background
-        // to grab), and it doubles as a mask so scrolled note content clips at the web
-        // view's top edge instead of sliding up underneath the window buttons.
+        // Borderless means there's no titlebar left to clear, so the web view is inset
+        // by a small margin on every side instead of the old top-only strip: the bare
+        // ring of NSVisualEffectView it exposes is what isMovableByWindowBackground grabs
+        // to reposition the widget, and it frames the note like a desktop widget rather
+        // than a window.
         webView.translatesAutoresizingMaskIntoConstraints = false
         effectView.addSubview(webView)
         NSLayoutConstraint.activate([
-            webView.topAnchor.constraint(equalTo: effectView.topAnchor, constant: 30),
-            webView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
-            webView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
+            webView.topAnchor.constraint(equalTo: effectView.topAnchor, constant: 10),
+            webView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor, constant: 10),
+            webView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor, constant: -10),
+            webView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -10),
         ])
         contentView = effectView
 
@@ -102,6 +99,8 @@ final class NotePanel: NSPanel {
         controller.addUserScript(script)
     }
 
-    override var canBecomeKey: Bool { true }
+    // Desktop-level windows never take keyboard focus; there's no in-widget text
+    // editing left for a key window to serve (see the type doc comment above).
+    override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }

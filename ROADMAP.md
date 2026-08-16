@@ -16,14 +16,20 @@ can edit a note while you watch.
 ### Window — a desktop widget
 The note pins to the macOS desktop layer (behind all app windows, present on every Space), like
 a system desktop widget. See [DECISIONS.md](DECISIONS.md) (2026-08-16) for the rationale and the
-editing trade-off. The panel code currently on this branch (`.normal` level, `canJoinAllSpaces`,
-the top drag-strip) is interim and will be reworked to this model.
-- [ ] Desktop-level window: sits behind app windows, never on top, never over fullscreen apps
-- [ ] Present on all Spaces (`canJoinAllSpaces`, `.stationary`)
-- [ ] Borderless; `isMovableByWindowBackground` to reposition when the desktop is visible
-- [ ] Frame persisted across restarts (`setFrameAutosaveName`)
-- [ ] Menu-bar `NSStatusItem` to show/hide, quit, and open the vault in Finder
-- [ ] Investigate whether checkbox clicks register at desktop level; text editing is via the file
+editing trade-off.
+- [x] Desktop-level window: sits behind app windows, never on top, never over fullscreen apps
+      (`level = CGWindowLevelForKey(.desktopWindow) + 1`, verified against the real window
+      server output — one above the wallpaper, below `kCGDesktopIconWindowLevel`, so it also
+      sits behind Finder desktop icons)
+- [x] Present on all Spaces (`canJoinAllSpaces`, `.stationary`)
+- [x] Borderless; `isMovableByWindowBackground` to reposition when the desktop is visible
+- [x] Frame persisted across restarts (`setFrameAutosaveName`)
+- [x] Menu-bar `NSStatusItem` to show/hide, quit, and open the vault in Finder
+- [ ] Investigate whether checkbox clicks register at desktop level; text editing is via the
+      file. **Needs a human to verify** — this sandbox has neither Accessibility nor Screen
+      Recording TCC permission, so a synthetic click can't be tested from here. To check:
+      run `dist/Foolscap.app`, click a checkbox, and confirm the note's `.md` file picks up
+      the `done:` stamp.
 
 ### Vault
 - [ ] Load `*.md` from the configured directory; ignore dotfiles and `attachments/`

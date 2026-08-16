@@ -22,7 +22,10 @@ briefly-considered "convert to a normal app window" direction. The window change
 the open slice-2 PR (`level = .normal`, `collectionBehavior = [.canJoinAllSpaces]`, the top
 drag-strip inset) are **interim** and will be reworked when this model is built.
 
-**Status:** decided, not yet implemented.
+**Status:** implemented (`NotePanel` now sits at `CGWindowLevelForKey(.desktopWindow) + 1`,
+borderless, `[.canJoinAllSpaces, .stationary]`, `canBecomeKey == false`). The one open item is
+the checkbox-click question above — unverified in an interactive session, tracked in
+ROADMAP.md.
 
 ## 2026-08-16 — Menu-bar Quit routed to NSApp
 

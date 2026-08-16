@@ -50,4 +50,12 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Window level (`.normal`) and non-activating behavior are unchanged — it's still not
   always-on-top and other windows can still cover it.
 
+- `NotePanel` reworked to the desktop-widget window model (see DECISIONS.md): borderless,
+  pinned to `CGWindowLevelForKey(.desktopWindow) + 1` (above the wallpaper, below every
+  ordinary app window and below Finder's desktop icons), with `collectionBehavior =
+  [.canJoinAllSpaces, .stationary]` and `canBecomeKey`/`canBecomeMain` both false — it never
+  takes keyboard focus, so in-widget text editing is gone; editing is by editing the note file.
+  The old top-only 30px drag strip is replaced by a 10pt margin on all sides of the web view,
+  which is both the drag region for `isMovableByWindowBackground` and the widget's frame.
+
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.
