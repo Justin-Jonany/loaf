@@ -1,15 +1,11 @@
 import AppKit
 import WebKit
 
-/// The note window: a normal-level, non-activating `NSPanel`.
-///
-/// `.nonactivatingPanel` is the whole reason this is a native app: clicking the note
-/// does not deactivate whatever app you were in, so your cursor and menu bar stay put.
-/// A panel does not accept key input by default, so `canBecomeKey` is overridden —
-/// without it the text view silently refuses to take a keystroke. Despite the panel
-/// styleMask, the window sits at ordinary (`.normal`) level, present on every Space —
-/// it is not an always-on-top float, and other windows can still cover it.
-final class NotePanel: NSPanel {
+/// The note window: a plain, ordinary `NSWindow` — standard titlebar with all three
+/// traffic lights, normal window level, becomes key/main like any document window.
+/// No panel tricks: clicking it activates the app and brings it forward, same as any
+/// other Mac app.
+final class NoteWindow: NSWindow {
     let webView: WKWebView
 
     init(contentRect: NSRect) {
@@ -25,29 +21,13 @@ final class NotePanel: NSPanel {
 
         super.init(
             contentRect: contentRect,
-            styleMask: [.nonactivatingPanel, .titled, .closable, .resizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
 
-        // Ordinary window behavior: normal level, and other windows can cover it.
-        // `.nonactivatingPanel` above and `hidesOnDeactivate = false` below are the only
-        // pieces of "special panel" behavior kept from the original always-on-top design.
-        // `.canJoinAllSpaces` just means the note follows you to whatever desktop is
-        // current — independent of level/floating, so it still isn't always-on-top.
-        isFloatingPanel = false
-        level = .normal
-        collectionBehavior = [.canJoinAllSpaces]
-
-        titlebarAppearsTransparent = true
-        titleVisibility = .hidden
-        isMovableByWindowBackground = true
         isOpaque = false
         backgroundColor = .clear
-        hidesOnDeactivate = false
-
-        standardWindowButton(.miniaturizeButton)?.isHidden = true
-        standardWindowButton(.zoomButton)?.isHidden = true
 
         let effectView = NSVisualEffectView(frame: contentRect)
         effectView.blendingMode = .behindWindow
@@ -55,22 +35,17 @@ final class NotePanel: NSPanel {
         effectView.state = .active
         effectView.autoresizingMask = [.width, .height]
 
-        // Inset the web view 30px below the top of the window. That leaves a bare strip
-        // of the NSVisualEffectView showing under the (hidden-titlebar) traffic lights:
-        // it's the drag region (isMovableByWindowBackground needs real window background
-        // to grab), and it doubles as a mask so scrolled note content clips at the web
-        // view's top edge instead of sliding up underneath the window buttons.
         webView.translatesAutoresizingMaskIntoConstraints = false
         effectView.addSubview(webView)
         NSLayoutConstraint.activate([
-            webView.topAnchor.constraint(equalTo: effectView.topAnchor, constant: 30),
+            webView.topAnchor.constraint(equalTo: effectView.topAnchor),
             webView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
             webView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
         ])
         contentView = effectView
 
-        setFrameAutosaveName("FoolscapPanel")
+        setFrameAutosaveName("FoolscapWindow")
     }
 
     /// Loads rendered note HTML. `baseURL` should be the vault root so relative
@@ -101,7 +76,4 @@ final class NotePanel: NSPanel {
         let script = WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         controller.addUserScript(script)
     }
-
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
 }

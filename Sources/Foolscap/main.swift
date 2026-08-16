@@ -2,12 +2,12 @@ import AppKit
 import WebKit
 import FoolscapCore
 
-// Wires the vault + renderer into the panel: load config, bootstrap the vault, pick a
+// Wires the vault + renderer into the window: load config, bootstrap the vault, pick a
 // note, render it, and repaint whenever the file changes on disk. This is the
-// Claude-edits-your-note-and-the-widget-repaints demo — see ROADMAP for what's next.
+// Claude-edits-your-note-and-the-window-repaints demo — see ROADMAP for what's next.
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler {
-    private var panel: NotePanel?
+    private var window: NoteWindow?
     private var statusItem: NSStatusItem?
     private var watcher: VaultWatcher?
 
@@ -24,10 +24,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             NSLog("Foolscap: couldn't bootstrap vault at \(vault.root.path): \(error)")
         }
 
-        let panel = NotePanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 486))
-        panel.installTaskToggleHandler(self)
-        panel.orderFrontRegardless()
-        self.panel = panel
+        let window = NoteWindow(contentRect: NSRect(x: 0, y: 0, width: 340, height: 486))
+        window.installTaskToggleHandler(self)
+        window.makeKeyAndOrderFront(nil)
+        self.window = window
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.title = "◳"
@@ -52,8 +52,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
 
     @objc private func toggle() {
-        guard let panel else { return }
-        panel.isVisible ? panel.orderOut(nil) : panel.orderFrontRegardless()
+        guard let window else { return }
+        if window.isVisible {
+            window.orderOut(nil)
+        } else {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     @objc private func openVaultInFinder() {
@@ -81,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             today: .today(),
             soonWithinDays: config.soonWithinDays
         )
-        panel?.load(html: Self.wrapHTML(body: body, theme: config.theme), baseURL: vault.root)
+        window?.load(html: Self.wrapHTML(body: body, theme: config.theme), baseURL: vault.root)
     }
 
     // MARK: - Checkbox write-back
@@ -178,8 +183,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 }
 
 let app = NSApplication.shared
-// Agent app: menu bar only, never the Dock or the app switcher.
-app.setActivationPolicy(.accessory)
+// Ordinary app: shows in the Dock and Cmd+Tab, like any normal document window.
+app.setActivationPolicy(.regular)
 let delegate = AppDelegate()
 app.delegate = delegate
 app.run()
