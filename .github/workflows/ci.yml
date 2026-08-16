@@ -16,6 +16,8 @@ jobs:
         run: swift --version
       - name: Build
         run: swift build -v
+      - name: Core-boundary check
+        run: bash scripts/check-core-boundary.sh
       - name: Self-test
         # Not `swift test`: XCTest ships only with Xcode, so the suite is a plain
         # executable that any Command Line Tools install can run.

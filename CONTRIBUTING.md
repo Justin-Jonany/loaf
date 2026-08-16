@@ -24,6 +24,10 @@ The split is the point: parsing, dates, and recurrence stay testable in CI witho
 GUI session. If you find yourself importing AppKit into `FoolscapCore`, the logic
 probably belongs in the app target instead.
 
+`scripts/check-core-boundary.sh` enforces this: CI fails if `Sources/FoolscapCore/`
+imports `AppKit`, `Cocoa`, `UIKit`, `SwiftUI`, or `WebKit`. Run it locally with
+`bash scripts/check-core-boundary.sh`.
+
 ## Tests
 
 `swift run foolscap-selftest` runs the whole suite and exits non-zero on failure.

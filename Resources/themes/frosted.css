@@ -36,6 +36,7 @@ h1, h2, h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin:
 hr { border: 0; border-top: 0.5px solid var(--rule); margin: 10px 0; }
 a { color: inherit; }
 
+ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 .task { display: flex; align-items: flex-start; gap: 8px; margin: 7px 0; }
 .task input[type="checkbox"] { margin: 1px 0 0; flex-shrink: 0; }
 .task.done .label { text-decoration: line-through; opacity: 0.45; }

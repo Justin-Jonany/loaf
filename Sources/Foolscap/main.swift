@@ -1,11 +1,12 @@
 import AppKit
+import WebKit
 import FoolscapCore
 
 // Wires the vault + renderer into the panel: load config, bootstrap the vault, pick a
 // note, render it, and repaint whenever the file changes on disk. This is the
 // Claude-edits-your-note-and-the-widget-repaints demo — see ROADMAP for what's next.
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler {
     private var panel: NotePanel?
     private var statusItem: NSStatusItem?
     private var watcher: VaultWatcher?
@@ -24,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let panel = NotePanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 486))
+        panel.installTaskToggleHandler(self)
         panel.orderFrontRegardless()
         self.panel = panel
 
@@ -42,7 +44,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Open Vault in Finder", action: #selector(openVaultInFinder), keyEquivalent: "o"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Foolscap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        menu.items.forEach { $0.target = self }
+        // Quit's target stays nil so terminate: routes down the responder chain to NSApp, which implements it.
+        menu.items.forEach { item in
+            item.target = (item.action == #selector(NSApplication.terminate(_:))) ? nil : self
+        }
         return menu
     }
 
@@ -77,6 +82,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             soonWithinDays: config.soonWithinDays
         )
         panel?.load(html: Self.wrapHTML(body: body, theme: config.theme), baseURL: vault.root)
+    }
+
+    // MARK: - Checkbox write-back
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "toggleTask" else { return }
+        guard let body = message.body as? [String: Any],
+              let line = (body["line"] as? NSNumber)?.intValue,
+              let checked = (body["checked"] as? NSNumber)?.boolValue
+        else { return }
+        toggleTask(atLine: line, checked: checked)
+    }
+
+    /// Re-reads the note fresh from disk (never the DOM's stale copy), validates that
+    /// `line` is still a task line — the file may have changed underneath the click — and
+    /// either applies the toggle or, if the line no longer matches, drops the click and
+    /// re-renders so the panel reflects current truth.
+    private func toggleTask(atLine line: Int, checked: Bool) {
+        guard let noteURL = currentNotePath, let markdown = try? vault.read(noteURL) else { return }
+        var lines = markdown.components(separatedBy: "\n")
+
+        guard line >= 1, line <= lines.count, var task = TaskLine.parse(lines[line - 1]) else {
+            renderAndShow(noteURL)
+            return
+        }
+
+        if checked {
+            task.isDone = true
+            task.done = .today()
+        } else {
+            task.isDone = false
+            task.done = nil
+        }
+        lines[line - 1] = task.rendered()
+
+        do {
+            try vault.writeAtomically(lines.joined(separator: "\n"), to: noteURL)
+        } catch {
+            NSLog("Foolscap: couldn't write task toggle to \(noteURL.path): \(error)")
+        }
+        // The write is recorded in the self-write registry, so the watcher suppresses its
+        // own echo — re-render here is what actually shows the `.done` styling change.
+        renderAndShow(noteURL)
     }
 
     private func startWatching() {
