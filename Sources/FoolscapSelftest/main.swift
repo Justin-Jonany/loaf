@@ -214,6 +214,18 @@ let doneHTML = MarkdownRenderer.renderHTML(from: "- [x] done thing\n")
 expect(doneHTML.contains("checkbox\" checked"), true, "checked box renders the checked attribute")
 expect(doneHTML.contains("class=\"task done\""), true, "done task carries the done class")
 
+expect(overdueHTML.contains("data-line=\"1\""), true, "task div carries its 1-based source line")
+expect(overdueHTML.contains("disabled"), false, "checkbox is not disabled — clicks can write back")
+
+let allTasksHTML = MarkdownRenderer.renderHTML(from: "- [ ] one\n- [x] two\n")
+expect(allTasksHTML.contains("<ul class=\"tasks\">"), true, "an all-task list wrapper gets class=\"tasks\"")
+
+let mixedListHTML = MarkdownRenderer.renderHTML(from: "- [ ] one\n- just a bullet\n")
+expect(mixedListHTML.contains("class=\"tasks\""), false, "a mixed task/non-task list keeps normal indent")
+
+let plainListHTML = MarkdownRenderer.renderHTML(from: "- one\n- two\n")
+expect(plainListHTML.contains("class=\"tasks\""), false, "a non-task list does not get class=\"tasks\"")
+
 let soonHTML = MarkdownRenderer.renderHTML(from: "- [ ] soon due:2026-08-13\n", today: date("2026-08-12"))
 expect(soonHTML.contains("class=\"due due-soon\""), true, "soon due date carries the due-soon class")
 

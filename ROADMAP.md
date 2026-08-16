@@ -14,8 +14,10 @@ The bar: you keep it open for a week without reaching for another app, and Claud
 can edit a note while you watch.
 
 ### Window
-- [ ] Non-activating `NSPanel` — clicking the note must not deactivate the frontmost app
-- [ ] `.floating` level, `canJoinAllSpaces`, `fullScreenAuxiliary`
+- [x] Non-activating `NSPanel` — clicking the note must not deactivate the frontmost app
+- [x] Normal window level (`.normal`, `collectionBehavior = []`) — other windows can cover
+      the note, and it lives on one Space. Not an always-on-top float; only
+      `.nonactivatingPanel` (click-through-to-frontmost) is kept from that original goal.
 - [ ] Borderless with a custom drag region; `isMovableByWindowBackground`
 - [ ] Frame persisted across restarts (`setFrameAutosaveName`)
 - [ ] Menu-bar `NSStatusItem` to show/hide, quit, and open the vault in Finder
@@ -32,12 +34,12 @@ can edit a note while you watch.
 - [ ] Markdown → HTML into a `WKWebView`
 - [ ] Preview / Source toggle, remembered per session
 - [ ] `frosted` theme complete; `card` and `console` can slip to v0.2
-- [ ] Checkbox clicks in preview write back to the underlying markdown line
+- [x] Checkbox clicks in preview write back to the underlying markdown line
 
 ### Dates
 - [ ] Parse `due:` and `done:` from task lines
 - [ ] Relative rendering — `today`, `2d over`, `19 Aug` — with the ISO date on hover
-- [ ] Ticking a box stamps `done:YYYY-MM-DD`
+- [x] Ticking a box stamps `done:YYYY-MM-DD`
 - [ ] Recompute relative dates on wake and on `NSCalendarDayChanged`, never on a timer
 
 ### Config
@@ -99,8 +101,16 @@ test case that catches a wrong implementation.
 - macOS **Reduce Transparency** must force `opacity = 1.0` and disable vibrancy
 - **Increase Contrast** must strengthen the panel border
 - A todo list rendered in `WKWebView` needs real checkbox semantics for VoiceOver,
-  not styled `<div>`s
+  not styled `<div>`s (task rows are currently `<div class="task">` + a plain
+  `<input type="checkbox">`; a proper `<li role="checkbox">`/ARIA pass is still owed)
 - Respect `prefers-reduced-motion` in theme CSS
+
+### Architecture fitness
+`scripts/check-core-boundary.sh` now runs in CI and fails the build if
+`Sources/FoolscapCore/` imports `AppKit`/`Cocoa`/`UIKit`/`SwiftUI`/`WebKit`, so the
+hexagonal boundary is enforced, not just documented. Remaining fitness-function gaps:
+a check that `FoolscapCore` has no dependency on `Sources/Foolscap/` (currently true by
+convention only), and the VoiceOver semantics gap above.
 
 ### Large vaults
 Re-parsing every file on every FSEvent is fine at 20 notes and unusable at 2,000.

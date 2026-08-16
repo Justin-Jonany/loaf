@@ -72,18 +72,32 @@ private struct HTMLVisitor: MarkupVisitor {
     mutating func visitUnorderedList(_ unorderedList: UnorderedList) -> String {
         var html = ""
         for item in unorderedList.listItems { html += visitListItem(item) }
-        return "<ul>\n\(html)</ul>\n"
+        let cls = Self.isAllTasks(unorderedList.listItems) ? " class=\"tasks\"" : ""
+        return "<ul\(cls)>\n\(html)</ul>\n"
     }
 
     mutating func visitOrderedList(_ orderedList: OrderedList) -> String {
         var html = ""
         for item in orderedList.listItems { html += visitListItem(item) }
-        return "<ol>\n\(html)</ol>\n"
+        let cls = Self.isAllTasks(orderedList.listItems) ? " class=\"tasks\"" : ""
+        return "<ol\(cls)>\n\(html)</ol>\n"
+    }
+
+    /// A list is a task list (and gets the flush `.tasks` styling instead of default bullet
+    /// indent) only when *every* item is a checkbox — a list mixing tasks and plain bullets
+    /// keeps normal indent so the plain items still read as a list.
+    private static func isAllTasks(_ items: LazyMapSequence<MarkupChildren, ListItem>) -> Bool {
+        var sawItem = false
+        for item in items {
+            guard item.checkbox != nil else { return false }
+            sawItem = true
+        }
+        return sawItem
     }
 
     mutating func visitListItem(_ listItem: ListItem) -> String {
-        if let checkbox = listItem.checkbox, let task = taskLine(for: listItem) {
-            return renderTask(checkbox: checkbox, task: task)
+        if let checkbox = listItem.checkbox, let (line, task) = taskLine(for: listItem) {
+            return renderTask(checkbox: checkbox, task: task, line: line)
         }
         // Tight (single-paragraph) items skip the inner <p> for normal list spacing.
         if listItem.childCount == 1, let paragraph = listItem.child(at: 0) as? Paragraph {
@@ -94,14 +108,17 @@ private struct HTMLVisitor: MarkupVisitor {
 
     /// Recovers the raw source line for a list item (via its parsed `range`) and re-parses
     /// it as a `TaskLine`, so `due:`/`done:`/`every:` fields survive into the rendered task.
-    private func taskLine(for listItem: ListItem) -> TaskLine? {
+    /// The 1-based line number is also handed back so the rendered task can carry it as
+    /// `data-line`, letting the panel report which source line a checkbox click came from.
+    private func taskLine(for listItem: ListItem) -> (line: Int, task: TaskLine)? {
         guard let line = listItem.range?.lowerBound.line,
-              line >= 1, line <= sourceLines.count
+              line >= 1, line <= sourceLines.count,
+              let task = TaskLine.parse(sourceLines[line - 1])
         else { return nil }
-        return TaskLine.parse(sourceLines[line - 1])
+        return (line, task)
     }
 
-    private func renderTask(checkbox: Checkbox, task: TaskLine) -> String {
+    private func renderTask(checkbox: Checkbox, task: TaskLine, line: Int) -> String {
         let isChecked = checkbox == .checked
         let taskClass = isChecked ? " done" : ""
         let checkedAttr = isChecked ? " checked" : ""
@@ -118,10 +135,10 @@ private struct HTMLVisitor: MarkupVisitor {
             dueSpan = "<span class=\"due\(urgencyClass)\">\(Self.escape(due.description))</span>"
         }
 
-        // Editor write-back isn't wired up this slice, so the box is inert rather than
-        // inviting a click that silently doesn't persist.
+        // `data-line` lets the panel's injected checkbox listener report which source line
+        // to toggle, without trusting anything else about the DOM's stale copy of the note.
         return """
-        <div class="task\(taskClass)"><input type="checkbox"\(checkedAttr) disabled><span class="label">\(label)</span>\(dueSpan)</div>
+        <div class="task\(taskClass)" data-line="\(line)"><input type="checkbox"\(checkedAttr)><span class="label">\(label)</span>\(dueSpan)</div>
 
         """
     }
