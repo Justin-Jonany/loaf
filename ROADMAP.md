@@ -13,17 +13,14 @@ Everything that doesn't serve that is below the fold.
 The bar: you keep it open for a week without reaching for another app, and Claude
 can edit a note while you watch.
 
-### Window — a desktop widget
-The note pins to the macOS desktop layer (behind all app windows, present on every Space), like
-a system desktop widget. See [DECISIONS.md](DECISIONS.md) (2026-08-16) for the rationale and the
-editing trade-off. The panel code currently on this branch (`.normal` level, `canJoinAllSpaces`,
-the top drag-strip) is interim and will be reworked to this model.
-- [ ] Desktop-level window: sits behind app windows, never on top, never over fullscreen apps
-- [ ] Present on all Spaces (`canJoinAllSpaces`, `.stationary`)
-- [ ] Borderless; `isMovableByWindowBackground` to reposition when the desktop is visible
-- [ ] Frame persisted across restarts (`setFrameAutosaveName`)
-- [ ] Menu-bar `NSStatusItem` to show/hide, quit, and open the vault in Finder
-- [ ] Investigate whether checkbox clicks register at desktop level; text editing is via the file
+### Window
+An ordinary window: standard titlebar and traffic lights, normal level, becomes key/main and
+shows in the Dock/Cmd+Tab like any other Mac app. See [DECISIONS.md](DECISIONS.md) (2026-08-16)
+for why the desktop-widget model this section used to describe was tried and reverted.
+- [x] Ordinary titled `NSWindow`: normal level, standard titlebar/traffic lights, becomes
+      key/main, shows in Dock/Cmd+Tab
+- [x] Frame persisted across restarts (`setFrameAutosaveName`)
+- [x] Menu-bar `NSStatusItem` to show/hide, quit, and open the vault in Finder
 
 ### Vault
 - [ ] Load `*.md` from the configured directory; ignore dotfiles and `attachments/`

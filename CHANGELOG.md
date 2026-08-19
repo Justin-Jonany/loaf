@@ -50,4 +50,13 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Window level (`.normal`) and non-activating behavior are unchanged — it's still not
   always-on-top and other windows can still cover it.
 
+- `NotePanel` renamed to `NoteWindow` and rewritten as a plain `NSWindow`: standard titlebar
+  with all three traffic lights, normal level, becomes key/main and activates the app like any
+  ordinary document window. Drops the non-activating-panel trick, the `canJoinAllSpaces`
+  cross-Space presence, and the top drag-strip inset (the web view now fills the content view
+  edge-to-edge; dragging is via the real titlebar). The app's activation policy changed from
+  `.accessory` to `.regular` (and `LSUIElement` removed from `Info.plist`) so it shows in the
+  Dock and Cmd+Tab. See DECISIONS.md for why the desktop-widget model this replaces was tried
+  and reverted without merging to `main`.
+
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.

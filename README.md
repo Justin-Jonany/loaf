@@ -106,7 +106,8 @@ cd foolscap
 cp -R dist/Foolscap.app ~/Applications/
 ```
 
-Foolscap is an `LSUIElement` agent app: it lives in the menu bar, never in the Dock.
+Foolscap is an ordinary app: it shows in the Dock and Cmd+Tab, plus a menu-bar item for
+quick show/hide.
 
 ### Troubleshooting
 
