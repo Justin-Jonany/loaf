@@ -1,0 +1,17 @@
+#!/bin/sh
+# Blocks force-pushes to main. GitHub Free doesn't offer branch protection on
+# private repos, so this is the local stand-in — see CONTRIBUTING.md.
+protected_branch="main"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+	[ "$remote_ref" = "refs/heads/$protected_branch" ] || continue
+	[ "$remote_sha" = "0000000000000000000000000000000000000000" ] && continue # new branch, nothing to compare
+
+	if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+		echo "error: refusing to force-push to '$protected_branch'" >&2
+		echo "       this would rewrite history that's already on origin/$protected_branch" >&2
+		exit 1
+	fi
+done
+
+exit 0

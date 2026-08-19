@@ -1,0 +1,10 @@
+#!/bin/sh
+# Scans staged changes for likely secrets before they enter history.
+# Advisory when gitleaks isn't installed rather than blocking the commit --
+# see CONTRIBUTING.md for setup. CI runs the same scan as a backstop.
+if ! command -v gitleaks >/dev/null 2>&1; then
+	echo "warning: gitleaks not installed, skipping secret scan (brew install gitleaks)" >&2
+	exit 0
+fi
+
+gitleaks protect --staged --redact --verbose
