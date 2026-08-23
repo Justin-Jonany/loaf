@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  routines/morning-brief/com.foolscap.morning-brief.plist — launchd schedule for the
+  morning brief routine (ROADMAP.md -> C1). Fires ~6am local time.
+
+  Install (once per machine):
+    1. Replace REPLACE_WITH_ABSOLUTE_REPO_PATH below with the absolute path to this
+       checkout of the foolscap repo (e.g. /Users/you/code/foolscap) — two occurrences,
+       the run.sh path and the WorkingDirectory.
+    2. cp routines/morning-brief/com.foolscap.morning-brief.plist \
+         ~/Library/LaunchAgents/com.foolscap.morning-brief.plist
+    3. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.foolscap.morning-brief.plist
+
+  Uninstall:
+    launchctl bootout gui/$(id -u)/com.foolscap.morning-brief
+
+  Catch-up on wake: this is a StartCalendarInterval job, not a fixed-delay timer.
+  launchd persists a StartCalendarInterval job that was due while the machine was
+  asleep and runs it as soon as the system is next awake, instead of just skipping it —
+  that's what gives DESIGN.md's "if it missed 6am it catches up on wake" for free, with
+  no extra code in run.sh. If you also want the Mac to physically wake at 6am for this
+  (not just catch up next time you're at it), pair this with, e.g.:
+      sudo pmset repeat wake MTWRFSU 06:00:00
+  which is optional and not configured by this file.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.foolscap.morning-brief</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>REPLACE_WITH_ABSOLUTE_REPO_PATH/routines/morning-brief/run.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>REPLACE_WITH_ABSOLUTE_REPO_PATH</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <!-- Belt-and-suspenders: if the job is somehow still due after being missed for a
+         very long stretch (machine off for days), launchd runs it once on next load
+         rather than repeatedly backfilling every missed morning. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- launchd-level log (separate from the run's own transcript, which run.sh writes
+         under ~/Library/Logs/Foolscap/morning-brief/) — catches failures to even start
+         the script (bad path, bad interpreter, etc). -->
+    <key>StandardOutPath</key>
+    <string>/tmp/com.foolscap.morning-brief.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.foolscap.morning-brief.launchd.log</string>
+</dict>
+</plist>

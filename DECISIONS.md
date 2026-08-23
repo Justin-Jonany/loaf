@@ -4,6 +4,27 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-08-23 — Morning routine signal: provisional sidecar file (ticket C1)
+
+**Decided (provisionally):** the routine's "needs a decision" / "failed" signal is a small
+dotfile, `.routine-signal.md`, at the vault root — `status: needs-decision|failed`, `at:`
+(ISO 8601, same shape as the `brief.md` build stamp), `reason:`, and (for a decision)
+`questions:`. Absence of the file is the "clear day, nothing to see" state.
+
+**Why this shape:** it fires `VaultWatcher`'s existing `.md`-extension filter with no watcher
+code changes (a dotfile is still `*.md`), while `Vault.notePaths()` already skips dotfiles, so
+it never shows up as a note in the panel. It also keeps `brief.md` pure human-readable prose
+rather than mixing in a machine-parsed control line.
+
+**This is NOT the final call.** ROADMAP.md's "Open decisions" explicitly leaves *where this
+signal lives* — this sidecar file vs. a marker line in `brief.md` — to ticket **D2**, which
+owns the app-side consumer. C1 needed something concrete and testable to ship against; the
+exact shape is deliberately isolated to one write path in `routines/morning-brief/` (see
+`SKILL.md` -> "The decision / failure signal") so D2 can change it without touching the
+routine's actual judgment logic.
+
+**Status:** shipped as C1's provisional default; final shape owned by D2.
+
 ## 2026-08-18 — Product direction: Foolscap is a daily-briefing panel
 
 **Decided:** Foolscap is a **daily briefing panel**, not a generic markdown note widget. Each

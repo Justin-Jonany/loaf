@@ -1,0 +1,12 @@
+{
+  "_comment": "Fixture calendar export used by routines/morning-brief/dry_run.sh in place of the live Google Calendar MCP tool. See routines/morning-brief/SKILL.md -> 'Reading the calendar'.",
+  "events": [
+    {
+      "id": "evt-weekly-sync",
+      "summary": "Weekly sync",
+      "start": "2026-08-23T10:00:00-07:00",
+      "end": "2026-08-23T10:30:00-07:00",
+      "description": "Standing recurring sync, no prep needed."
+    }
+  ]
+}
