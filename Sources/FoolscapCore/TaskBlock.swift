@@ -183,6 +183,28 @@ public struct TaskBlock: Equatable, Sendable {
         if let note { out += "\n\(metaIndent)\(note)" }
         return out
     }
+
+    // MARK: - Checkbox write-back
+
+    /// Applies a checkbox toggle to the block starting at `lines[index]` and returns the
+    /// document with that block's lines replaced by its re-rendered form — `✓done` moves
+    /// onto the metadata line (creating one if the block had none), never the task or note
+    /// line. Returns `nil` when `index` isn't a checkbox line, so a caller can tell a stale
+    /// click (the file changed underneath it) from a real toggle and drop it rather than
+    /// write something corrupt.
+    public static func toggling(
+        _ lines: [String], at index: Int, checked: Bool, today: CalendarDate = .today()
+    ) -> [String]? {
+        guard let (block, consumed) = parse(lines, at: index, today: today) else { return nil }
+
+        var updated = block
+        updated.isDone = checked
+        updated.done = checked ? today : nil
+
+        var result = lines
+        result.replaceSubrange(index..<(index + consumed), with: updated.rendered().components(separatedBy: "\n"))
+        return result
+    }
 }
 
 /// How `@due`/`✓done` tokens resolve against a reference date. Arithmetic goes through
