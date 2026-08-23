@@ -4,6 +4,51 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-08-18 — Product direction: Foolscap is a daily-briefing panel
+
+**Decided:** Foolscap is a **daily briefing panel**, not a generic markdown note widget. Each
+morning Claude reads the user's calendar and recent notes and writes them a plan; the panel
+displays it and the user ticks it off. The full shape lives in [DESIGN.md](DESIGN.md); the
+load-bearing choices:
+
+- **Dumb viewer + external brains.** The Swift app stays a viewer with no API keys and no
+  network calls. A scheduled **local** Claude Code run is the "brains" — it reads calendar +
+  notes and writes markdown into the vault; the app watches and repaints. The vault folder is
+  the *only* interface between them. This is the existing "there is no API; notes are files;
+  an agent edits them; the widget watches" principle, taken literally.
+- **Composed dashboard, four sections:** a prose **Brief** (2–5 sentence recap — the only
+  place finished work shows), **Today** and **This week** (both *computed by due date*, not
+  stored lists; each task renders in one bucket — that's the dedup), and **Long-term**
+  (target-dated goals, shared). The app stitches three known files; it does **not** browse a
+  folder tree.
+- **Every task has a due date and a source.** Rendering is entirely due-date-driven, so a due
+  date is mandatory (long-term items get a far *target* date). Source (`calendar`/`chat`/
+  `manual`) is recorded for provenance. Optional: `!priority` (on-command only), `#type` tag,
+  a free-text note. Metadata sits on an **indented line below** the task so the task reads as
+  plain prose; the panel renders it as chips/icons, not raw tokens. No effort/time estimates.
+- **Interaction is a notification → Claude Code chat.** The run notifies only when today needs
+  a judgment call; the conversation happens in the terminal (the viewer can't host a chat).
+  Rollover at 6am.
+- **Trust surfaces:** provenance citations + a change-log of what Claude added/moved, a "built
+  HH:MM" freshness stamp, and a loud failure nudge.
+
+**Why:** The user's actual goal is "a panel that tells me what to do today," assembled from
+calendar/notes by Claude — not a place to hand-write notes. Naming that explicitly collapses a
+lot of prior ambiguity (folder-browser vs. widget, embedded vs. external agent) and lets most
+of the existing v0.1 primitives be pointed at a purpose instead of reinvented.
+
+**Rejected along the way:** a folder/file-browser view; an agent embedded inside the app; a
+local database (the markdown files are the store; add a rebuildable cache only if a huge vault
+demands it); reading **email** (deferred — calendar-only for now); time/effort estimates.
+
+**Supersedes:** the ROADMAP framing that treated Foolscap as a general markdown note widget
+whose reason-to-exist was a v0.2 "Today view." The Today view is now core. In-panel text
+editing — floated as a possibility in the 2026-08-16 revert entry below — is explicitly *not*
+the direction: editing goes through Claude or an external editor, so the debounced-write /
+flush-on-quit items in ROADMAP's old Vault section fall away.
+
+**Status:** designed, not yet built.
+
 ## 2026-08-16 — Window model: revert to an ordinary window
 
 **Decided:** Drop the desktop-widget model below. `NoteWindow` is now a plain `NSWindow`:
