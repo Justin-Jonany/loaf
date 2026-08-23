@@ -346,6 +346,97 @@ let escapedHTML = MarkdownRenderer.renderHTML(from: "5 < 6 & 7 > 4\n")
 expect(escapedHTML.contains("&lt;"), true, "escapes < in text")
 expect(escapedHTML.contains("&amp;"), true, "escapes & in text")
 
+// MARK: - Dashboard (B1 — bucketing)
+
+let dashToday = date("2026-08-12") // a Wednesday
+
+// due-today → Today, not This-week (the dedup: each task lands in exactly one bucket).
+let dueTodayTasks = "- [ ] Email the landlord\n      @today · manual"
+let dueTodayDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: dueTodayTasks, longtermMarkdown: "", today: dashToday
+)
+expect(dueTodayDash.today.count, 1, "due-today task lands in Today")
+expect(dueTodayDash.today.first?.block.text, "Email the landlord", "Today carries the right task")
+expect(dueTodayDash.thisWeek.count, 0, "due-today task does not also appear in This week")
+
+// overdue → Today.
+let overdueTasks = "- [ ] Prep the client deck\n      @2026-08-10 · manual"
+let overdueDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: overdueTasks, longtermMarkdown: "", today: dashToday
+)
+expect(overdueDash.today.count, 1, "overdue task lands in Today")
+expect(overdueDash.thisWeek.count, 0, "overdue task does not also appear in This week")
+
+// due in 3 days → This week.
+let dueSoonTasks = "- [ ] Return library books\n      @2026-08-15 · manual"
+let dueSoonDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: dueSoonTasks, longtermMarkdown: "", today: dashToday
+)
+expect(dueSoonDash.thisWeek.count, 1, "task due in 3 days lands in This week")
+expect(dueSoonDash.today.count, 0, "task due in 3 days is not also in Today")
+
+// A checked/done task never shows in either bucket — Brief is the only place done work
+// shows (DESIGN.md → The panel).
+let doneTasks = "- [x] Already finished\n      @2026-08-11 · manual · ✓2026-08-11"
+let doneDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: doneTasks, longtermMarkdown: "", today: dashToday
+)
+expect(doneDash.today.count, 0, "a done task doesn't land in Today")
+expect(doneDash.thisWeek.count, 0, "a done task doesn't land in This week")
+
+// A task with no @due can't be bucketed at all — flagged invalid, not defaulted.
+let noDueTasks = "- [ ] No due date\n      manual"
+let noDueDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: noDueTasks, longtermMarkdown: "", today: dashToday
+)
+expect(noDueDash.today.count, 0, "a task with no @due is not placed in Today")
+expect(noDueDash.thisWeek.count, 0, "a task with no @due is not placed in This week")
+
+// longterm.md's unchecked tasks land in Long-term regardless of how far out @due is.
+let longtermTasks = "- [ ] Ship v2\n      @2027-01-01 · manual"
+let longtermDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: "", longtermMarkdown: longtermTasks, today: dashToday
+)
+expect(longtermDash.longTerm.count, 1, "longterm.md's task lands in Long-term")
+expect(longtermDash.longTerm.first?.sourceFile, "longterm.md", "Long-term task carries its source file")
+
+// Brief is passed through verbatim as prose, not touched by bucketing.
+let briefDash = DashboardComposer.compose(
+    brief: "Shipped the deck. Slipping: the report.", tasksMarkdown: "", longtermMarkdown: "", today: dashToday
+)
+expect(briefDash.brief, "Shipped the deck. Slipping: the report.", "Brief carries the prose verbatim")
+
+// Each DashboardTask carries the 1-based source line it came from, for a later
+// write-back path to find its way back to the exact line.
+let linedTasks = [
+    "- [ ] first",
+    "      @today · manual",
+    "- [ ] second",
+    "      @2026-08-15 · manual",
+].joined(separator: "\n")
+let linedDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: linedTasks, longtermMarkdown: "", today: dashToday
+)
+expect(linedDash.today.first?.line, 1, "first task's checkbox line is line 1")
+expect(linedDash.thisWeek.first?.line, 3, "second task's checkbox line is line 3")
+
+// A stray file like notes.md is never read — DashboardComposer(vault:) only ever asks
+// for brief.md/tasks.md/longterm.md by name.
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+    try vault.writeAtomically("- [ ] from tasks.md\n      @today · manual\n", to: dir.appendingPathComponent("tasks.md"))
+    try vault.writeAtomically("- [ ] from a stray file\n      @today · manual\n", to: dir.appendingPathComponent("notes.md"))
+
+    let vaultDash = DashboardComposer.compose(vault: vault, today: dashToday)
+    expect(vaultDash.today.count, 1, "only tasks.md's task is read")
+    expect(vaultDash.today.first?.block.text, "from tasks.md", "the stray notes.md task is ignored")
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("Dashboard vault compose threw: \(error)")
+}
+
 // MARK: - Report
 
 if failures.isEmpty {
