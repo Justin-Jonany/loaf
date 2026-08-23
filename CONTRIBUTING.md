@@ -12,6 +12,24 @@ swift run foolscap-selftest
 If `swift build` fails with `this SDK is not supported by the compiler`, your Command
 Line Tools are mismatched with your macOS SDK — see *Troubleshooting* in the README.
 
+### Local safety hooks
+
+GitHub Free doesn't offer branch protection on private repos, so `main` has no
+server-side guard against a force-push or an accidentally-committed secret. Two local
+hooks in `.githooks/` close most of that gap; opt in once per clone:
+
+```bash
+git config core.hooksPath .githooks
+brew install gitleaks   # optional — pre-commit scan is skipped (with a warning) if absent
+```
+
+- `pre-push` refuses to force-push `main`
+- `pre-commit` runs `gitleaks` over staged changes before they enter history
+
+Both are advisory, not a real substitute for server-side protection — `--no-verify`
+skips them, and they only run on machines where the hook path is configured. CI runs
+the same `gitleaks` scan on every push/PR as a backstop.
+
 ## Where things go
 
 | Path | Rule |

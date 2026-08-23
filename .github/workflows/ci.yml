@@ -6,6 +6,19 @@ on:
   pull_request:
 
 jobs:
+  secrets:
+    # Server-side backstop for the local pre-commit hook, which can be skipped
+    # with --no-verify or simply not installed on someone's machine.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: brew install gitleaks
+      - name: Scan for secrets
+        run: gitleaks detect --source . --redact --verbose
+
   test:
     # FoolscapCore is UI-free, so the logic suite runs without a GUI session
     # and without Xcode.
