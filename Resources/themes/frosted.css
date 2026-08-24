@@ -40,6 +40,7 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 .task { display: flex; align-items: flex-start; gap: 8px; margin: 7px 0; }
 .task input[type="checkbox"] { margin: 1px 0 0; flex-shrink: 0; }
 .task.done .label { text-decoration: line-through; opacity: 0.45; }
+.task .label { flex: 1; }
 
 .due {
   font-size: 10.5px;
@@ -51,6 +52,19 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 }
 .due-soon { color: var(--due-soon); background: var(--due-soon-bg); opacity: 1; }
 .due-over { color: var(--due-over); background: var(--due-over-bg); opacity: 1; }
+
+/* The composed dashboard (DESIGN.md → "The panel"): four fixed sections, no tree. Raw
+   @/#/! tokens still show in .meta — tidying those into chips/icons is B4. */
+.dashboard { display: flex; flex-direction: column; gap: 16px; }
+.dashboard section { border-top: 0.5px solid var(--rule); padding-top: 10px; }
+.dashboard section:first-child { border-top: none; padding-top: 0; }
+.dashboard .brief p { margin: 0 0 6px; }
+.dashboard .empty { color: var(--ink-soft); font-style: italic; margin: 0; }
+.dashboard .meta {
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
 
 img { max-width: 100%; border-radius: 5px; }
 pre { overflow-x: auto; font-size: 12px; }

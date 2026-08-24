@@ -2,9 +2,32 @@ import AppKit
 import WebKit
 import FoolscapCore
 
-// Wires the vault + renderer into the window: load config, bootstrap the vault, pick a
-// note, render it, and repaint whenever the file changes on disk. This is the
-// Claude-edits-your-note-and-the-window-repaints demo — see ROADMAP for what's next.
+// The `--dump-dashboard <vault> <output.html>` entry point renders the composed
+// dashboard for `vault` to a standalone HTML file and exits — no GUI, no NSApplication
+// run loop. It exists so the B1 screenshot proof (and any future tooling) can produce
+// the exact HTML the app would show without driving the real window. Must run before
+// AppKit is touched below.
+if let flagIndex = CommandLine.arguments.firstIndex(of: "--dump-dashboard"),
+   CommandLine.arguments.count > flagIndex + 2 {
+    let vaultPath = CommandLine.arguments[flagIndex + 1]
+    let outputPath = CommandLine.arguments[flagIndex + 2]
+    let vault = Vault(root: URL(fileURLWithPath: vaultPath))
+    let dashboard = DashboardComposer.compose(vault: vault)
+    let body = DashboardRenderer.renderBody(dashboard)
+    let html = HTMLPage.wrap(body: body, theme: Config.defaultTheme)
+    do {
+        try html.write(toFile: outputPath, atomically: true, encoding: .utf8)
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("Foolscap: couldn't write dashboard HTML: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+}
+
+// Wires the vault + renderer into the window: load config, bootstrap the vault, compose
+// the dashboard from the three known files, render it, and repaint whenever one of them
+// changes on disk. The panel is a composed dashboard, not a folder browser (DESIGN.md →
+// "The panel").
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler {
     private var window: NoteWindow?
@@ -13,7 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     private var config = Config()
     private var vault: Vault!
-    private var currentNotePath: URL?
+
+    /// The three known files the dashboard composes from — nothing else. Matched by
+    /// filename against watcher events so an unrelated vault edit doesn't trigger a
+    /// repaint, and a stray file (`notes.md`, …) is never read at all.
+    private static let dashboardFiles: Set<String> = ["brief.md", "tasks.md", "longterm.md"]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         config = Config.load()
@@ -34,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         item.menu = buildMenu()
         self.statusItem = item
 
-        showInitialNote()
+        renderDashboard()
         startWatching()
     }
 
@@ -65,28 +92,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         NSWorkspace.shared.open(vault.root)
     }
 
-    // MARK: - Note selection + rendering
+    // MARK: - Dashboard composition + rendering
 
-    /// `todo.md` if present, else the first `*.md` alphabetically. A real switcher is v0.2.
-    private func pickInitialNote() -> URL? {
-        let notes = vault.notePaths()
-        return notes.first { $0.lastPathComponent == "todo.md" } ?? notes.first
-    }
-
-    private func showInitialNote() {
-        guard let noteURL = pickInitialNote() else { return }
-        currentNotePath = noteURL
-        renderAndShow(noteURL)
-    }
-
-    private func renderAndShow(_ noteURL: URL) {
-        guard let markdown = try? vault.read(noteURL) else { return }
-        let body = MarkdownRenderer.renderHTML(
-            from: markdown,
-            today: .today(),
-            soonWithinDays: config.soonWithinDays
-        )
-        window?.load(html: Self.wrapHTML(body: body, theme: config.theme), baseURL: vault.root)
+    /// Reads exactly `brief.md`/`tasks.md`/`longterm.md` (`DashboardComposer`), buckets
+    /// their tasks, and renders the four sections. No folder browser, no file picker.
+    private func renderDashboard() {
+        let dashboard = DashboardComposer.compose(vault: vault, today: .today())
+        let body = DashboardRenderer.renderBody(dashboard)
+        window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
     }
 
     // MARK: - Checkbox write-back
@@ -94,26 +107,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "toggleTask" else { return }
         guard let body = message.body as? [String: Any],
+              let file = body["file"] as? String,
               let line = (body["line"] as? NSNumber)?.intValue,
               let checked = (body["checked"] as? NSNumber)?.boolValue
         else { return }
-        toggleTask(atLine: line, checked: checked)
+        toggleTask(file: file, atLine: line, checked: checked)
     }
 
-    /// Re-reads the note fresh from disk (never the DOM's stale copy), validates that
-    /// `line` still starts a task block — the file may have changed underneath the click —
-    /// and either applies the toggle or, if the line no longer matches, drops the click and
-    /// re-renders so the panel reflects current truth. Writes through `TaskBlock.toggling`
-    /// (the metadata-below format — see DESIGN.md → Tasks), so `✓done` lands on the
-    /// metadata line, never the task line.
-    private func toggleTask(atLine line: Int, checked: Bool) {
-        guard let noteURL = currentNotePath, let markdown = try? vault.read(noteURL) else { return }
+    /// A4's write-back, adapted to the dashboard: the click carries `data-file` (one of the
+    /// three known files — see `DashboardRenderer`) alongside its line, so we know which
+    /// note to write. Re-reads that note fresh from disk (never the DOM's stale copy),
+    /// validates that `line` still starts a task block — the file may have changed
+    /// underneath the click — and either applies the toggle or, if the line no longer
+    /// matches, drops the click and re-renders so the panel reflects current truth. Writes
+    /// through `TaskBlock.toggling` (the metadata-below format — see DESIGN.md → Tasks), so
+    /// `✓done` lands on the metadata line, never the task line.
+    private func toggleTask(file: String, atLine line: Int, checked: Bool) {
+        guard Self.dashboardFiles.contains(file) else { return }
+        let noteURL = vault.root.appendingPathComponent(file)
+        guard let markdown = try? vault.read(noteURL) else { return }
         let lines = markdown.components(separatedBy: "\n")
 
         guard line >= 1, line <= lines.count,
               let updatedLines = TaskBlock.toggling(lines, at: line - 1, checked: checked)
         else {
-            renderAndShow(noteURL)
+            renderDashboard()
             return
         }
 
@@ -123,57 +141,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             NSLog("Foolscap: couldn't write task toggle to \(noteURL.path): \(error)")
         }
         // The write is recorded in the self-write registry, so the watcher suppresses its
-        // own echo — re-render here is what actually shows the `.done` styling change.
-        renderAndShow(noteURL)
+        // own echo — re-render here is what actually shows the task dropping out of its
+        // bucket (a checked task no longer buckets).
+        renderDashboard()
     }
 
     private func startWatching() {
         let watcher = VaultWatcher(vault: vault) { [weak self] changedPaths in
-            guard let self, let current = self.currentNotePath else { return }
-            let currentResolved = current.resolvingSymlinksInPath()
-            guard changedPaths.contains(where: { $0.resolvingSymlinksInPath() == currentResolved }) else { return }
+            guard let self else { return }
+            guard changedPaths.contains(where: { Self.dashboardFiles.contains($0.lastPathComponent) }) else { return }
             DispatchQueue.main.async {
-                self.renderAndShow(current)
+                self.renderDashboard()
             }
         }
         watcher.start()
         self.watcher = watcher
-    }
-
-    // MARK: - Theming
-
-    private static func wrapHTML(body: String, theme: String) -> String {
-        let css = loadThemeCSS(named: theme) ?? loadThemeCSS(named: "frosted") ?? ""
-        return """
-        <!doctype html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        <style>\(css)</style>
-        </head>
-        <body>
-        \(body)
-        </body>
-        </html>
-        """
-    }
-
-    /// Only `frosted` ships fully styled this slice — `card`/`console` are a later slice
-    /// (see ROADMAP) — so any other name falls back to it. CSS is inlined rather than
-    /// linked: the theme lives next to the app bundle, not in the vault, so a `<link
-    /// href>` relative to the `loadHTMLString` baseURL (the vault root) wouldn't resolve.
-    private static func loadThemeCSS(named name: String) -> String? {
-        var candidates: [URL] = []
-        if let resourceURL = Bundle.main.resourceURL {
-            candidates.append(resourceURL.appendingPathComponent("themes/\(name).css"))
-        }
-        let sourceDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        candidates.append(sourceDir.appendingPathComponent("../../Resources/themes/\(name).css").standardized)
-
-        for candidate in candidates where FileManager.default.fileExists(atPath: candidate.path) {
-            return try? String(contentsOf: candidate, encoding: .utf8)
-        }
-        return nil
     }
 }
 

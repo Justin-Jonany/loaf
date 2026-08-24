@@ -56,7 +56,9 @@ final class NoteWindow: NSWindow {
 
     /// Wires up checkbox write-back: registers `handler` under message name `toggleTask`
     /// and injects the script that listens for checkbox clicks and posts to it. Keeping
-    /// the WKWebView plumbing here means the app target only ever sees `{line, checked}`.
+    /// the WKWebView plumbing here means the app target only ever sees
+    /// `{file, line, checked}` — the dashboard stitches several files, so the click carries
+    /// its `data-file` (which note) alongside `data-line` (where in it).
     func installTaskToggleHandler(_ handler: WKScriptMessageHandler) {
         let controller = webView.configuration.userContentController
         controller.add(handler, name: "toggleTask")
@@ -66,8 +68,9 @@ final class NoteWindow: NSWindow {
             var box = event.target;
             if (!(box instanceof HTMLInputElement) || box.type !== 'checkbox') { return; }
             var row = box.closest('.task');
-            if (!row || !row.dataset.line) { return; }
+            if (!row || !row.dataset.file || !row.dataset.line) { return; }
             window.webkit.messageHandlers.toggleTask.postMessage({
+                file: row.dataset.file,
                 line: parseInt(row.dataset.line, 10),
                 checked: box.checked
             });
