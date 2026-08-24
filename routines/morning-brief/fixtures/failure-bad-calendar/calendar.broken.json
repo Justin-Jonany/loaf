@@ -1,0 +1,2 @@
+{ this is not valid JSON — used by routines/morning-brief/dry_run.sh's "failure-bad-calendar"
+  scenario to force the routine's own self-check (see SKILL.md -> "If something goes wrong").
