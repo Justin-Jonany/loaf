@@ -1,31 +1,15 @@
 # Copy to ~/.config/foolscap/config.toml
-# Every value here is the default; delete any line to accept it.
+# Every key here is optional and shows its default; delete any line to accept it.
 
-# Where your notes live. Tilde is expanded. Override at runtime with $FOOLSCAP_VAULT.
+# Where your notes live. Tilde is expanded. Override at runtime with $FOOLSCAP_VAULT,
+# which always wins over this.
 vault = "~/Notes"
 
-# Built-in: "frosted", "card", "console".
-# Any *.css in ~/.config/foolscap/themes/ is also selectable by filename.
+# Built-in: "frosted", "card", "console". Only "frosted" is fully styled so far.
 theme = "frosted"
 
 # What you see when the panel opens: "preview" renders markdown, "source" shows raw text.
 start_mode = "preview"
-
-# Panel translucency, 0.0-1.0. Ignored by opaque themes.
-# Forced to 1.0 when macOS "Reduce Transparency" is enabled.
-opacity = 0.92
-
-# Show the panel above full-screen apps and on every Space.
-all_spaces = true
-
-# Global shortcut to summon the panel. Empty string disables it.
-hotkey = "cmd+shift+space"
-
-# Create daily/YYYY-MM-DD.md on the first write of each day.
-daily_notes = true
-
-# Milliseconds of idle typing before the buffer is flushed to disk.
-autosave_debounce_ms = 600
 
 [dates]
 # Tasks due within this many days render as "soon" rather than "later".

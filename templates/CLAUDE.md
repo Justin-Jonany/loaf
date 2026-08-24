@@ -1,69 +1,60 @@
 # This is a Foolscap vault
 
-These notes are displayed live in a desktop widget. Edit them with ordinary file
-tools — the widget watches this folder and repaints when a file changes. There is no
-API and no command to run.
+This vault feeds a daily briefing panel. A small macOS window composes a dashboard from three
+files here; it has no calendar/email access and no Claude of its own. **You** are the scheduled
+morning run that fills it in: read the calendar and recent notes, write `brief.md`, and
+propose/update tasks in `tasks.md`. The panel just watches this folder and repaints — there is
+no API and no command to run.
 
-## Format
+It is not a folder browser and there is no inbox file. Write to the three files below and
+nothing else; don't create `daily/` notes or a `todo.md`.
 
-Every note is a markdown file in this directory. Subdirectories are notes too, except
-`attachments/`, which holds images.
+## Files in the vault
 
-Tasks are GitHub-flavoured checkboxes:
+| File | Owner | Contents |
+|---|---|---|
+| `brief.md` | **You.** Regenerated each run. | 2–5 sentence prose recap: what got done, what's due, what slipped. Stamp it with the build time. |
+| `tasks.md` | Shared. | All dated tasks. Completed tasks stay with `✓done` for about a week (for the retrospective), then you prune them. |
+| `longterm.md` | Shared. | Target-dated goals. Mostly the user's, but discuss and edit it with them. |
+
+## Task format
+
+A task is a checkbox. Its metadata goes on an indented line **beneath** it, not on the task
+line — the task itself should read as a plain sentence:
 
 ```markdown
-- [ ] not done
-- [x] done
+- [ ] Prep the client deck
+      @20aug · !high · #schoolwork · calendar
+      Focus on the pricing slide — they pushed back last time.
+- [ ] Email the landlord
+      @today · manual
+- [x] Read chapter 4
+      @fri · #cs101 · ✓18aug
 ```
 
-## Dates
-
-Attach dates as inline `key:value` at the end of a task line. Always ISO 8601
-(`YYYY-MM-DD`), optionally with `THH:MM`.
-
-```markdown
-- [ ] Ask about compactness   due:2026-08-12
-- [ ] Water the plants        every:week
-- [x] Re-read §3.2            done:2026-08-11
-```
-
-| Field | Meaning |
-|---|---|
-| `due:` | When it's due. Drives sorting and colour. |
-| `done:` | When it was completed. Add this when you tick a box. |
-| `every:` | Recurring — `day`, `week`, `2weeks`, `month`, or `mon,thu`. |
+| Token | Required? | Meaning |
+|---|---|---|
+| `@due` | **required** | Due date: `@today`, `@fri`, `@20aug`, or ISO. Every task needs one — it's how the panel buckets it into Today / This week / Long-term. |
+| `source` | **required** | Where it came from: `calendar` · `chat` · `manual`. `manual` may be omitted (it's the implicit default). |
+| `✓done` | auto | Stamp this on the metadata line when a box gets ticked, with today's date in the user's local calendar. |
+| `!priority` | on-command only | `!high` / `!med` / `!low`. Add this **only when the user asks** — never automatically. Absent means normal. |
+| `#type` | optional | A category tag: `#schoolwork`, `#cs101`, whatever fits. |
+| `every` | optional | Recurrence (`every:week`, etc). |
+| note | optional | Free prose on a further-indented line, for context. |
 
 Rules:
 
-- **Dates are date-only and timezone-naive.** Never convert to UTC, never attach an
-  offset. A task due the 19th is due the 19th everywhere.
-- When you tick a box, add `done:` with today's date in the user's local calendar.
-- Don't delete completed tasks unless asked. The user decides when to prune.
-- Keep one task per line. Sub-tasks are indented two spaces.
+- **Dates are date-only and timezone-naive.** Never convert to UTC, never attach an offset. A
+  task due the 19th is due the 19th everywhere.
+- Every calendar-derived task carries `calendar` as its source, and your change-log cites the
+  specific origin — e.g. *"added 'prep deck' — from calendar event 'Client mtg 3pm'."* This is
+  how the user verifies what you invented.
+- Don't reformat, rewrite, or "tidy" the user's prose. These are their notes; append or edit
+  only what the task at hand requires.
+- Keep one task per line.
 
-## Diagrams and images
+## When to interrupt
 
-Mermaid fences render in the widget:
-
-````markdown
-```mermaid
-graph LR
-  A[ambiguity] --> B[filtration] --> C[persistence]
-```
-````
-
-Images live in `attachments/` and are referenced relatively:
-
-```markdown
-![filtration](attachments/filtration.png)
-```
-
-## Conventions
-
-- `todo.md` is the default inbox. If the user says "add a task" with no other context,
-  it goes there.
-- `daily/YYYY-MM-DD.md` are daily notes. Today's is created automatically.
-- Preserve the user's existing heading structure and ordering. Append rather than
-  reorganise unless asked.
-- These files are the user's own notes. Don't reformat, rewrite, or "tidy" prose that
-  wasn't part of the request.
+Only fire a notification when today genuinely needs a judgment call from the user (spillover,
+something due tonight that needs a decision). A clear day should be silent — don't nudge just
+because the run finished.

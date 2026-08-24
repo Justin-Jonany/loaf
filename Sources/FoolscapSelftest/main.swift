@@ -379,6 +379,58 @@ do {
     failures.append("Toggle self-write suppression threw: \(error)")
 }
 
+// MARK: - Config
+
+func tempConfigPath() -> URL {
+    FileManager.default.temporaryDirectory
+        .appendingPathComponent("foolscap-selftest-config-\(UUID().uuidString).toml")
+}
+
+let missingConfig = Config.load(from: tempConfigPath())
+expect(missingConfig.vault, nil, "absent config file leaves vault nil")
+expect(missingConfig.theme, Config.defaultTheme, "absent config file defaults theme")
+expect(missingConfig.startMode, Config.defaultStartMode, "absent config file defaults start_mode")
+expect(missingConfig.soonWithinDays, Config.defaultSoonWithinDays, "absent config file defaults soon_within_days")
+expect(missingConfig.weekStarts, Config.defaultWeekStarts, "absent config file defaults week_starts")
+
+do {
+    let path = tempConfigPath()
+    try "theme = \"console\"\n\n[dates]\nsoon_within_days = 5\n".write(to: path, atomically: true, encoding: .utf8)
+    let partial = Config.load(from: path)
+    expect(partial.theme, "console", "partial config overrides theme")
+    expect(partial.soonWithinDays, 5, "partial config overrides soon_within_days")
+    expect(partial.vault, nil, "partial config leaves unset vault at default")
+    expect(partial.startMode, Config.defaultStartMode, "partial config leaves unset start_mode at default")
+    expect(partial.weekStarts, Config.defaultWeekStarts, "partial config leaves unset week_starts at default")
+    try? FileManager.default.removeItem(at: path)
+} catch {
+    failures.append("Config partial-load threw: \(error)")
+}
+
+let configWithVault = Config(vault: "/tmp/foolscap-selftest-config-vault")
+let defaultVaultPath = ("~/Notes" as NSString).expandingTildeInPath
+
+expect(
+    Vault.resolveRoot(config: configWithVault, environment: [:]).path,
+    "/tmp/foolscap-selftest-config-vault",
+    "config vault path is used when $FOOLSCAP_VAULT is unset"
+)
+expect(
+    Vault.resolveRoot(config: configWithVault, environment: ["FOOLSCAP_VAULT": "/tmp/foolscap-selftest-env-vault"]).path,
+    "/tmp/foolscap-selftest-env-vault",
+    "$FOOLSCAP_VAULT overrides the config vault path"
+)
+expect(
+    Vault.resolveRoot(config: configWithVault, environment: ["FOOLSCAP_VAULT": ""]).path,
+    "/tmp/foolscap-selftest-config-vault",
+    "an empty $FOOLSCAP_VAULT does not override"
+)
+expect(
+    Vault.resolveRoot(config: Config(), environment: [:]).path,
+    defaultVaultPath,
+    "falls back to ~/Notes when neither env nor config set a vault"
+)
+
 // MARK: - MarkdownRenderer
 
 let overdueHTML = MarkdownRenderer.renderHTML(
