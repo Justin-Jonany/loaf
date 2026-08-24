@@ -90,7 +90,6 @@ Everything is optional. Copy [`config.example.toml`](config.example.toml) to
 vault      = "~/Notes"
 theme      = "frosted"
 start_mode = "preview"
-hotkey     = "cmd+shift+space"
 ```
 
 `$FOOLSCAP_VAULT` overrides the vault path at launch.
