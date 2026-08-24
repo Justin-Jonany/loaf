@@ -101,29 +101,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
 
     /// Re-reads the note fresh from disk (never the DOM's stale copy), validates that
-    /// `line` is still a task line — the file may have changed underneath the click — and
-    /// either applies the toggle or, if the line no longer matches, drops the click and
-    /// re-renders so the panel reflects current truth.
+    /// `line` still starts a task block — the file may have changed underneath the click —
+    /// and either applies the toggle or, if the line no longer matches, drops the click and
+    /// re-renders so the panel reflects current truth. Writes through `TaskBlock.toggling`
+    /// (the metadata-below format — see DESIGN.md → Tasks), so `✓done` lands on the
+    /// metadata line, never the task line.
     private func toggleTask(atLine line: Int, checked: Bool) {
         guard let noteURL = currentNotePath, let markdown = try? vault.read(noteURL) else { return }
-        var lines = markdown.components(separatedBy: "\n")
+        let lines = markdown.components(separatedBy: "\n")
 
-        guard line >= 1, line <= lines.count, var task = TaskLine.parse(lines[line - 1]) else {
+        guard line >= 1, line <= lines.count,
+              let updatedLines = TaskBlock.toggling(lines, at: line - 1, checked: checked)
+        else {
             renderAndShow(noteURL)
             return
         }
 
-        if checked {
-            task.isDone = true
-            task.done = .today()
-        } else {
-            task.isDone = false
-            task.done = nil
-        }
-        lines[line - 1] = task.rendered()
-
         do {
-            try vault.writeAtomically(lines.joined(separator: "\n"), to: noteURL)
+            try vault.writeAtomically(updatedLines.joined(separator: "\n"), to: noteURL)
         } catch {
             NSLog("Foolscap: couldn't write task toggle to \(noteURL.path): \(error)")
         }
