@@ -123,6 +123,112 @@ expect(urgency("2026-08-14"), .soon, "within two days is soon")
 expect(urgency("2026-08-19"), .later, "beyond two days is later")
 expect(TaskLine.parse("- [x] x due:2026-08-10")!.urgency(on: today), .none, "done tasks are never urgent")
 
+// MARK: - TaskBlock
+
+expectNil(TaskBlock.parse("# Heading"), "ignores headings")
+expectNil(TaskBlock.parse("just prose"), "ignores prose")
+expectNil(TaskBlock.parse(""), "ignores blank lines")
+expectNil(TaskBlock.parse("- a plain bullet"), "ignores non-checkbox bullets")
+
+let blockToday = date("2026-08-12") // a Wednesday — see the Recurrence section above
+
+// A checkbox line with no metadata line at all: still parses, but is flagged invalid.
+let noMeta = TaskBlock.parse(["- [ ] Just a checkbox"], at: 0, today: blockToday)
+expect(noMeta?.consumed, 1, "no metadata line means the block consumes only the checkbox")
+expectNil(noMeta?.block.due, "no metadata line means no due date")
+expect(noMeta?.block.isValid, false, "block with no metadata line is flagged invalid")
+
+// @due is required — a metadata line present but lacking an @due token is still flagged.
+let missingDue = TaskBlock.parse("- [ ] Something\n      manual", today: blockToday)
+expectNil(missingDue?.due, "missing @due is not silently defaulted")
+expect(missingDue?.isValid, false, "block without @due is flagged invalid")
+
+// Absent optionals fall back to their defaults.
+let bare = TaskBlock.parse("- [ ] Email the landlord\n      @today", today: blockToday)!
+expect(bare.isValid, true, "block with @due is valid")
+expect(bare.due?.description, "2026-08-12", "@today resolves to the reference date")
+expect(bare.source, .manual, "source defaults to manual when absent")
+expectNil(bare.priority, "priority is absent by default")
+expectNil(bare.type, "type is absent by default")
+expectNil(bare.done, "done is absent by default")
+expectNil(bare.every, "every is absent by default")
+expectNil(bare.note, "note is absent with no third line")
+
+// Each @due form, resolved against the fixed reference date 2026-08-12 (Wednesday).
+func dueBlock(_ token: String) -> TaskBlock {
+    TaskBlock.parse("- [ ] x\n      @\(token)", today: blockToday)!
+}
+expect(dueBlock("today").due?.description, "2026-08-12", "@today")
+expect(dueBlock("wed").due?.description, "2026-08-12", "@<today's own weekday> resolves to today, not next week")
+expect(dueBlock("fri").due?.description, "2026-08-14", "@fri resolves to the coming Friday")
+expect(dueBlock("20aug").due?.description, "2026-08-20", "@20aug resolves within the current year")
+expect(dueBlock("5aug").due?.description, "2027-08-05", "@5aug, already past this year, rolls to next year")
+expect(dueBlock("2026-09-01").due?.description, "2026-09-01", "@<ISO> is read verbatim")
+
+// ✓done resolves the same forms, but backward (never into the future).
+func doneBlock(_ token: String) -> TaskBlock {
+    TaskBlock.parse("- [x] x\n      @today · ✓\(token)", today: blockToday)!
+}
+expect(doneBlock("12aug").done?.description, "2026-08-12", "✓<today's own day> resolves to today")
+expect(doneBlock("mon").done?.description, "2026-08-10", "✓mon resolves to the most recent Monday")
+expect(doneBlock("20aug").done?.description, "2025-08-20", "✓20aug, still ahead this year, rolls back a year")
+
+// Date resolution is stable across a DST boundary (US DST began 2026-03-08).
+let dstToday = date("2026-03-07")
+expect(
+    TaskBlock.parse("- [ ] x\n      @9mar", today: dstToday)!.due?.description,
+    "2026-03-09",
+    "day-month due resolves stably across the DST boundary"
+)
+let dstWeekdayAbbrevs = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+let dstTargetDay = dstToday.adding(days: 2)
+let dstTargetAbbrev = dstWeekdayAbbrevs[dstTargetDay.weekday - 1]
+expect(
+    TaskBlock.parse("- [ ] x\n      @\(dstTargetAbbrev)", today: dstToday)!.due?.description,
+    dstTargetDay.description,
+    "weekday due resolves stably across the DST boundary"
+)
+
+// A full block: metadata plus a further-indented note.
+let fullBlock = TaskBlock.parse(
+    "- [ ] Prep the client deck\n      @2026-08-20 · calendar · !high · #schoolwork\n      Focus on the pricing slide — they pushed back last time.",
+    today: blockToday
+)!
+expect(fullBlock.text, "Prep the client deck", "reads task text as plain prose")
+expect(fullBlock.due?.description, "2026-08-20", "reads due date")
+expect(fullBlock.source, .calendar, "reads explicit source")
+expect(fullBlock.priority, .high, "reads priority")
+expect(fullBlock.type, "schoolwork", "reads type tag")
+expect(fullBlock.note, "Focus on the pricing slide — they pushed back last time.", "reads the note line")
+
+// Scanning a whole document: a block stops at the next checkbox, not past it.
+let taskDoc = [
+    "- [ ] Email the landlord",
+    "      @today · manual",
+    "- [x] Read chapter 4",
+    "      @2026-08-14 · #cs101 · ✓2026-08-13",
+]
+let (firstBlock, firstConsumed) = TaskBlock.parse(taskDoc, at: 0, today: blockToday)!
+expect(firstConsumed, 2, "first block consumes checkbox + metadata, stopping before the next checkbox")
+expect(firstBlock.text, "Email the landlord", "reads first block's text")
+let (secondBlock, secondConsumed) = TaskBlock.parse(taskDoc, at: 2, today: blockToday)!
+expect(secondConsumed, 2, "second block consumes checkbox + metadata")
+expect(secondBlock.isDone, true, "second block reads its ticked box")
+expect(secondBlock.type, "cs101", "second block reads its type tag")
+expect(secondBlock.done?.description, "2026-08-13", "second block reads its done stamp")
+
+// Round trip: a block already in canonical field order renders back to its own bytes.
+let canonicalBlock = "- [ ] Prep the client deck\n      @2026-08-20 · calendar · !high · #schoolwork\n      Focus on the pricing slide — they pushed back last time."
+let renderedOnce = TaskBlock.parse(canonicalBlock, today: blockToday)!.rendered()
+let renderedTwice = TaskBlock.parse(renderedOnce, today: blockToday)!.rendered()
+expect(renderedOnce, canonicalBlock, "render matches the canonical source")
+expect(renderedTwice, renderedOnce, "render is idempotent")
+
+// Round trip covering every/done together, exercising the rest of the field order.
+let recurringBlock = "- [x] Water the plants\n      @2026-08-12 · manual · every:week · ✓2026-08-05"
+let recurringRendered = TaskBlock.parse(recurringBlock, today: date("2026-08-01"))!.rendered()
+expect(recurringRendered, recurringBlock, "recurring + done block round trips")
+
 // MARK: - Vault
 
 func tempVaultDir() -> URL {
