@@ -229,6 +229,48 @@ let recurringBlock = "- [x] Water the plants\n      @2026-08-12 · manual · eve
 let recurringRendered = TaskBlock.parse(recurringBlock, today: date("2026-08-01"))!.rendered()
 expect(recurringRendered, recurringBlock, "recurring + done block round trips")
 
+// MARK: - TaskBlock.toggling (checkbox write-back, A4)
+
+let toggleRef = date("2026-08-20")
+
+// Ticking checks the box on the task line and stamps ✓done on the metadata line only.
+let toggleDoc = [
+    "- [ ] Email the landlord",
+    "      @today · manual",
+]
+let tickedLines = TaskBlock.toggling(toggleDoc, at: 0, checked: true, today: toggleRef)!
+expect(tickedLines[0], "- [x] Email the landlord", "ticking checks the box on the task line")
+expect(tickedLines[0].contains("✓"), false, "the done stamp does not land on the task line")
+expect(tickedLines[1], "      @2026-08-20 · manual · ✓2026-08-20", "✓done lands on the metadata line")
+
+// Un-ticking flips the box back and removes the stamp again.
+let untickedLines = TaskBlock.toggling(tickedLines, at: 0, checked: false, today: toggleRef)!
+expect(untickedLines[0], "- [ ] Email the landlord", "un-ticking unchecks the box on the task line")
+expect(untickedLines[1], "      @2026-08-20 · manual", "un-ticking removes ✓done from the metadata line")
+
+// A note line on a third line is untouched by either direction of the toggle.
+let notedDoc = [
+    "- [ ] Prep the client deck",
+    "      @2026-08-20 · calendar · !high · #schoolwork",
+    "      Focus on the pricing slide — they pushed back last time.",
+]
+let notedTicked = TaskBlock.toggling(notedDoc, at: 0, checked: true, today: toggleRef)!
+expect(notedTicked[0], "- [x] Prep the client deck", "ticking with a note only flips the task line's checkbox")
+expect(
+    notedTicked[1], "      @2026-08-20 · calendar · !high · #schoolwork · ✓2026-08-20",
+    "✓done is appended after the existing metadata fields"
+)
+expect(notedTicked[2], notedDoc[2], "the note line is byte-for-byte unchanged")
+
+// A checkbox with no metadata line at all still gets a well-formed one on tick — the
+// stamp always has a format-correct place to land.
+let bareTicked = TaskBlock.toggling(["- [ ] Just a checkbox"], at: 0, checked: true, today: toggleRef)!
+expect(bareTicked.count, 2, "ticking a bare checkbox creates its metadata line")
+expect(bareTicked[1], "      manual · ✓2026-08-20", "the new metadata line carries only source and the stamp")
+
+// A stale click — the line no longer starts a checkbox — is dropped, not written.
+expectNil(TaskBlock.toggling(["just prose"], at: 0, checked: true, today: toggleRef), "toggling a non-checkbox line returns nil")
+
 // MARK: - Vault
 
 func tempVaultDir() -> URL {
@@ -305,6 +347,89 @@ do {
 } catch {
     failures.append("Vault writeAtomically threw: \(error)")
 }
+
+// A checkbox toggle's write is recognised as our own (the suppression registry
+// `VaultWatcher` consults via `wasSelfWrite`), so it doesn't retrigger a reload — but a
+// genuine external edit landing right after must still be seen, or a real concurrent
+// edit would get silently swallowed instead of triggering the reload that shows it.
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+    let path = dir.appendingPathComponent("tasks.md")
+
+    let original = "- [ ] Email the landlord\n      @today · manual"
+    try vault.writeAtomically(original, to: path)
+
+    let toggled = TaskBlock.toggling(
+        original.components(separatedBy: "\n"), at: 0, checked: true, today: date("2026-08-20")
+    )!
+    try vault.writeAtomically(toggled.joined(separator: "\n"), to: path)
+    expect(vault.wasSelfWrite(path: path.path), true, "the toggle's own write is recognised as ours")
+
+    // Written directly (bypassing Vault), as a concurrent editor would — not through
+    // `writeAtomically`, so it never lands in the self-write registry.
+    try "- [ ] a concurrent external edit\n      @today · manual".write(to: path, atomically: true, encoding: .utf8)
+    expect(
+        vault.wasSelfWrite(path: path.path), false,
+        "a genuine external edit after the toggle is not mistaken for our own echo"
+    )
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("Toggle self-write suppression threw: \(error)")
+}
+
+// MARK: - Config
+
+func tempConfigPath() -> URL {
+    FileManager.default.temporaryDirectory
+        .appendingPathComponent("foolscap-selftest-config-\(UUID().uuidString).toml")
+}
+
+let missingConfig = Config.load(from: tempConfigPath())
+expect(missingConfig.vault, nil, "absent config file leaves vault nil")
+expect(missingConfig.theme, Config.defaultTheme, "absent config file defaults theme")
+expect(missingConfig.startMode, Config.defaultStartMode, "absent config file defaults start_mode")
+expect(missingConfig.soonWithinDays, Config.defaultSoonWithinDays, "absent config file defaults soon_within_days")
+expect(missingConfig.weekStarts, Config.defaultWeekStarts, "absent config file defaults week_starts")
+
+do {
+    let path = tempConfigPath()
+    try "theme = \"console\"\n\n[dates]\nsoon_within_days = 5\n".write(to: path, atomically: true, encoding: .utf8)
+    let partial = Config.load(from: path)
+    expect(partial.theme, "console", "partial config overrides theme")
+    expect(partial.soonWithinDays, 5, "partial config overrides soon_within_days")
+    expect(partial.vault, nil, "partial config leaves unset vault at default")
+    expect(partial.startMode, Config.defaultStartMode, "partial config leaves unset start_mode at default")
+    expect(partial.weekStarts, Config.defaultWeekStarts, "partial config leaves unset week_starts at default")
+    try? FileManager.default.removeItem(at: path)
+} catch {
+    failures.append("Config partial-load threw: \(error)")
+}
+
+let configWithVault = Config(vault: "/tmp/foolscap-selftest-config-vault")
+let defaultVaultPath = ("~/Notes" as NSString).expandingTildeInPath
+
+expect(
+    Vault.resolveRoot(config: configWithVault, environment: [:]).path,
+    "/tmp/foolscap-selftest-config-vault",
+    "config vault path is used when $FOOLSCAP_VAULT is unset"
+)
+expect(
+    Vault.resolveRoot(config: configWithVault, environment: ["FOOLSCAP_VAULT": "/tmp/foolscap-selftest-env-vault"]).path,
+    "/tmp/foolscap-selftest-env-vault",
+    "$FOOLSCAP_VAULT overrides the config vault path"
+)
+expect(
+    Vault.resolveRoot(config: configWithVault, environment: ["FOOLSCAP_VAULT": ""]).path,
+    "/tmp/foolscap-selftest-config-vault",
+    "an empty $FOOLSCAP_VAULT does not override"
+)
+expect(
+    Vault.resolveRoot(config: Config(), environment: [:]).path,
+    defaultVaultPath,
+    "falls back to ~/Notes when neither env nor config set a vault"
+)
 
 // MARK: - MarkdownRenderer
 

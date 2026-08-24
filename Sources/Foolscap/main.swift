@@ -107,17 +107,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "toggleTask" else { return }
         guard let body = message.body as? [String: Any],
+              let file = body["file"] as? String,
               let line = (body["line"] as? NSNumber)?.intValue,
               let checked = (body["checked"] as? NSNumber)?.boolValue
         else { return }
-        toggleTask(atLine: line, checked: checked)
+        toggleTask(file: file, atLine: line, checked: checked)
     }
 
-    /// Write-back for the metadata-below task format (stamping `✓done` on the metadata
-    /// line, not the task line) is A4 (ROADMAP Wave 1) — split out on purpose because the
-    /// write path is a distinct risk surface from parsing. Ticking a box in the dashboard
-    /// is inert until A4 lands.
-    private func toggleTask(atLine line: Int, checked: Bool) {}
+    /// A4's write-back, adapted to the dashboard: the click carries `data-file` (one of the
+    /// three known files — see `DashboardRenderer`) alongside its line, so we know which
+    /// note to write. Re-reads that note fresh from disk (never the DOM's stale copy),
+    /// validates that `line` still starts a task block — the file may have changed
+    /// underneath the click — and either applies the toggle or, if the line no longer
+    /// matches, drops the click and re-renders so the panel reflects current truth. Writes
+    /// through `TaskBlock.toggling` (the metadata-below format — see DESIGN.md → Tasks), so
+    /// `✓done` lands on the metadata line, never the task line.
+    private func toggleTask(file: String, atLine line: Int, checked: Bool) {
+        guard Self.dashboardFiles.contains(file) else { return }
+        let noteURL = vault.root.appendingPathComponent(file)
+        guard let markdown = try? vault.read(noteURL) else { return }
+        let lines = markdown.components(separatedBy: "\n")
+
+        guard line >= 1, line <= lines.count,
+              let updatedLines = TaskBlock.toggling(lines, at: line - 1, checked: checked)
+        else {
+            renderDashboard()
+            return
+        }
+
+        do {
+            try vault.writeAtomically(updatedLines.joined(separator: "\n"), to: noteURL)
+        } catch {
+            NSLog("Foolscap: couldn't write task toggle to \(noteURL.path): \(error)")
+        }
+        // The write is recorded in the self-write registry, so the watcher suppresses its
+        // own echo — re-render here is what actually shows the task dropping out of its
+        // bucket (a checked task no longer buckets).
+        renderDashboard()
+    }
 
     private func startWatching() {
         let watcher = VaultWatcher(vault: vault) { [weak self] changedPaths in

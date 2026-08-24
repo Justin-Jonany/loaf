@@ -72,6 +72,11 @@ A theme is one CSS file and no Swift. It must:
 
 - One logical change per PR; keep diffs reviewable
 - Explain *why* in the commit body, not *what* — the diff already says what
+- **Every PR carries human-readable proof it works** — the `Verify` section is required, not
+  optional. Attach evidence matched to the ticket type: a green `swift run foolscap-selftest`
+  run for pure logic, a **screenshot** for rendering, a short **screen-recording / GIF** for
+  behavioral changes (writes, notifications, conflicts), a run transcript + vault `git diff`
+  for the morning routine. A "works on my machine" claim without evidence is not enough.
 
 ### Before pushing
 
