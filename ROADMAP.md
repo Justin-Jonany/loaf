@@ -135,6 +135,27 @@ Viewer UI. Depends on Epic A.
     across a DST boundary; recompute fires on wake/day-change, not a poll.
   - **Verify:** *pure logic* — paste the green rollover + DST-boundary tests.
 
+- [ ] **B6 — Completed-today tasks linger until the 6am rollover** · 1 PR · depends: B1, B4,
+      B5 · blocks: —
+  - **Problem:** Ticking a box stamps `✓done` (A4) and the row vanishes immediately, because
+    every section shows only *unchecked* tasks (B1). You lose the "I did it" feedback and the
+    panel keeps no trace of the day's progress until the next morning's brief.
+  - **Solution:** Extend the bucket filter from "unchecked" to "unchecked **or** (`isDone` and
+    `done == today`)". A completed-today task keeps its `@due`-based section, renders
+    struck-through/dimmed, and sorts to the **bottom** of that section (open items first). "Today"
+    is B5's 6am-rollover today, so at 6am yesterday's completions stop matching `done == today`
+    and drop on their own — no timer, no cleanup pass. Applies to every section, **Long-term
+    included**. An undated `[x]` (hand-edited, no `✓done`) does not show. The `✓done` line stays
+    in `tasks.md` for the retrospective window; only the panel stops showing it. The morning
+    brief remains where *past* days' completions are recapped.
+  - **Tests:** completed-today shows in its bucket, struck-through, below open items;
+    completed-yesterday does not show; undated `[x]` does not show; un-tick returns it to an open
+    row; across the 6am boundary a task completed "today" drops once today advances; correct
+    across a DST boundary.
+  - **Verify:** *pure logic* — green bucketing + rollover selftest — **plus** *rendering* — a
+    Playwright screenshot of the canonical fixture vault (decision-day) via `--dump-dashboard`
+    showing struck-through done rows.
+
 ### Epic C — The morning brief routine — *not app code*
 
 A scheduled **local** Claude Code run (prompt/skill + `CLAUDE.md` template + schedule config).
