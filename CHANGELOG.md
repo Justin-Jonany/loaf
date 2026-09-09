@@ -59,4 +59,16 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Dock and Cmd+Tab. See DECISIONS.md for why the desktop-widget model this replaces was tried
   and reverted without merging to `main`.
 
+- `FoolscapCore`: `ConflictDecision`/`ConflictGuard`/`ConflictCopy` (X1 — shared-file
+  write-conflict guard). If `tasks.md`/`longterm.md` changed on disk since the app read
+  them (e.g. the morning run rewrote one) and the app has an unsaved change, the on-disk
+  version is kept and the app's version is saved to `<name>.conflict-<timestamp>.md`
+  instead of clobbering it; a disk change with no unsaved app change is a plain reload,
+  no conflict file. Preserves `Vault`'s self-write suppression — a self-write is never
+  mistaken for the concurrent external edit the guard exists to catch. Wired into the
+  checkbox toggle write path in `Sources/Foolscap`, which now also shows a modal notice
+  when a conflict is saved aside. `foolscap --demo-conflict-guard <dir>` is a non-GUI
+  proof entry point (mirrors `--dump-dashboard`) that seeds a vault, simulates the race,
+  and leaves the resulting BEFORE/AFTER files on disk.
+
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.
