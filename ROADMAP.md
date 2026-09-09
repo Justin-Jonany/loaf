@@ -135,7 +135,7 @@ Viewer UI. Depends on Epic A.
     across a DST boundary; recompute fires on wake/day-change, not a poll.
   - **Verify:** *pure logic* — paste the green rollover + DST-boundary tests.
 
-- [ ] **B6 — Completed-today tasks linger until the 6am rollover** · 1 PR · depends: B1, B4,
+- [x] **B6 — Completed-today tasks linger until the 6am rollover** · 1 PR · depends: B1, B4,
       B5 · blocks: —
   - **Problem:** Ticking a box stamps `✓done` (A4) and the row vanishes immediately, because
     every section shows only *unchecked* tasks (B1). You lose the "I did it" feedback and the
