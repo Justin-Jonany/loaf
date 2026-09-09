@@ -63,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
         renderDashboard()
         startWatching()
+        startObservingDayChange()
     }
 
     private func buildMenu() -> NSMenu {
@@ -96,10 +97,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     /// Reads exactly `brief.md`/`tasks.md`/`longterm.md` (`DashboardComposer`), buckets
     /// their tasks, and renders the four sections. No folder browser, no file picker.
+    ///
+    /// Buckets against `CalendarDate.effectiveToday()`, not `.today()` — the dashboard's
+    /// "today" rolls over at 6am local, not midnight (DESIGN.md → "The daily loop").
     private func renderDashboard() {
-        let dashboard = DashboardComposer.compose(vault: vault, today: .today())
+        let dashboard = DashboardComposer.compose(vault: vault, today: .effectiveToday())
         let body = DashboardRenderer.renderBody(dashboard)
         window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
+    }
+
+    // MARK: - Recompute on wake / day change
+
+    /// The dashboard's bucketing depends on the effective day, so it must recompute
+    /// whenever that day could have changed — and *only* then. Deliberately not a timer:
+    /// the run only fires on wake or an actual calendar day change (ROADMAP B5), so a
+    /// sleeping Mac doesn't burn cycles polling a clock that isn't moving for it anyway.
+    /// `NSCalendarDayChangedNotification` catches the midnight-while-awake case;
+    /// `NSWorkspace.didWakeNotification` catches "missed 6am asleep, catches up on wake"
+    /// (DESIGN.md → "The daily loop").
+    private func startObservingDayChange() {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(recomputeOnSystemNotification),
+            name: NSWorkspace.didWakeNotification, object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(recomputeOnSystemNotification),
+            name: NSNotification.Name.NSCalendarDayChanged, object: nil
+        )
+    }
+
+    @objc private func recomputeOnSystemNotification() {
+        renderDashboard()
     }
 
     // MARK: - Checkbox write-back

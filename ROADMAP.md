@@ -125,7 +125,7 @@ Viewer UI. Depends on Epic A.
     renders cleanly.
   - **Verify:** *rendering* — before/after of one task, raw markdown vs. the chip/icon render.
 
-- [ ] **B5 — Recompute + 6am rollover** · 1 PR · depends: B1 · blocks: —
+- [x] **B5 — Recompute + 6am rollover** · 1 PR · depends: B1 · blocks: —
   - **Problem:** Buckets must recompute on day change, and "today" rolls over at **6am**, not
     midnight (DESIGN.md → daily loop). Off a UTC clock or a timer is the classic bug (Hazards →
     Timezone/DST).
