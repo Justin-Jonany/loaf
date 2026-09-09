@@ -196,7 +196,7 @@ Depends only on A's *format*, so it runs parallel to Epic B.
 
 App-side. Needs the dashboard (B) and the run's signals (C).
 
-- [ ] **D1 — Freshness stamp** · 1 PR · depends: B1, C1
+- [x] **D1 — Freshness stamp** · 1 PR · depends: B1, C1
   - **Problem:** Acting on a stale plan without knowing is the failure mode.
   - **Solution:** Parse the build-time stamp from `brief.md` and show it in Brief ("built
     7:58am").

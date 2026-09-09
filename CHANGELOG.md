@@ -123,5 +123,13 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Transparency is on, it hides the `NSVisualEffectView` (disabling vibrancy), makes the
   window opaque, and lets the `WKWebView` draw its own (now-opaque) CSS background.
   Self-test suite grown to 254 checks.
+- `BriefStamp` (`FoolscapCore`; D1 — freshness stamp): parses the build-time comment
+  `brief.md`'s morning run writes on its first line (`<!-- built: <ISO8601-local> -->`)
+  and formats it as "built h:mma" (DESIGN.md → Trust → "Freshness"). A missing or
+  malformed stamp reads as a clear "build time unknown" state, never a fabricated time.
+  `DashboardRenderer` shows the stamp next to the Brief heading and strips the comment
+  line before the rest renders as prose; `frosted.css` gains a `.freshness` rule (tinted
+  with the existing `--due-over` color when unknown, so a stale/unknown brief reads as a
+  warning). Self-test suite grown to 244 checks.
 
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.

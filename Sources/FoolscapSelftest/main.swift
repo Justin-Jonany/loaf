@@ -1035,6 +1035,89 @@ expect(
     true, "a completed-today row's label still carries the done class (no B6 regression)"
 )
 
+// MARK: - BriefStamp (D1 — freshness stamp)
+
+// Parses the build-time stamp from brief.md's first line — driving the instant
+// explicitly (a fixed `TimeZone`), never off the wall clock.
+let stampBrief = "<!-- built: 2026-08-22T06:03:11-07:00 -->\n# Brief\n\nShipped the deck."
+switch BriefStamp.parse(stampBrief) {
+case .known(let parsedDate):
+    let pacific = TimeZone(identifier: "America/Los_Angeles")!
+    var pacificCalendar = Calendar(identifier: .gregorian)
+    pacificCalendar.timeZone = pacific
+    let parts = pacificCalendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: parsedDate)
+    expect(parts.year, 2026, "parses the stamp's year")
+    expect(parts.month, 8, "parses the stamp's month")
+    expect(parts.day, 22, "parses the stamp's day")
+    expect(parts.hour, 6, "parses the stamp's hour in its own offset")
+    expect(parts.minute, 3, "parses the stamp's minute")
+    expect(parts.second, 11, "parses the stamp's second")
+case .unknown:
+    failures.append("BriefStamp.parse: a well-formed stamp should parse as .known, got .unknown")
+}
+
+// A missing stamp — brief.md with no first-line comment at all — is `.unknown`, never a
+// fabricated time.
+expect(
+    BriefStamp.parse("# Brief\n\nNo stamp here."), .unknown,
+    "a brief with no build-stamp line parses as unknown"
+)
+expect(BriefStamp.parse(""), .unknown, "an empty brief parses as unknown")
+
+// A malformed stamp — right shape, unparseable payload — is likewise unknown, not a guess.
+expect(
+    BriefStamp.parse("<!-- built: not-a-real-date -->\n# Brief"), .unknown,
+    "a malformed stamp payload parses as unknown"
+)
+expect(
+    BriefStamp.parse("<!-- built: 2026-13-40T99:99:99+00:00 -->\n# Brief"), .unknown,
+    "an out-of-range stamp payload parses as unknown"
+)
+
+// The formatter renders the expected "built h:mma" string for a known instant, driven by
+// an explicit `DateComponents` + `TimeZone` — never the wall clock.
+var knownStampComponents = DateComponents()
+knownStampComponents.year = 2026
+knownStampComponents.month = 8
+knownStampComponents.day = 22
+knownStampComponents.hour = 7
+knownStampComponents.minute = 58
+knownStampComponents.second = 0
+let knownStampZone = TimeZone(identifier: "America/Los_Angeles")!
+var knownStampCalendar = Calendar(identifier: .gregorian)
+knownStampCalendar.timeZone = knownStampZone
+let knownStampInstant = knownStampCalendar.date(from: knownStampComponents)!
+expect(
+    BriefStamp.known(knownStampInstant).displayString(timeZone: knownStampZone), "built 7:58am",
+    "formats a known instant as \"built h:mma\""
+)
+
+// A single-digit minute still renders two digits ("built 6:03am", not "built 6:3am").
+knownStampComponents.minute = 3
+let paddedMinuteInstant = knownStampCalendar.date(from: knownStampComponents)!
+expect(
+    BriefStamp.known(paddedMinuteInstant).displayString(timeZone: knownStampZone), "built 7:03am",
+    "pads a single-digit minute"
+)
+
+// The unknown state renders a clear stale/unknown label, never a fake time.
+expect(BriefStamp.unknown.displayString(), "build time unknown", "unknown state renders a clear label, not a fabricated time")
+
+// Stripping the stamp line leaves the rest of the brief untouched, whether or not the
+// stamp itself parsed.
+expect(
+    BriefStamp.stripStampLine(from: stampBrief), "# Brief\n\nShipped the deck.",
+    "strips a well-formed stamp line, leaving the rest of the brief intact"
+)
+expect(
+    BriefStamp.stripStampLine(from: "<!-- built: garbage -->\n# Brief"), "# Brief",
+    "strips a malformed stamp line too — it's still a stamp line, not brief prose"
+)
+expect(
+    BriefStamp.stripStampLine(from: "# Brief\n\nNo stamp here."), "# Brief\n\nNo stamp here.",
+    "a brief with no stamp line is returned unchanged"
+)
+
 // MARK: - Report
 
 if failures.isEmpty {

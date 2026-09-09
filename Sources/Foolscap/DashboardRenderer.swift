@@ -23,12 +23,21 @@ enum DashboardRenderer {
 
     /// Brief is free prose from `brief.md` — run through the same markdown renderer as a
     /// note, so basic formatting (paragraphs, emphasis) survives.
+    ///
+    /// The first line may carry the morning routine's build-time stamp (ROADMAP D1;
+    /// DESIGN.md → Trust → "Freshness") — parsed by `FoolscapCore.BriefStamp` and shown
+    /// next to the heading, then stripped before the rest renders as prose so the raw
+    /// `<!-- built: ... -->` comment never shows up as text.
     private static func renderBrief(_ brief: String) -> String {
-        let trimmed = brief.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stamp = BriefStamp.parse(brief)
+        let stampClass = stamp == .unknown ? " unknown" : ""
+        let stampHTML = "<span class=\"freshness\(stampClass)\">\(escape(stamp.displayString()))</span>"
+
+        let trimmed = BriefStamp.stripStampLine(from: brief).trimmingCharacters(in: .whitespacesAndNewlines)
         let body = trimmed.isEmpty
             ? "<p class=\"empty\">No brief yet.</p>\n"
             : MarkdownRenderer.renderHTML(from: trimmed)
-        return "<section class=\"brief\">\n<h2>Brief</h2>\n\(body)</section>\n"
+        return "<section class=\"brief\">\n<h2>Brief \(stampHTML)</h2>\n\(body)</section>\n"
     }
 
     private static func renderSection(title: String, tasks: [DashboardTask], emptyText: String) -> String {
