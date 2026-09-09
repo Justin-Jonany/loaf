@@ -4,6 +4,27 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-09 — Completed tasks linger in the panel until the 6am rollover (ticket B6)
+
+**Decided:** A task you complete **today** stays visible in the panel — struck-through, sorted
+to the bottom of its own section, open items first — until the 6am rollover, then drops. It
+applies to every section, **Long-term included**. Layout is *in place* (the task stays in its
+`@due`-based section); rejected an alternative "Done today" collector group as more disruptive
+to the one-task-one-bucket model.
+
+**Why:** B1's original rule showed only *unchecked* tasks, so ticking a box made the row vanish
+instantly — no "I did it" feedback and no in-panel trace of the day's progress. Lingering
+completions give the day visible momentum without a new store: the filter widens from
+"unchecked" to "unchecked or (`isDone` and `done == today`)", and B5's 6am rollover makes them
+fall off for free (yesterday's completions stop matching `done == today`) — no timer, no
+cleanup pass. An undated hand-edited `[x]` does not show (can't be dated to "today").
+
+**Supersedes:** DESIGN.md's earlier "the brief is the *only* place finished work shows up, since
+done tasks drop out of the lists below." The brief still owns the *cross-day* recap; the panel
+now also shows *today's* completions until rollover.
+
+**Status:** designed (ticket B6, depends B1 ✅ / B4 / B5); not yet built.
+
 ## 2026-08-23 — Morning routine signal: provisional sidecar file (ticket C1)
 
 **Decided (provisionally):** the routine's "needs a decision" / "failed" signal is a small
