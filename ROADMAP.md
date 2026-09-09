@@ -234,7 +234,7 @@ App-side. Needs the dashboard (B) and the run's signals (C).
 
 ### Cross-cutting
 
-- [ ] **X2 — Accessibility pass** · 1 PR · depends: B4 · label: accessibility
+- [x] **X2 — Accessibility pass** · 1 PR · depends: B4 · label: accessibility
   - **Problem:** Task rows are styled `<div class="task">` + a plain `<input type="checkbox">`,
     so VoiceOver doesn't announce them as checkboxes (Hazards → Accessibility). Also owed:
     Reduce Transparency → opacity 1.0, Increase Contrast → stronger border,

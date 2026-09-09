@@ -990,6 +990,51 @@ expect(
     0, "drops the day after, across the DST boundary"
 )
 
+// MARK: - Accessible checkbox semantics (X2 — Accessibility pass)
+
+// A plain <input type="checkbox"> with no label reads to VoiceOver as just "checkbox",
+// with no indication of which task or whether it's already ticked (ROADMAP.md → Hazards
+// → Accessibility). `renderCheckbox` fixes that with an explicit role, an aria-checked
+// that mirrors `isDone`, and an aria-label carrying the task sentence as the accessible
+// name — asserted against the rendered HTML string, same as B4's tidy-render tests above.
+let openCheckbox = DashboardTaskRenderer.renderCheckbox(fullBlock)
+expect(openCheckbox.contains("role=\"checkbox\""), true, "an open task's checkbox carries role=\"checkbox\"")
+expect(openCheckbox.contains("aria-checked=\"false\""), true, "an open task's checkbox reports aria-checked=\"false\"")
+expect(openCheckbox.contains(" checked>"), false, "an open task's checkbox has no checked attribute")
+expect(
+    openCheckbox.contains("aria-label=\"Prep the client deck\""), true,
+    "an open task's checkbox carries the task sentence as its accessible name"
+)
+
+// The B6 "completed-today lingers" fixture already proves a done block; reuse it here so
+// aria-checked is asserted against a real done row, not a hand-built one.
+let doneCheckbox = DashboardTaskRenderer.renderCheckbox(lingeringDash.today.last!.block)
+expect(doneCheckbox.contains("role=\"checkbox\""), true, "a done task's checkbox carries role=\"checkbox\"")
+expect(doneCheckbox.contains("aria-checked=\"true\""), true, "a done task's checkbox reports aria-checked=\"true\", matching isDone")
+expect(
+    doneCheckbox.contains(" checked>"), true,
+    "a done task's checkbox still carries the native checked attribute (click-to-toggle relies on it — must not regress)"
+)
+expect(
+    doneCheckbox.contains("aria-label=\"Completed today\""), true,
+    "a done task's checkbox carries its task sentence as its accessible name"
+)
+
+// Quotes/HTML in a task sentence must not break out of the aria-label attribute.
+let quotedBlock = TaskBlock.parse("- [ ] Say \"hi\" & <wave>\n      @2026-08-12 · manual", today: dashToday)!
+let quotedCheckbox = DashboardTaskRenderer.renderCheckbox(quotedBlock)
+expect(
+    quotedCheckbox.contains("aria-label=\"Say &quot;hi&quot; &amp; &lt;wave&gt;\""), true,
+    "quotes/HTML in a task sentence are escaped in aria-label rather than left to break the attribute"
+)
+
+// No B6 regression: the wrapped row's tidy label keeps its `done` class alongside the
+// new accessible checkbox.
+expect(
+    DashboardTaskRenderer.render(lingeringDash.today.last!.block).contains("class=\"label done\""),
+    true, "a completed-today row's label still carries the done class (no B6 regression)"
+)
+
 // MARK: - Report
 
 if failures.isEmpty {

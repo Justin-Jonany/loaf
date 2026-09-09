@@ -54,12 +54,17 @@ enum DashboardRenderer {
     /// keeps it in its bucket — so the row and its checkbox must show as done too,
     /// mirroring `MarkdownRenderer`'s `.task.done` / `checked` convention for the
     /// single-note view.
+    ///
+    /// The checkbox itself is `DashboardTaskRenderer.renderCheckbox` (ROADMAP X2 —
+    /// Accessibility pass): `role="checkbox"`/`aria-checked`/`aria-label` so VoiceOver
+    /// announces the row as a checkbox with its state and the task sentence as its name,
+    /// rather than a bare, unlabelled checkbox.
     private static func renderTask(_ task: DashboardTask) -> String {
         let tidy = DashboardTaskRenderer.render(task.block)
+        let checkbox = DashboardTaskRenderer.renderCheckbox(task.block)
         let doneClass = task.block.isDone ? " done" : ""
-        let checkedAttr = task.block.isDone ? " checked" : ""
         return """
-        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)"><input type="checkbox"\(checkedAttr)>\(tidy)</li>
+        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)</li>
 
         """
     }

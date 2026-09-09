@@ -214,6 +214,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         checkRoutineSignal()
         startWatching()
         startObservingDayChange()
+        applyAccessibilityDisplayOptions()
+        startObservingAccessibilityDisplayOptions()
     }
 
     private func buildMenu() -> NSMenu {
@@ -278,6 +280,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     @objc private func recomputeOnSystemNotification() {
         renderDashboard()
+    }
+
+    // MARK: - Accessibility display options (ROADMAP X2 — Accessibility pass)
+
+    /// Reduce Transparency has no CSS-only fix — only Swift can turn off the native
+    /// `NSVisualEffectView` vibrancy — so this reads the current system setting and pushes
+    /// it into the window. Increase Contrast doesn't need a Swift-side push: WebKit already
+    /// feeds `prefers-contrast` into the page from the same system setting, so
+    /// `frosted.css`'s `@media (prefers-contrast: more)` reacts on its own.
+    private func applyAccessibilityDisplayOptions() {
+        window?.applyReduceTransparency(NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency)
+    }
+
+    /// Reduce Transparency can be toggled while the app is running (System Settings >
+    /// Accessibility > Display), so the window must react live, not just at launch.
+    private func startObservingAccessibilityDisplayOptions() {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(accessibilityDisplayOptionsDidChange),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil
+        )
+    }
+
+    @objc private func accessibilityDisplayOptionsDidChange() {
+        applyAccessibilityDisplayOptions()
     }
 
     // MARK: - Checkbox write-back

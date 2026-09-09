@@ -109,5 +109,19 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   existing convention for the single-note view. `frosted.css` gains a `.dashboard
   .task.done` rule dimming the chips alongside the struck-through sentence. Self-test
   suite grown to 228 checks.
+- Accessibility pass (X2): `DashboardTaskRenderer.renderCheckbox` (`FoolscapCore`) gives
+  each dashboard task row's `<input type="checkbox">` `role="checkbox"`, an `aria-checked`
+  mirroring `isDone`, and an `aria-label` carrying the task sentence, so VoiceOver
+  announces the row as a checkbox with its state and name instead of a bare, unlabelled
+  checkbox — the native `checked` attribute and click-to-toggle path are unchanged.
+  `frosted.css` gains `@media (prefers-contrast: more)` strengthening the panel border,
+  section dividers, and each row's border (`prefers-reduced-motion` and the
+  `prefers-reduced-transparency` CSS fallback already existed). `NoteWindow` gains
+  `applyReduceTransparency`, wired to
+  `NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency` and
+  `NSWorkspace.accessibilityDisplayOptionsDidChangeNotification`: when Reduce
+  Transparency is on, it hides the `NSVisualEffectView` (disabling vibrancy), makes the
+  window opaque, and lets the `WKWebView` draw its own (now-opaque) CSS background.
+  Self-test suite grown to 254 checks.
 
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.
