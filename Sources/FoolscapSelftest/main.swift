@@ -822,6 +822,79 @@ expect(
     "a due-only task renders cleanly with no stray markup for the absent fields"
 )
 
+// MARK: - RoutineSignal / SignalNudge (D2 — decision notification + loud failure path)
+
+// A clear day: no file at all. The app never calls `RoutineSignal.parse` with a nonempty
+// string here — `nil`/empty input is the documented stand-in for "nothing on disk."
+expectNil(RoutineSignal.parse(""), "empty text parses to nil — the clear-day state")
+expectNil(RoutineSignal.parse("   \n  \n"), "whitespace-only text also parses to nil")
+expect(SignalNudge.decide(for: nil), .none, "no signal at all fires no nudge")
+
+// A needs-decision signal, with two questions.
+let decisionSignalText = """
+status: needs-decision
+at: 2026-08-23T06:02:14-07:00
+reason: two calendar events overlap this afternoon
+questions:
+  - Keep the 2pm client call or the 2pm dentist?
+  - Should the loser get rescheduled today or pushed to next week?
+"""
+let decisionSignal = RoutineSignal.parse(decisionSignalText)!
+expect(decisionSignal.status, .needsDecision, "needs-decision status parses")
+expect(decisionSignal.reason, "two calendar events overlap this afternoon", "reason parses")
+expect(
+    decisionSignal.questions,
+    ["Keep the 2pm client call or the 2pm dentist?", "Should the loser get rescheduled today or pushed to next week?"],
+    "both questions parse, in order"
+)
+expect(
+    decisionSignal.at, ISO8601DateFormatter().date(from: "2026-08-23T06:02:14-07:00"),
+    "at: parses as the same instant ISO8601DateFormatter would"
+)
+
+let decisionNudge = SignalNudge.decide(for: decisionSignal)
+expect(
+    decisionNudge,
+    .decision(
+        reason: "two calendar events overlap this afternoon",
+        questions: ["Keep the 2pm client call or the 2pm dentist?", "Should the loser get rescheduled today or pushed to next week?"]
+    ),
+    "a needs-decision signal maps to a decision nudge carrying the reason and questions"
+)
+
+// A failed signal — no questions.
+let failedSignalText = """
+status: failed
+at: 2026-08-23T06:02:14-07:00
+reason: Google Calendar auth expired, couldn't read events
+"""
+let failedSignal = RoutineSignal.parse(failedSignalText)!
+expect(failedSignal.status, .failed, "failed status parses")
+expect(failedSignal.reason, "Google Calendar auth expired, couldn't read events", "failure reason parses")
+expect(failedSignal.questions, [], "a failed signal carries no questions")
+
+let failureNudge = SignalNudge.decide(for: failedSignal)
+expect(
+    failureNudge, .failure(reason: "Google Calendar auth expired, couldn't read events"),
+    "a failed signal maps to a failure nudge carrying the reason"
+)
+expect(failureNudge == decisionNudge, false, "the failure nudge is distinct from the decision nudge")
+
+// Malformed content: present, non-blank, but no recognizable `status:` — must still be
+// loud (a failure nudge), never silently treated as a clear day.
+let malformedSignalText = "this file got half-written and doesn't have a status line at all"
+let malformedSignal = RoutineSignal.parse(malformedSignalText)!
+expect(malformedSignal.status, .malformed, "unparseable-but-present content is tagged .malformed, not dropped")
+
+let malformedNudgeIsFailure: Bool
+if case .failure = SignalNudge.decide(for: malformedSignal) { malformedNudgeIsFailure = true } else { malformedNudgeIsFailure = false }
+expect(malformedNudgeIsFailure, true, "a malformed signal maps to a failure nudge, not silence or a decision nudge")
+
+// An unrecognized status value is malformed too, not silently coerced to a known case.
+let unknownStatusText = "status: something-else\nreason: unrecognized status value"
+let unknownStatusSignal = RoutineSignal.parse(unknownStatusText)
+expect(unknownStatusSignal?.status, .malformed, "an unrecognized status: value parses as .malformed")
+
 // MARK: - Report
 
 if failures.isEmpty {

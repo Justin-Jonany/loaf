@@ -147,13 +147,12 @@ A single ordinary event, a light or empty spillover list, or a calendar event wi
 obvious implied task (which you just add yourself, `source: calendar`) are **not**
 decisions — handle those silently and move on.
 
-## The decision / failure signal — provisional, see note
+## The decision / failure signal
 
-**This is an open decision (ROADMAP.md -> "Open decisions"), owned by ticket D2, not
-settled here.** The convention below is a default C1 needed to ship something testable;
-D2 may move it into a marker line in `brief.md` instead. Don't build anything downstream
-of this file's *exact shape* — only its existence/absence and its `status:` field are
-meant to be load-bearing right now.
+**Settled** (DECISIONS.md 2026-08-23, resolved 2026-09-09 — ticket D2): `.routine-signal.md`
+is the final location for this signal, not a marker line in `brief.md`. The app-side
+consumer is `RoutineSignal.parse`/`SignalNudge.decide` in `Sources/FoolscapCore/RoutineSignal.swift`,
+which read exactly the shape below (`status`/`at`/`reason`/`questions`).
 
 Write `.routine-signal.md` at the vault root (a dotfile — matches the format
 `VaultWatcher` already watches for `.md` changes, but `Vault.notePaths()` already skips
