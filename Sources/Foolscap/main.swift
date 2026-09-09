@@ -24,6 +24,85 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--dump-dashboard"),
     }
 }
 
+/// The body of `--demo-conflict-guard`, factored out so it reads top-to-bottom as the demo
+/// script it is. Seeds a vault, simulates the morning run rewriting `tasks.md` while the
+/// app has an in-flight checkbox toggle based on the version it originally read, runs the
+/// real X1 guard logic (`ConflictGuard`/`ConflictDecision` from `FoolscapCore`), and prints
+/// + leaves the resulting BEFORE/AFTER files under `dir` for inspection.
+func runConflictGuardDemo(in dir: URL) throws {
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let vault = Vault(root: dir)
+    let tasksURL = dir.appendingPathComponent("tasks.md")
+
+    let original = "- [ ] Email the landlord\n      @today · manual"
+    try vault.writeAtomically(original, to: tasksURL)
+    print("--- BEFORE: tasks.md, as the app read it ---")
+    print(original)
+
+    // The app's read — a checkbox toggle would base its in-flight write on this snapshot.
+    let readSnapshot = FileSnapshot.current(at: tasksURL)!
+
+    // Before that write lands, the morning run rewrites the file concurrently. Written
+    // directly (bypassing Vault), exactly as a real external process would — never lands
+    // in the self-write registry.
+    let externalRewrite = original + "\n- [ ] Prep the deck\n      @2026-08-21 · calendar"
+    try externalRewrite.write(to: tasksURL, atomically: true, encoding: .utf8)
+    print("\n--- CONCURRENT WRITE: the morning run rewrites tasks.md on disk ---")
+    print(externalRewrite)
+
+    // Meanwhile the app has its own unsaved change in flight: the user ticked "Email the
+    // landlord" based on the version it originally read, above.
+    let dirtyBuffer = TaskBlock.toggling(
+        original.components(separatedBy: "\n"), at: 0, checked: true, today: .today()
+    )!.joined(separator: "\n")
+    print("\n--- APP'S DIRTY BUFFER: the pending (unsaved) checkbox toggle ---")
+    print(dirtyBuffer)
+
+    let diskChanged = ConflictGuard.hasExternalChange(at: tasksURL, since: readSnapshot, vault: vault)
+    let decision = ConflictDecision.decide(diskChangedSinceRead: diskChanged, bufferDirty: true)
+    print("\n--- GUARD DECISION: diskChangedSinceRead=\(diskChanged), bufferDirty=true -> \(decision) ---")
+
+    guard decision == .conflictKeepDiskSaveCopy else {
+        print("Unexpected decision for this demo — nothing written.")
+        return
+    }
+
+    let conflictURL = ConflictCopy.url(for: tasksURL, timestamp: Date())
+    try vault.writeAtomically(dirtyBuffer, to: conflictURL)
+    print(
+        "\n--- NOTICE the user would see ---\n"
+            + "tasks.md changed before your edit saved. Something else (likely the morning run) "
+            + "rewrote tasks.md while you had an unsaved change. The on-disk version was kept; "
+            + "your change was saved separately as \(conflictURL.lastPathComponent) so nothing was lost."
+    )
+
+    print("\n--- AFTER: on-disk tasks.md (kept, never overwritten by the app's write) ---")
+    print(try vault.read(tasksURL))
+    print("\n--- AFTER: \(conflictURL.lastPathComponent) (the app's saved-aside change) ---")
+    print(try vault.read(conflictURL))
+    print("\nVault directory listing:")
+    for name in try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted() {
+        print("  \(name)")
+    }
+}
+
+// The `--demo-conflict-guard <dir>` entry point is X1's non-GUI proof path (mirrors
+// `--dump-dashboard` above): screencapture has no display to run against in a headless
+// sandbox, so this drives the real guard logic against a real temp vault and leaves the
+// BEFORE/AFTER files on disk as evidence instead. No GUI, no NSApplication run loop — must
+// run before AppKit is touched below.
+if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-conflict-guard"),
+   CommandLine.arguments.count > flagIndex + 1 {
+    let demoDir = URL(fileURLWithPath: CommandLine.arguments[flagIndex + 1])
+    do {
+        try runConflictGuardDemo(in: demoDir)
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("Foolscap: conflict-guard demo failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+}
+
 // Wires the vault + renderer into the window: load config, bootstrap the vault, compose
 // the dashboard from the three known files, render it, and repaint whenever one of them
 // changes on disk. The panel is a composed dashboard, not a folder browser (DESIGN.md →
@@ -154,6 +233,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         guard Self.dashboardFiles.contains(file) else { return }
         let noteURL = vault.root.appendingPathComponent(file)
         guard let markdown = try? vault.read(noteURL) else { return }
+        // Snapshot the file as we found it — the version the toggle below is based on —
+        // so the X1 guard can tell whether the morning run (or anything else) rewrote it
+        // out from under this click before the write below lands.
+        guard let readSnapshot = FileSnapshot.current(at: noteURL) else { return }
         let lines = markdown.components(separatedBy: "\n")
 
         guard line >= 1, line <= lines.count,
@@ -163,15 +246,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             return
         }
 
-        do {
-            try vault.writeAtomically(updatedLines.joined(separator: "\n"), to: noteURL)
-        } catch {
-            NSLog("Foolscap: couldn't write task toggle to \(noteURL.path): \(error)")
-        }
-        // The write is recorded in the self-write registry, so the watcher suppresses its
-        // own echo — re-render here is what actually shows the task dropping out of its
-        // bucket (a checked task no longer buckets).
+        saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot)
+        // Whether the write went through, got saved as a conflict copy, or (in principle)
+        // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.
         renderDashboard()
+    }
+
+    /// X1's write-conflict guard (ROADMAP.md → Cross-cutting), applied to a pending change
+    /// to a shared file before it lands. `bufferDirty` is always `true` here — the caller
+    /// only reaches this with a toggle it wants written — so `.reloadClean` can't come back
+    /// from this call site; that case is what `startWatching`'s plain repaint already
+    /// handles when disk changes with nothing of ours pending.
+    private func saveSharedFile(_ dirtyContent: String, to url: URL, readSnapshot: FileSnapshot) {
+        let diskChanged = ConflictGuard.hasExternalChange(at: url, since: readSnapshot, vault: vault)
+        switch ConflictDecision.decide(diskChangedSinceRead: diskChanged, bufferDirty: true) {
+        case .writeThrough:
+            do {
+                try vault.writeAtomically(dirtyContent, to: url)
+            } catch {
+                NSLog("Foolscap: couldn't write \(url.path): \(error)")
+            }
+        case .conflictKeepDiskSaveCopy:
+            // Last-write-wins would silently destroy whichever side loses the race
+            // (ROADMAP.md → Hazards → "Write conflicts on shared files"). Keep the on-disk
+            // version untouched and stash the app's version next to it instead.
+            let conflictURL = ConflictCopy.url(for: url, timestamp: Date())
+            do {
+                try vault.writeAtomically(dirtyContent, to: conflictURL)
+                NSLog(
+                    "Foolscap: write conflict on \(url.lastPathComponent) — kept the on-disk "
+                        + "version, saved your change to \(conflictURL.lastPathComponent)"
+                )
+                presentConflictNotice(originalFile: url.lastPathComponent, conflictFile: conflictURL.lastPathComponent)
+            } catch {
+                NSLog("Foolscap: couldn't save conflict copy for \(url.path): \(error)")
+            }
+        case .reloadClean:
+            break
+        }
+    }
+
+    /// Tells the user their change didn't land because the file changed under it. A modal
+    /// alert rather than a background notification: D2 owns the richer decision/failure
+    /// notification surface (ROADMAP.md → Wave 3), and a write conflict is rare enough
+    /// that a blocking dialog at the moment it happens is preferable to a silent toast that
+    /// could go unnoticed.
+    private func presentConflictNotice(originalFile: String, conflictFile: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "\(originalFile) changed before your edit saved"
+        alert.informativeText =
+            "Something else (likely the morning run) rewrote \(originalFile) while you had an "
+            + "unsaved change. The on-disk version was kept; your change was saved separately "
+            + "as \(conflictFile) so nothing was lost."
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     private func startWatching() {

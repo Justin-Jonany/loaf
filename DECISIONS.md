@@ -4,6 +4,28 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-09 — Write-conflict guard: modal notice, wired at the checkbox-toggle write path (ticket X1)
+
+**Decided:** the X1 guard's "unsaved app change" is the in-flight write a checkbox toggle
+produces (read tasks.md/longterm.md → apply the toggle in memory → write it back), not a
+general editing buffer — DESIGN.md's non-goals rule out an in-panel authoring workflow, so
+there's no other place in the app where an "unsaved change" currently exists. The user notice
+for a caught conflict is a blocking `NSAlert`, not a background notification.
+
+**Why:** the toggle path is the only real read-then-write race the app has today, and it's
+exactly the shape ROADMAP's hazard describes (the morning run rewrites a shared file while the
+app has a pending write based on a now-stale read) — no synthetic "dirty" state was needed to
+exercise the rule for real. A modal alert was chosen over a notification because ticket D2
+("Decision notification + loud failure path") owns the app's real notification/signal surface
+and is still blocked on an open decision (where the signal lives); a write conflict is rare
+enough that a synchronous dialog at the moment it happens is preferable to inventing a second,
+throwaway notification path ahead of D2. If D2 lands a general notification mechanism first,
+X1's alert can be swapped for it without changing the guard logic itself — `ConflictDecision`
+and `ConflictGuard` (`FoolscapCore`) know nothing about how the caller informs the user.
+
+**Status:** shipped. Not a reversal of anything; extends the hazard already logged in
+ROADMAP.md → Hazards → "Write conflicts on shared files."
+
 ## 2026-09-09 — Completed tasks linger in the panel until the 6am rollover (ticket B6)
 
 **Decided:** A task you complete **today** stays visible in the panel — struck-through, sorted

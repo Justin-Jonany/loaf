@@ -176,7 +176,7 @@ Depends only on A's *format*, so it runs parallel to Epic B.
 
 ### Cross-cutting (Wave 2)
 
-- [ ] **X1 — Shared-file write-conflict guard** · 1 PR · depends: A4 · **must land before C runs
+- [x] **X1 — Shared-file write-conflict guard** · 1 PR · depends: A4 · **must land before C runs
       live** (that's when a run starts writing under the panel)
   - **Problem:** `tasks.md`/`longterm.md` are **shared** — you may edit one while the run
     rewrites it (Hazards → Write conflicts). Last-write-wins silently destroys one side.

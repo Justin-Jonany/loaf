@@ -635,6 +635,162 @@ do {
     failures.append("Dashboard vault compose threw: \(error)")
 }
 
+// MARK: - ConflictGuard (X1 — write-conflict guard)
+
+// The pure decision rule, all four combinations of the two facts it takes.
+expect(
+    ConflictDecision.decide(diskChangedSinceRead: false, bufferDirty: false), .writeThrough,
+    "clean disk + clean buffer writes through"
+)
+expect(
+    ConflictDecision.decide(diskChangedSinceRead: false, bufferDirty: true), .writeThrough,
+    "clean disk + dirty buffer still writes through — nothing on disk to conflict with"
+)
+expect(
+    ConflictDecision.decide(diskChangedSinceRead: true, bufferDirty: false), .reloadClean,
+    "disk-changed + clean-buffer is a plain reload"
+)
+expect(
+    ConflictDecision.decide(diskChangedSinceRead: true, bufferDirty: true), .conflictKeepDiskSaveCopy,
+    "disk-changed + dirty-buffer decides to conflict rather than clobber"
+)
+
+// Conflict-copy naming: `<name>.conflict-<UTC timestamp>.<ext>`, next to the original.
+var conflictStampComponents = DateComponents()
+conflictStampComponents.year = 2026
+conflictStampComponents.month = 8
+conflictStampComponents.day = 20
+conflictStampComponents.hour = 7
+conflictStampComponents.minute = 58
+conflictStampComponents.second = 3
+var utcCalendar = Calendar(identifier: .gregorian)
+utcCalendar.timeZone = TimeZone(identifier: "UTC")!
+let conflictTimestamp = utcCalendar.date(from: conflictStampComponents)!
+let conflictURL = ConflictCopy.url(for: URL(fileURLWithPath: "/vault/tasks.md"), timestamp: conflictTimestamp)
+expect(
+    conflictURL.lastPathComponent, "tasks.conflict-20260820-075803.md",
+    "conflict copy filename embeds the original name, a sortable UTC timestamp, and the extension"
+)
+expect(
+    conflictURL.deletingLastPathComponent().path, "/vault",
+    "conflict copy sits in the same directory as the original, not a subfolder"
+)
+
+// Self-write suppression: our own write since the read snapshot is not an external change.
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+    let path = dir.appendingPathComponent("tasks.md")
+
+    try vault.writeAtomically("- [ ] one\n      @today · manual", to: path)
+    let readSnapshot = FileSnapshot.current(at: path)!
+
+    // A second write we make ourselves (e.g. another toggle) before the check — still
+    // recorded in the self-write registry.
+    try vault.writeAtomically("- [ ] one\n      @today · manual · ✓2026-08-20", to: path)
+    expect(
+        ConflictGuard.hasExternalChange(at: path, since: readSnapshot, vault: vault), false,
+        "a self-write is not treated as an external change"
+    )
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("ConflictGuard self-write threw: \(error)")
+}
+
+// A genuine external edit (bypassing Vault, so it never lands in the self-write registry)
+// since the read snapshot is detected.
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+    let path = dir.appendingPathComponent("tasks.md")
+
+    try vault.writeAtomically("- [ ] one\n      @today · manual", to: path)
+    let readSnapshot = FileSnapshot.current(at: path)!
+
+    try "- [ ] a concurrent external edit\n      @today · manual".write(to: path, atomically: true, encoding: .utf8)
+    expect(
+        ConflictGuard.hasExternalChange(at: path, since: readSnapshot, vault: vault), true,
+        "a genuine external edit since the read snapshot is detected"
+    )
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("ConflictGuard external-change threw: \(error)")
+}
+
+// Real temp-dir round trip: disk-changed + dirty-buffer keeps the on-disk version and
+// writes an actual `.conflict-<timestamp>.md` sidecar carrying the app's unsaved change.
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+    let path = dir.appendingPathComponent("tasks.md")
+
+    let original = "- [ ] Email the landlord\n      @today · manual"
+    try vault.writeAtomically(original, to: path)
+    let readSnapshot = FileSnapshot.current(at: path)!
+
+    // The morning run rewrites the file concurrently...
+    let externalRewrite = original + "\n- [ ] Added by the morning run\n      @2026-08-21 · calendar"
+    try externalRewrite.write(to: path, atomically: true, encoding: .utf8)
+    // ...while the app has an in-flight toggle based on the version it originally read.
+    let dirtyBuffer = TaskBlock.toggling(
+        original.components(separatedBy: "\n"), at: 0, checked: true, today: date("2026-08-20")
+    )!.joined(separator: "\n")
+
+    let diskChanged = ConflictGuard.hasExternalChange(at: path, since: readSnapshot, vault: vault)
+    expect(diskChanged, true, "the concurrent external rewrite is detected")
+
+    let decision = ConflictDecision.decide(diskChangedSinceRead: diskChanged, bufferDirty: true)
+    expect(decision, .conflictKeepDiskSaveCopy, "disk-changed + dirty-buffer decides to conflict")
+
+    if decision == .conflictKeepDiskSaveCopy {
+        try vault.writeAtomically(dirtyBuffer, to: ConflictCopy.url(for: path, timestamp: Date()))
+    }
+
+    expect(try vault.read(path), externalRewrite, "the on-disk version is kept, never clobbered")
+    let conflictFiles = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+        .filter { $0.hasPrefix("tasks.conflict-") && $0.hasSuffix(".md") }
+    expect(conflictFiles.count, 1, "exactly one .conflict-<timestamp>.md sidecar is written")
+    if let name = conflictFiles.first {
+        expect(
+            try vault.read(dir.appendingPathComponent(name)), dirtyBuffer,
+            "the app's unsaved change is preserved in the conflict copy"
+        )
+    }
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("Conflict round-trip threw: \(error)")
+}
+
+// Real temp-dir round trip: disk-changed + clean-buffer is a plain reload — no conflict
+// file, and the external rewrite is left exactly as-is.
+do {
+    let dir = tempVaultDir()
+    let vault = Vault(root: dir)
+    let path = dir.appendingPathComponent("tasks.md")
+
+    let original = "- [ ] Email the landlord\n      @today · manual"
+    try vault.writeAtomically(original, to: path)
+    let readSnapshot = FileSnapshot.current(at: path)!
+
+    let externalRewrite = original + "\n- [ ] Added by the morning run\n      @2026-08-21 · calendar"
+    try externalRewrite.write(to: path, atomically: true, encoding: .utf8)
+
+    let diskChanged = ConflictGuard.hasExternalChange(at: path, since: readSnapshot, vault: vault)
+    let decision = ConflictDecision.decide(diskChangedSinceRead: diskChanged, bufferDirty: false)
+    expect(decision, .reloadClean, "disk-changed + clean-buffer decides to reload, not conflict")
+
+    let entries = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+    expect(entries.contains { $0.contains(".conflict-") }, false, "a clean reload writes no conflict file")
+    expect(try vault.read(path), externalRewrite, "disk keeps the external rewrite untouched")
+
+    try? FileManager.default.removeItem(at: dir)
+} catch {
+    failures.append("Conflict clean-reload threw: \(error)")
+}
+
 // MARK: - DashboardTaskRenderer (B4 — tidy task rendering)
 
 // Display ≠ storage (DESIGN.md → Tasks): the rendered fragment must carry none of the
