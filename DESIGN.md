@@ -43,14 +43,11 @@ The viewer stitches a fixed set of files into one scrolling dashboard with four 
 is *not* a folder browser: it reads three known files, nothing else.
 
 1. **Brief** — 2–5 sentences of prose Claude writes: what you got done yesterday and across
-   the week, and what's slipping. It's where *past* days' finished work is recapped; a task you
-   finish **today** also lingers struck-through in its own section (below) until the 6am
-   rollover, after which only the brief remembers it. Also carries the freshness stamp
-   ("built 7:58am").
+   the week, and what's slipping. This is the *only* place finished work shows up, since done
+   tasks drop out of the lists below. Also carries the freshness stamp ("built 7:58am").
 2. **Today** — every unchecked task with `@due` at or before today. That is spillover +
    due-tonight, computed automatically from due dates — nothing is stored as a literal "today
-   list." Plus anything you or Claude explicitly add for today. A task you complete today stays
-   here struck-through, sorted below the open items, until the 6am rollover drops it.
+   list." Plus anything you or Claude explicitly add for today.
 3. **This week** — unchecked tasks due within the week that aren't already shown in Today.
    (Each task renders in exactly one section — most-urgent bucket wins. That's the dedup.)
 4. **Long-term** — target-dated goals. Shared: you and Claude both add and edit here.
