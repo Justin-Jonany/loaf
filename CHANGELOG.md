@@ -58,11 +58,28 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `.accessory` to `.regular` (and `LSUIElement` removed from `Info.plist`) so it shows in the
   Dock and Cmd+Tab. See DECISIONS.md for why the desktop-widget model this replaces was tried
   and reverted without merging to `main`.
+- `DashboardTaskRenderer` (`FoolscapCore`): tidies each dashboard task row into the plain
+  sentence + a due-date chip + a faint `#type` tag + a priority dot + a source icon — no raw
+  `@`/`#`/`!` tokens reach the DOM (DESIGN.md → Tasks: "Display ≠ storage"). `DashboardRenderer`
+  now wraps this fragment instead of joining the raw metadata tokens into a `.meta` span.
+  `frosted.css` gains `.type`/`.priority-dot`/`.source-icon` rules; the now-unused `.meta` rule
+  is removed. Self-test suite grown to 187 checks.
 - `CalendarDate.effectiveToday(in:now:rolloverHour:)`: the dashboard's "today" now rolls
   over at 6am local, not midnight, computed in the local calendar (never off a UTC clock).
   The app recomputes the dashboard on `NSWorkspace.didWakeNotification` and
   `NSCalendarDayChangedNotification` instead of `.today()` on every plain render — never a
   timer/poll. Self-test suite grown to 186 checks (rollover math, including the
   spring-forward and fall-back DST boundaries).
+- `FoolscapCore`: `ConflictDecision`/`ConflictGuard`/`ConflictCopy` (X1 — shared-file
+  write-conflict guard). If `tasks.md`/`longterm.md` changed on disk since the app read
+  them (e.g. the morning run rewrote one) and the app has an unsaved change, the on-disk
+  version is kept and the app's version is saved to `<name>.conflict-<timestamp>.md`
+  instead of clobbering it; a disk change with no unsaved app change is a plain reload,
+  no conflict file. Preserves `Vault`'s self-write suppression — a self-write is never
+  mistaken for the concurrent external edit the guard exists to catch. Wired into the
+  checkbox toggle write path in `Sources/Foolscap`, which now also shows a modal notice
+  when a conflict is saved aside. `foolscap --demo-conflict-guard <dir>` is a non-GUI
+  proof entry point (mirrors `--dump-dashboard`) that seeds a vault, simulates the race,
+  and leaves the resulting BEFORE/AFTER files on disk.
 
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.
