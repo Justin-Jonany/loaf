@@ -573,8 +573,8 @@ let dueSoonDash = DashboardComposer.compose(
 expect(dueSoonDash.thisWeek.count, 1, "task due in 3 days lands in This week")
 expect(dueSoonDash.today.count, 0, "task due in 3 days is not also in Today")
 
-// A checked/done task never shows in either bucket — Brief is the only place done work
-// shows (DESIGN.md → The panel).
+// A checked/done task completed on a *different* day than `today` doesn't show — only
+// a completion matching `today` lingers (ROADMAP B6; see the dedicated section below).
 let doneTasks = "- [x] Already finished\n      @2026-08-11 · manual · ✓2026-08-11"
 let doneDash = DashboardComposer.compose(
     brief: "", tasksMarkdown: doneTasks, longtermMarkdown: "", today: dashToday
@@ -820,6 +820,101 @@ expect(
     "<span class=\"label\">Email the landlord</span><span class=\"due\">2026-08-12</span>"
         + "<span class=\"source-icon manual\" title=\"manual\">✎</span>",
     "a due-only task renders cleanly with no stray markup for the absent fields"
+)
+
+// MARK: - Dashboard (B6 — completed-today tasks linger until the 6am rollover)
+
+// A task completed *today* keeps its due-based section instead of vanishing the
+// instant you tick it (DESIGN.md → "The panel"; DECISIONS.md 2026-09-09), rendered
+// struck-through and sorted below the open items. Listed done-before-open in the raw
+// markdown so a passing order check proves an actual sort, not a lucky parse order.
+let lingeringTasks = """
+- [x] Completed today
+      @2026-08-12 · manual · ✓2026-08-12
+- [ ] Open task, due today
+      @2026-08-12 · manual
+"""
+let lingeringDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: lingeringTasks, longtermMarkdown: "", today: dashToday
+)
+expect(lingeringDash.today.count, 2, "the completed-today task stays in Today alongside the open one")
+expect(
+    lingeringDash.today.map(\.block.text), ["Open task, due today", "Completed today"],
+    "open items sort above the completed-today item"
+)
+expect(lingeringDash.today.last?.block.isDone, true, "the lingering task is still marked done")
+let lingeringLabel = DashboardTaskRenderer.render(lingeringDash.today.last!.block)
+expect(lingeringLabel.contains("class=\"label done\""), true, "a completed-today row renders struck-through (the done label class)")
+let openLabel = DashboardTaskRenderer.render(lingeringDash.today.first!.block)
+expect(openLabel.contains("done"), false, "an open row carries no done class")
+
+// Completed *yesterday* does not linger — only a completion matching `today` qualifies.
+let yesterdayDoneTasks = "- [x] Completed yesterday\n      @2026-08-11 · manual · ✓2026-08-11"
+let yesterdayDoneDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: yesterdayDoneTasks, longtermMarkdown: "", today: dashToday
+)
+expect(yesterdayDoneDash.today.count, 0, "a task completed yesterday does not show")
+
+// An undated `[x]` (hand-edited, no ✓done stamp) can't be tied to "today," so it never shows.
+let undatedDoneTasks = "- [x] Hand-ticked, no stamp\n      @2026-08-12 · manual"
+let undatedDoneDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: undatedDoneTasks, longtermMarkdown: "", today: dashToday
+)
+expect(undatedDoneDash.today.count, 0, "an undated completed task does not show")
+
+// Un-ticking a lingering completion returns it to a normal open row.
+let reopenedLines = TaskBlock.toggling(
+    "- [x] Completed today\n      @2026-08-12 · manual · ✓2026-08-12".components(separatedBy: "\n"),
+    at: 0, checked: false, today: dashToday
+)!.joined(separator: "\n")
+let reopenedDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: reopenedLines, longtermMarkdown: "", today: dashToday
+)
+expect(reopenedDash.today.count, 1, "un-ticking keeps the task visible")
+expect(reopenedDash.today.first?.block.isDone, false, "un-ticking returns it to an open row")
+
+// Long-term included: a completed-today goal in longterm.md also lingers, sorted below
+// the open ones — again listed done-first in the raw markdown to prove the sort.
+let lingeringLongterm = """
+- [x] Ship v1
+      @2026-08-12 · manual · ✓2026-08-12
+- [ ] Ship v2
+      @2027-01-01 · manual
+"""
+let lingeringLongtermDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: "", longtermMarkdown: lingeringLongterm, today: dashToday
+)
+expect(lingeringLongtermDash.longTerm.count, 2, "Long-term also shows a completed-today goal")
+expect(lingeringLongtermDash.longTerm.first?.block.text, "Ship v2", "the open goal sorts first")
+expect(lingeringLongtermDash.longTerm.last?.block.text, "Ship v1", "the completed-today goal sorts below it")
+
+// Across the 6am rollover: a task completed "today" drops once `effectiveToday` advances
+// to the next day — no timer, no cleanup pass, since bucketing uses the same
+// rollover-aware "today" B5 introduced.
+let beforeRollover = CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 8, 12, 23, 59, timeZone: newYork))
+let afterRollover = CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 8, 13, 6, 0, timeZone: newYork))
+let rolloverTask = "- [x] Ticked late last night\n      @2026-08-12 · manual · ✓\(beforeRollover)"
+expect(
+    DashboardComposer.compose(brief: "", tasksMarkdown: rolloverTask, longtermMarkdown: "", today: beforeRollover).today.count,
+    1, "still lingers before the 6am rollover"
+)
+expect(
+    DashboardComposer.compose(brief: "", tasksMarkdown: rolloverTask, longtermMarkdown: "", today: afterRollover).today.count,
+    0, "drops once effectiveToday advances past the rollover"
+)
+
+// Correct across a DST boundary: a task completed the day DST begins still lingers when
+// `effectiveToday` is that same day, and drops the day after.
+let beforeDST = CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 3, 7, 12, 0, timeZone: newYork))
+let afterDST = CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 3, 8, 12, 0, timeZone: newYork))
+let dstTask = "- [x] Done just before DST\n      @\(beforeDST) · manual · ✓\(beforeDST)"
+expect(
+    DashboardComposer.compose(brief: "", tasksMarkdown: dstTask, longtermMarkdown: "", today: beforeDST).today.count,
+    1, "lingers on the day it was completed, DST boundary notwithstanding"
+)
+expect(
+    DashboardComposer.compose(brief: "", tasksMarkdown: dstTask, longtermMarkdown: "", today: afterDST).today.count,
+    0, "drops the day after, across the DST boundary"
 )
 
 // MARK: - Report

@@ -10,7 +10,11 @@ import Foundation
 /// already uses for the single-note task view.
 public enum DashboardTaskRenderer {
     public static func render(_ block: TaskBlock) -> String {
-        var html = "<span class=\"label\">\(escape(block.text))</span>"
+        // A completed-today task lingers in its bucket rather than vanishing (ROADMAP
+        // B6) — the `done` class is what the frosted theme hooks the struck-through/
+        // dimmed treatment on.
+        let doneClass = block.isDone ? " done" : ""
+        var html = "<span class=\"label\(doneClass)\">\(escape(block.text))</span>"
 
         if let due = block.due {
             html += "<span class=\"due\">\(escape(due.description))</span>"

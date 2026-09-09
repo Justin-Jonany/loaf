@@ -45,7 +45,7 @@ cleanup pass. An undated hand-edited `[x]` does not show (can't be dated to "tod
 done tasks drop out of the lists below." The brief still owns the *cross-day* recap; the panel
 now also shows *today's* completions until rollover.
 
-**Status:** designed (ticket B6, depends B1 ✅ / B4 / B5); not yet built.
+**Status:** shipped (ticket B6).
 
 ## 2026-08-23 — Morning routine signal: sidecar file `.routine-signal.md` (settled)
 
