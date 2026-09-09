@@ -58,5 +58,11 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `.accessory` to `.regular` (and `LSUIElement` removed from `Info.plist`) so it shows in the
   Dock and Cmd+Tab. See DECISIONS.md for why the desktop-widget model this replaces was tried
   and reverted without merging to `main`.
+- `CalendarDate.effectiveToday(in:now:rolloverHour:)`: the dashboard's "today" now rolls
+  over at 6am local, not midnight, computed in the local calendar (never off a UTC clock).
+  The app recomputes the dashboard on `NSWorkspace.didWakeNotification` and
+  `NSCalendarDayChangedNotification` instead of `.today()` on every plain render — never a
+  timer/poll. Self-test suite grown to 186 checks (rollover math, including the
+  spring-forward and fall-back DST boundaries).
 
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.
