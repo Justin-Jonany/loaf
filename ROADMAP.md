@@ -116,7 +116,7 @@ Viewer UI. Depends on Epic A.
   - **Verify:** *rendering* — screenshot with all four sections populated · plus green bucketing
     tests.
 
-- [ ] **B4 — Tidy task rendering** · 1 PR · depends: B1 · blocks: X2
+- [x] **B4 — Tidy task rendering** · 1 PR · depends: B1 · blocks: X2
   - **Problem:** Raw `@`/`#`/`!` tokens must not show in the panel — display ≠ storage
     (DESIGN.md → Tasks).
   - **Solution:** Render each task as the sentence + a small date chip, a faint `#type` tag, a
