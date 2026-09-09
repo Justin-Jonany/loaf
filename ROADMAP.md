@@ -116,7 +116,7 @@ Viewer UI. Depends on Epic A.
   - **Verify:** *rendering* — screenshot with all four sections populated · plus green bucketing
     tests.
 
-- [ ] **B4 — Tidy task rendering** · 1 PR · depends: B1 · blocks: X2
+- [x] **B4 — Tidy task rendering** · 1 PR · depends: B1 · blocks: X2
   - **Problem:** Raw `@`/`#`/`!` tokens must not show in the panel — display ≠ storage
     (DESIGN.md → Tasks).
   - **Solution:** Render each task as the sentence + a small date chip, a faint `#type` tag, a
@@ -125,7 +125,7 @@ Viewer UI. Depends on Epic A.
     renders cleanly.
   - **Verify:** *rendering* — before/after of one task, raw markdown vs. the chip/icon render.
 
-- [ ] **B5 — Recompute + 6am rollover** · 1 PR · depends: B1 · blocks: —
+- [x] **B5 — Recompute + 6am rollover** · 1 PR · depends: B1 · blocks: —
   - **Problem:** Buckets must recompute on day change, and "today" rolls over at **6am**, not
     midnight (DESIGN.md → daily loop). Off a UTC clock or a timer is the classic bug (Hazards →
     Timezone/DST).
@@ -205,7 +205,8 @@ App-side. Needs the dashboard (B) and the run's signals (C).
   - **Verify:** *rendering* — screenshot of Brief showing the stamp.
 
 - [ ] **D2 — Decision notification + loud failure path** · 1 PR (D2+D3) · depends: C1 +
-      the signal-location decision · **blocked until** that Open Decision is settled
+      the signal-location decision (*settled 2026-09-09: sidecar `.routine-signal.md`* — see
+      DECISIONS.md), so **no longer blocked**
   - **Problem:** The app must nudge (a) when today needs a decision and (b) when a run failed,
     while staying silent on a clear day. Both consume the same signal, so where it lives (marker
     line in `brief.md` vs. sidecar file) must be decided first.
@@ -360,5 +361,6 @@ Written down so it stays decided:
 - [ ] **Name.** `foolscap` is a placeholder; it appears in `Info.plist`, `Package.swift`,
       `build.sh`, and the config path.
 - [ ] **Gatekeeper** — document the workaround, or pay to notarize.
-- [ ] **Where the run's "needs a decision" / failure signal lives** — a marker line in
-      `brief.md`, or a small sidecar file the app watches. **Blocks ticket D2.**
+- [x] **Where the run's "needs a decision" / failure signal lives** — *settled 2026-09-09:*
+      a sidecar dotfile `.routine-signal.md` at the vault root (the one C1 already ships), not a
+      marker line in `brief.md`. See [DECISIONS.md](DECISIONS.md). **Unblocks ticket D2.**

@@ -46,6 +46,79 @@ expect(date("2026-01-31").adding(months: 1).description, "2026-02-28", "clamps t
 expect(date("2026-08-09") < date("2026-08-10"), true, "orders within a month")
 expect(date("2025-12-31") < date("2026-01-01"), true, "orders across a year")
 
+// MARK: - CalendarDate.effectiveToday (B5 — 6am rollover)
+
+// Builds the `Date` a wall clock in `timeZone` would show at `year-month-day hour:minute`.
+func localDate(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int, timeZone: TimeZone) -> Date {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let components = DateComponents(year: year, month: month, day: day, hour: hour, minute: minute)
+    return calendar.date(from: components)!
+}
+
+let newYork = TimeZone(identifier: "America/New_York")!
+let losAngeles = TimeZone(identifier: "America/Los_Angeles")!
+
+expect(
+    CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 8, 12, 5, 59, timeZone: newYork)).description,
+    "2026-08-11",
+    "05:59 local is still the previous effective day"
+)
+expect(
+    CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 8, 12, 6, 0, timeZone: newYork)).description,
+    "2026-08-12",
+    "06:00 local rolls the effective day forward"
+)
+expect(
+    CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 8, 12, 23, 59, timeZone: newYork)).description,
+    "2026-08-12",
+    "late evening stays within the day that already rolled over"
+)
+
+// US spring-forward: clocks jump from 2:00am straight to 3:00am on 2026-03-08
+// (America/New_York) — that calendar day is 23 hours long.
+expect(
+    CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 3, 8, 5, 59, timeZone: newYork)).description,
+    "2026-03-07",
+    "05:59 local on the spring-forward day is still the previous effective day"
+)
+expect(
+    CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 3, 8, 6, 0, timeZone: newYork)).description,
+    "2026-03-08",
+    "06:00 local rolls over on the spring-forward day itself"
+)
+
+// US fall-back: clocks repeat 1:00am-1:59am on 2026-11-01 (America/New_York) — that
+// calendar day is 25 hours long.
+expect(
+    CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 11, 1, 5, 59, timeZone: newYork)).description,
+    "2026-10-31",
+    "05:59 local on the fall-back day is still the previous effective day"
+)
+expect(
+    CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 11, 1, 6, 0, timeZone: newYork)).description,
+    "2026-11-01",
+    "06:00 local rolls over on the fall-back day itself"
+)
+
+// Computed in the LOCAL calendar, not off a UTC clock. Los Angeles is UTC-7 in June, so
+// 00:30 local is 07:30 UTC the same UTC date — a UTC-based implementation would read the
+// hour as 7 (past the rollover) instead of the true local hour 0 (before it), and would
+// wrongly advance the effective day a rollover early.
+expect(
+    CalendarDate.effectiveToday(in: losAngeles, now: localDate(2026, 6, 15, 0, 30, timeZone: losAngeles)).description,
+    "2026-06-14",
+    "uses the local hour (0, before rollover), not the UTC hour (7, past it)"
+)
+// The reverse case: 23:59 local is already 06:59 UTC on the *next* UTC date — a
+// UTC-based implementation would read the wrong (later) calendar day entirely, not just
+// the wrong hour.
+expect(
+    CalendarDate.effectiveToday(in: losAngeles, now: localDate(2026, 6, 15, 23, 59, timeZone: losAngeles)).description,
+    "2026-06-15",
+    "uses the local calendar day, not the UTC day that has already turned over"
+)
+
 // MARK: - Recurrence
 
 expect(Recurrence("week"), .weeks(1), "parses week")
@@ -717,6 +790,37 @@ do {
 } catch {
     failures.append("Conflict clean-reload threw: \(error)")
 }
+
+// MARK: - DashboardTaskRenderer (B4 — tidy task rendering)
+
+// Display ≠ storage (DESIGN.md → Tasks): the rendered fragment must carry none of the
+// raw @/#/! metadata tokens, however it dresses that data up as chips/tags/dots/icons.
+let tidyFull = DashboardTaskRenderer.render(fullBlock)
+expect(tidyFull.contains("@"), false, "no raw @ in a fully-tagged task's render")
+expect(tidyFull.contains("#"), false, "no raw # in a fully-tagged task's render")
+expect(tidyFull.contains("!"), false, "no raw ! in a fully-tagged task's render")
+expect(
+    tidyFull,
+    "<span class=\"label\">Prep the client deck</span><span class=\"due\">2026-08-20</span>"
+        + "<span class=\"type\">schoolwork</span><span class=\"priority-dot high\" title=\"high priority\"></span>"
+        + "<span class=\"source-icon calendar\" title=\"calendar\">📅</span>",
+    "a fully-tagged task renders as sentence + due chip + type tag + priority dot + source icon"
+)
+
+// A task with only @due (no priority/type/note) renders cleanly: the sentence, its due
+// chip, and the always-present source icon — no stray markup for the absent fields.
+let tidyBare = DashboardTaskRenderer.render(bare)
+expect(tidyBare.contains("@"), false, "no raw @ in a due-only task's render")
+expect(tidyBare.contains("#"), false, "no raw # in a due-only task's render")
+expect(tidyBare.contains("!"), false, "no raw ! in a due-only task's render")
+expect(tidyBare.contains("type"), false, "no type tag when #type is absent")
+expect(tidyBare.contains("priority-dot"), false, "no priority dot when !priority is absent")
+expect(
+    tidyBare,
+    "<span class=\"label\">Email the landlord</span><span class=\"due\">2026-08-12</span>"
+        + "<span class=\"source-icon manual\" title=\"manual\">✎</span>",
+    "a due-only task renders cleanly with no stray markup for the absent fields"
+)
 
 // MARK: - Report
 

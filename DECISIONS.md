@@ -47,26 +47,26 @@ now also shows *today's* completions until rollover.
 
 **Status:** designed (ticket B6, depends B1 ✅ / B4 / B5); not yet built.
 
-## 2026-08-23 — Morning routine signal: provisional sidecar file (ticket C1)
+## 2026-08-23 — Morning routine signal: sidecar file `.routine-signal.md` (settled)
 
-**Decided (provisionally):** the routine's "needs a decision" / "failed" signal is a small
-dotfile, `.routine-signal.md`, at the vault root — `status: needs-decision|failed`, `at:`
-(ISO 8601, same shape as the `brief.md` build stamp), `reason:`, and (for a decision)
-`questions:`. Absence of the file is the "clear day, nothing to see" state.
+**Decided:** the routine's "needs a decision" / "failed" signal is a small dotfile,
+`.routine-signal.md`, at the vault root — `status: needs-decision|failed`, `at:` (ISO 8601,
+same shape as the `brief.md` build stamp), `reason:`, and (for a decision) `questions:`.
+Absence of the file is the "clear day, nothing to see" state. **This is the final location**
+(updated 2026-09-09), not a marker line in `brief.md`.
 
 **Why this shape:** it fires `VaultWatcher`'s existing `.md`-extension filter with no watcher
 code changes (a dotfile is still `*.md`), while `Vault.notePaths()` already skips dotfiles, so
 it never shows up as a note in the panel. It also keeps `brief.md` pure human-readable prose
 rather than mixing in a machine-parsed control line.
 
-**This is NOT the final call.** ROADMAP.md's "Open decisions" explicitly leaves *where this
-signal lives* — this sidecar file vs. a marker line in `brief.md` — to ticket **D2**, which
-owns the app-side consumer. C1 needed something concrete and testable to ship against; the
-exact shape is deliberately isolated to one write path in `routines/morning-brief/` (see
-`SKILL.md` -> "The decision / failure signal") so D2 can change it without touching the
-routine's actual judgment logic.
+**Resolution (2026-09-09):** ROADMAP.md's "Open decisions" had left *where this signal lives*
+— this sidecar vs. a marker line in `brief.md` — pending ticket **D2**. Settled in favour of
+the sidecar C1 already ships: it needed no changes to the watcher and kept `brief.md` prose,
+and nothing in D2's design argued for moving it. This **unblocks D2** (the app-side consumer),
+which now reads `.routine-signal.md`.
 
-**Status:** shipped as C1's provisional default; final shape owned by D2.
+**Status:** settled — the sidecar is the signal location; D2 consumes it.
 
 ## 2026-08-18 — Product direction: Foolscap is a daily-briefing panel
 

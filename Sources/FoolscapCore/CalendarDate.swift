@@ -53,6 +53,33 @@ public struct CalendarDate: Hashable, Comparable, CustomStringConvertible, Senda
         return CalendarDate(unchecked: parts.year!, parts.month!, parts.day!)
     }
 
+    /// The "today" the dashboard buckets against (ROADMAP B5; DESIGN.md → "The daily
+    /// loop"): rollover happens at `rolloverHour` local time (6am _(default)_), not
+    /// midnight. Before the rollover hour, the effective day is still the previous
+    /// calendar day — spillover from yesterday hasn't rolled over into a fresh "today"
+    /// yet, even though the clock has already ticked past midnight.
+    ///
+    /// `now`/`timeZone` only ever answer "what local day and hour is it right now" — the
+    /// same direction `today(in:now:)` already uses safely (an *instant* read in the
+    /// local calendar). The one-day step back is then taken through `adding(days:)`,
+    /// which is pinned to UTC, so the subtraction itself can never be shifted by a DST
+    /// transition landing on the rollover.
+    ///
+    /// A stable API: callers pass a reference `Date` (real time on wake/day-change, a
+    /// fixed instant in tests) and get back a `CalendarDate`, never a `Date` — nothing
+    /// here round-trips a stored due date through an instant.
+    public static func effectiveToday(
+        in timeZone: TimeZone = .current,
+        now: Date = Date(),
+        rolloverHour: Int = 6
+    ) -> CalendarDate {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day, .hour], from: now)
+        let localToday = CalendarDate(unchecked: parts.year!, parts.month!, parts.day!)
+        return parts.hour! < rolloverHour ? localToday.adding(days: -1) : localToday
+    }
+
     public var description: String {
         String(format: "%04d-%02d-%02d", year, month, day)
     }
