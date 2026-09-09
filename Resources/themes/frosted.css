@@ -85,6 +85,16 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   flex-shrink: 0;
 }
 
+/* Completed-today rows (ROADMAP B6): the task stays in its @due-based section, sorted
+   below the open items, until the 6am rollover drops it. `.task.done .label` (above)
+   already strikes through and dims the sentence; this dims the chips alongside it so
+   the whole row reads as finished. */
+.dashboard .task.done { opacity: 0.6; }
+.dashboard .task.done .due,
+.dashboard .task.done .type,
+.dashboard .task.done .priority-dot,
+.dashboard .task.done .source-icon { opacity: 0.5; }
+
 img { max-width: 100%; border-radius: 5px; }
 pre { overflow-x: auto; font-size: 12px; }
 .mermaid { color: var(--ink-soft); }

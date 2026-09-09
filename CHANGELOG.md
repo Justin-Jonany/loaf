@@ -81,5 +81,18 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   when a conflict is saved aside. `foolscap --demo-conflict-guard <dir>` is a non-GUI
   proof entry point (mirrors `--dump-dashboard`) that seeds a vault, simulates the race,
   and leaves the resulting BEFORE/AFTER files on disk.
+- `DashboardComposer` (B6 — completed-today tasks linger until the 6am rollover): the
+  bucket filter widens from "unchecked" to "unchecked or (`isDone` and `done == today`)",
+  so ticking a box no longer drops the row instantly. A completed-today task keeps its
+  `@due`-based section (Today/This week/Long-term, Long-term included) and sorts to the
+  bottom, below the open items; an undated `[x]` (no `✓done` stamp) still never shows.
+  `today` is the same rollover-aware value the caller already buckets against
+  (`CalendarDate.effectiveToday`), so a completion drops on its own once "today" advances
+  — no timer, no cleanup pass. `DashboardTaskRenderer` marks a done task's label with a
+  `done` class (struck-through/dimmed); `DashboardRenderer` now also gives the row's `<li>`
+  a `done` class and renders its checkbox `checked`, mirroring `MarkdownRenderer`'s
+  existing convention for the single-note view. `frosted.css` gains a `.dashboard
+  .task.done` rule dimming the chips alongside the struck-through sentence. Self-test
+  suite grown to 228 checks.
 
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.

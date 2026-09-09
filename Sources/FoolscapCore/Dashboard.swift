@@ -77,9 +77,9 @@ public enum DashboardComposer {
         var weekBucket: [DashboardTask] = []
 
         for task in parseBlocks(tasksMarkdown, sourceFile: "tasks.md", today: today) {
-            // A task with no @due can't be placed in any bucket (DESIGN.md → The panel);
-            // a done task has already dropped out of the lists (it only shows in Brief).
-            guard !task.block.isDone, let due = task.block.due else { continue }
+            // A task with no @due can't be placed in any bucket (DESIGN.md → The panel).
+            // A task ticked today keeps its bucket too (ROADMAP B6) — see `isEligible`.
+            guard isEligible(task.block, today: today), let due = task.block.due else { continue }
 
             if due <= today {
                 // Spillover (overdue) + due-tonight both read as "Today."
@@ -92,9 +92,34 @@ public enum DashboardComposer {
         }
 
         let longTermBucket = parseBlocks(longtermMarkdown, sourceFile: "longterm.md", today: today)
-            .filter { !$0.block.isDone && $0.block.due != nil }
+            .filter { isEligible($0.block, today: today) && $0.block.due != nil }
 
-        return Dashboard(brief: brief, today: todayBucket, thisWeek: weekBucket, longTerm: longTermBucket)
+        return Dashboard(
+            brief: brief,
+            today: sortedOpenFirst(todayBucket),
+            thisWeek: sortedOpenFirst(weekBucket),
+            longTerm: sortedOpenFirst(longTermBucket)
+        )
+    }
+
+    /// Unchecked, or checked and completed **today** (ROADMAP B6). Ticking a box used to
+    /// drop the row the instant it was checked, because every bucket showed only
+    /// unchecked tasks — no "I did it" feedback, no in-panel trace of the day's progress.
+    /// A completed-today task now keeps its `@due`-based section until the 6am rollover
+    /// (DECISIONS.md 2026-09-09). `today` is always the same rollover-aware value the
+    /// caller buckets everything else against (`CalendarDate.effectiveToday`), so once it
+    /// advances, yesterday's completions stop matching `done == today` and fall off on
+    /// their own — no timer, no cleanup pass. A done task with no `✓done` stamp (a
+    /// hand-typed `- [x]`) can't be tied to any day, so it never qualifies.
+    private static func isEligible(_ block: TaskBlock, today: CalendarDate) -> Bool {
+        !block.isDone || block.done == today
+    }
+
+    /// Open items first, completed-today items below them (ROADMAP B6: "sorts to the
+    /// bottom of that section"). A stable sort, so ties on either side keep their parse
+    /// order.
+    private static func sortedOpenFirst(_ tasks: [DashboardTask]) -> [DashboardTask] {
+        tasks.sorted { !$0.block.isDone && $1.block.isDone }
     }
 
     /// Scans every checkbox block in `markdown`, tagging each with its 1-based source

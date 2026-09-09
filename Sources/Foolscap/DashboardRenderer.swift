@@ -49,10 +49,17 @@ enum DashboardRenderer {
 
     /// `data-file`/`data-line` carry enough for a later write-back path (A4) to find its
     /// way back to the source line; nothing wires them up to a click yet — see A4.
+    ///
+    /// A completed-today task (ROADMAP B6) still renders here — `DashboardComposer` now
+    /// keeps it in its bucket — so the row and its checkbox must show as done too,
+    /// mirroring `MarkdownRenderer`'s `.task.done` / `checked` convention for the
+    /// single-note view.
     private static func renderTask(_ task: DashboardTask) -> String {
         let tidy = DashboardTaskRenderer.render(task.block)
+        let doneClass = task.block.isDone ? " done" : ""
+        let checkedAttr = task.block.isDone ? " checked" : ""
         return """
-        <li class="task" data-file="\(escape(task.sourceFile))" data-line="\(task.line)"><input type="checkbox">\(tidy)</li>
+        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)"><input type="checkbox"\(checkedAttr)>\(tidy)</li>
 
         """
     }
