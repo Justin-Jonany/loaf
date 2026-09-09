@@ -122,3 +122,18 @@ pre { overflow-x: auto; font-size: 12px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* Increase Contrast: the default --rule is a low-opacity hairline, fine at full
+   vibrancy but close to invisible for a user who has asked macOS for more contrast.
+   Strengthen it everywhere it's used (section dividers) and add an explicit border
+   around the panel edge and each task row, rather than introducing a second colour. */
+@media (prefers-contrast: more) {
+  :root { --rule: rgba(27, 30, 36, 0.75); }
+  body { border: 1px solid var(--rule); box-sizing: border-box; }
+  .dashboard section { border-top-width: 1px; }
+  .dashboard .task { border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root { --rule: rgba(255, 255, 255, 0.75); }
+}

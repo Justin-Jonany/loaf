@@ -40,6 +40,22 @@ public enum DashboardTaskRenderer {
         }
     }
 
+    /// The accessible `<input type="checkbox">` for a task row (ROADMAP X2 — Accessibility
+    /// pass, Hazards → Accessibility). A plain `<input type="checkbox">` with no label gets
+    /// announced by VoiceOver as just "checkbox" with no indication of *which* task or
+    /// whether it's already ticked — hence explicit `role="checkbox"`, `aria-checked`
+    /// mirroring `isDone`, and `aria-label` carrying the task sentence as its accessible
+    /// name. Kept in `FoolscapCore` (rather than the app's `DashboardRenderer`, which wraps
+    /// this in the `<li>` that carries the write-back `data-file`/`data-line` attributes)
+    /// so `FoolscapSelftest` can assert the ARIA contract directly, the same split B4 set up
+    /// for the tidy label/chip rendering above.
+    public static func renderCheckbox(_ block: TaskBlock) -> String {
+        let checkedAttr = block.isDone ? " checked" : ""
+        let ariaChecked = block.isDone ? "true" : "false"
+        return "<input type=\"checkbox\" role=\"checkbox\" aria-checked=\"\(ariaChecked)\""
+            + " aria-label=\"\(escapeAttribute(block.text))\"\(checkedAttr)>"
+    }
+
     private static func escape(_ text: String) -> String {
         var result = ""
         result.reserveCapacity(text.count)
@@ -52,5 +68,9 @@ public enum DashboardTaskRenderer {
             }
         }
         return result
+    }
+
+    private static func escapeAttribute(_ text: String) -> String {
+        escape(text).replacingOccurrences(of: "\"", with: "&quot;")
     }
 }

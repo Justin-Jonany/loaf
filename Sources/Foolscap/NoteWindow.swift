@@ -7,6 +7,10 @@ import WebKit
 /// other Mac app.
 final class NoteWindow: NSWindow {
     let webView: WKWebView
+    /// Stored so `applyReduceTransparency` can hide/show it later (ROADMAP X2 —
+    /// Accessibility pass): the vibrant blur it provides is exactly what Reduce
+    /// Transparency asks us to turn off.
+    private let effectView: NSVisualEffectView
 
     init(contentRect: NSRect) {
         let configuration = WKWebViewConfiguration()
@@ -19,6 +23,13 @@ final class NoteWindow: NSWindow {
         // frosted.css's `background: transparent` shows the NSVisualEffectView behind it.
         webView.setValue(false, forKey: "drawsBackground")
 
+        let effectView = NSVisualEffectView(frame: contentRect)
+        effectView.blendingMode = .behindWindow
+        effectView.material = .sidebar
+        effectView.state = .active
+        effectView.autoresizingMask = [.width, .height]
+        self.effectView = effectView
+
         super.init(
             contentRect: contentRect,
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
@@ -28,12 +39,6 @@ final class NoteWindow: NSWindow {
 
         isOpaque = false
         backgroundColor = .clear
-
-        let effectView = NSVisualEffectView(frame: contentRect)
-        effectView.blendingMode = .behindWindow
-        effectView.material = .sidebar
-        effectView.state = .active
-        effectView.autoresizingMask = [.width, .height]
 
         webView.translatesAutoresizingMaskIntoConstraints = false
         effectView.addSubview(webView)
@@ -78,5 +83,20 @@ final class NoteWindow: NSWindow {
         """
         let script = WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         controller.addUserScript(script)
+    }
+
+    /// Reduce Transparency (ROADMAP X2 — Accessibility pass, Hazards → Accessibility):
+    /// forces the window to an opaque, non-vibrant appearance instead of the translucent
+    /// frosted look. Hides `effectView` (turning off its blur/vibrancy outright) and makes
+    /// the window itself opaque; `webView.drawsBackground` is switched back on so the page
+    /// paints its own background rather than staying transparent over nothing, which is
+    /// what lets `frosted.css`'s `prefers-reduced-transparency` fallback (`background:
+    /// Canvas`) actually show. Called once at launch and again whenever `AppDelegate`
+    /// observes `NSWorkspace.accessibilityDisplayOptionsDidChangeNotification` fire.
+    func applyReduceTransparency(_ reduce: Bool) {
+        effectView.isHidden = reduce
+        isOpaque = reduce
+        backgroundColor = reduce ? .windowBackgroundColor : .clear
+        webView.setValue(reduce, forKey: "drawsBackground")
     }
 }
