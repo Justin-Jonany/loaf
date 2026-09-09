@@ -4,6 +4,32 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-09 — A malformed `.routine-signal.md` is treated as a failure, not silence (ticket D2)
+
+**Decided:** `RoutineSignal.parse` distinguishes three outcomes, not two: `nil` for an
+absent/blank file (the clear-day state), a typed `.needsDecision`/`.failed` value for
+well-formed content, and a third `.malformed` status for content that's present but
+doesn't carry a recognized `status:` line. `SignalNudge.decide` folds `.malformed` into
+the same failure nudge as `status: failed` — a distinct, louder notification — rather than
+either dropping it silently (as if `nil`) or crashing/ignoring it.
+
+**Why:** the ticket's problem statement is explicit that the app must stay silent on a
+clear day *and* be loud on failure (DESIGN.md → Trust: "Failure is loud"); a signal file
+that exists but fails to parse (a half-written file from an interrupted run, a future
+schema change this parser doesn't know yet, ...) is closer in spirit to "the routine
+broke" than to "nothing to report." Silently swallowing it would recreate exactly the
+failure mode DESIGN.md calls out — a broken run looking like a clear day instead of
+nudging the user.
+
+**Also decided:** the failure nudge is made "louder" than the ordinary decision nudge via
+`UNNotificationInterruptionLevel.timeSensitive` (can pierce Focus filtering that would hold
+back a `.active` notification) plus `UNNotificationSound.defaultCritical`, not via the
+`critical-alerts` entitlement — Foolscap is an unsigned, direct-distribution app (ROADMAP.md
+→ Hazards → Distribution) that can't carry that entitlement, so `.defaultCritical` degrades
+gracefully to a louder default sound rather than a true critical alert.
+
+**Status:** shipped.
+
 ## 2026-09-09 — Write-conflict guard: modal notice, wired at the checkbox-toggle write path (ticket X1)
 
 **Decided:** the X1 guard's "unsaved app change" is the in-flight write a checkbox toggle

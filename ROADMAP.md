@@ -204,7 +204,7 @@ App-side. Needs the dashboard (B) and the run's signals (C).
     state, not a fake time.
   - **Verify:** *rendering* — screenshot of Brief showing the stamp.
 
-- [ ] **D2 — Decision notification + loud failure path** · 1 PR (D2+D3) · depends: C1 +
+- [x] **D2 — Decision notification + loud failure path** · 1 PR (D2+D3) · depends: C1 +
       the signal-location decision (*settled 2026-09-09: sidecar `.routine-signal.md`* — see
       DECISIONS.md), so **no longer blocked**
   - **Problem:** The app must nudge (a) when today needs a decision and (b) when a run failed,

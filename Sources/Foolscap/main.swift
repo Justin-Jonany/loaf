@@ -1,5 +1,6 @@
 import AppKit
 import WebKit
+import UserNotifications
 import FoolscapCore
 
 // The `--dump-dashboard <vault> <output.html>` entry point renders the composed
@@ -103,6 +104,74 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-conflict-guard")
     }
 }
 
+/// The vault-root sidecar the morning routine writes when today needs a decision or a run
+/// failed (ROADMAP.md → D2; DECISIONS.md 2026-08-23). A dotfile, so `VaultWatcher`'s `.md`
+/// filter still catches changes to it while `Vault.notePaths()` skips it as a note.
+let routineSignalFileName = ".routine-signal.md"
+
+let routineDecisionTitle = "Foolscap needs a decision"
+/// Distinct from the decision title — a broken/failed run must read as louder, not as an
+/// ordinary nudge (DESIGN.md → Trust: "Failure is loud").
+let routineFailureTitle = "⚠️ Foolscap run failed"
+
+/// The notification body for a decision nudge: the one-line reason, plus each question as
+/// its own bullet. The actual back-and-forth happens in a Claude Code chat, not the panel
+/// (DESIGN.md → "The daily loop") — this is just the nudge to go there.
+func routineDecisionBody(reason: String, questions: [String]) -> String {
+    guard !questions.isEmpty else { return reason }
+    return ([reason] + questions.map { "• \($0)" }).joined(separator: "\n")
+}
+
+/// The body of `--demo-signal`, factored out so it reads top-to-bottom as the demo script
+/// it is. Reads `.routine-signal.md` from `vaultPath` (if present at all) through the real
+/// `RoutineSignal.parse`/`SignalNudge.decide` logic from `FoolscapCore` and prints which
+/// nudge it would fire — title/body — without touching `UNUserNotificationCenter` or
+/// AppKit. This is D2's non-GUI proof path (mirrors `--demo-conflict-guard` above): the
+/// sandbox has no display to capture a real notification banner in.
+func runSignalDemo(vaultPath: String) throws {
+    let vault = Vault(root: URL(fileURLWithPath: vaultPath))
+    let signalURL = vault.root.appendingPathComponent(routineSignalFileName)
+    let text = (try? vault.read(signalURL)) ?? ""
+    let signal = RoutineSignal.parse(text)
+    let nudge = SignalNudge.decide(for: signal)
+
+    print("--- \(signalURL.path) ---")
+    print(text.isEmpty ? "(absent — no signal file)" : text)
+
+    print("\n--- PARSED ---")
+    if let signal {
+        print("status: \(signal.status.rawValue), reason: \"\(signal.reason)\", questions: \(signal.questions)")
+    } else {
+        print("nil — clear day")
+    }
+
+    print("\n--- NUDGE ---")
+    switch nudge {
+    case .none:
+        print("none — silent, no notification posted")
+    case .decision(let reason, let questions):
+        print("title: \(routineDecisionTitle)")
+        print("body:  \(routineDecisionBody(reason: reason, questions: questions))")
+    case .failure(let reason):
+        print("title: \(routineFailureTitle)")
+        print("body:  \(reason)")
+    }
+}
+
+// The `--demo-signal <vault>` entry point, D2's non-GUI proof path (mirrors
+// `--demo-conflict-guard` above) — must run before AppKit is touched below.
+if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-signal"),
+   CommandLine.arguments.count > flagIndex + 1 {
+    let demoVaultPath = CommandLine.arguments[flagIndex + 1]
+    do {
+        try runSignalDemo(vaultPath: demoVaultPath)
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("Foolscap: signal demo failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+}
+
 // Wires the vault + renderer into the window: load config, bootstrap the vault, compose
 // the dashboard from the three known files, render it, and repaint whenever one of them
 // changes on disk. The panel is a composed dashboard, not a folder browser (DESIGN.md →
@@ -140,7 +209,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         item.menu = buildMenu()
         self.statusItem = item
 
+        requestNotificationAuthorization()
         renderDashboard()
+        checkRoutineSignal()
         startWatching()
         startObservingDayChange()
     }
@@ -306,13 +377,93 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private func startWatching() {
         let watcher = VaultWatcher(vault: vault) { [weak self] changedPaths in
             guard let self else { return }
-            guard changedPaths.contains(where: { Self.dashboardFiles.contains($0.lastPathComponent) }) else { return }
+            let changedNames = Set(changedPaths.map { $0.lastPathComponent })
+
+            if changedNames.contains(routineSignalFileName) {
+                DispatchQueue.main.async {
+                    self.checkRoutineSignal()
+                }
+            }
+            guard changedNames.contains(where: { Self.dashboardFiles.contains($0) }) else { return }
             DispatchQueue.main.async {
                 self.renderDashboard()
             }
         }
         watcher.start()
         self.watcher = watcher
+    }
+
+    // MARK: - Decision / failure notification (ticket D2)
+
+    /// Asks macOS for permission to post user notifications. Fired once at launch; if the
+    /// user has already answered (or denied) this is a no-op beyond the one system call.
+    /// Silent about the outcome beyond logging — nothing downstream needs to branch on it:
+    /// a denied request just means `add(_:)` below quietly does nothing, same as any other
+    /// notification-disabled app.
+    private func requestNotificationAuthorization() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, error in
+            if let error {
+                NSLog("Foolscap: notification authorization request failed: \(error)")
+            }
+        }
+    }
+
+    /// Reads `.routine-signal.md` fresh from disk and posts the nudge it maps to (or
+    /// nothing, on a clear day) — called once at launch and again whenever the watcher
+    /// reports the signal file changed. All the actual decision logic
+    /// (`RoutineSignal.parse` / `SignalNudge.decide`) lives in `FoolscapCore`, pure and
+    /// unit-tested; this is just the AppKit-side wiring DESIGN.md's boundary keeps out of
+    /// `FoolscapCore`.
+    private func checkRoutineSignal() {
+        let signalURL = vault.root.appendingPathComponent(routineSignalFileName)
+        // An unreadable-but-present file (permissions, non-UTF8 content, ...) collapses to
+        // the same "" as a genuinely absent one; `RoutineSignal.parse("")` is `nil` either
+        // way, so both read as the clear-day state rather than a spurious failure nudge.
+        let text = (try? vault.read(signalURL)) ?? ""
+        postNudge(SignalNudge.decide(for: RoutineSignal.parse(text)))
+    }
+
+    private func postNudge(_ nudge: SignalNudge) {
+        switch nudge {
+        case .none:
+            break // Silent on a clear day (DESIGN.md → Trust) — no notification at all.
+        case .decision(let reason, let questions):
+            postNotification(
+                title: routineDecisionTitle,
+                body: routineDecisionBody(reason: reason, questions: questions),
+                interruptionLevel: .active,
+                sound: .default
+            )
+        case .failure(let reason):
+            // Distinct from the decision nudge, not just a different string: a
+            // time-sensitive interruption level (can pierce Focus filtering that would
+            // hold back an ordinary notification) plus the critical sound — DESIGN.md →
+            // Trust: "Failure is loud," so a failed/broken run must not read as an
+            // ordinary nudge, let alone stay silent like a clear day.
+            postNotification(
+                title: routineFailureTitle,
+                body: reason,
+                interruptionLevel: .timeSensitive,
+                sound: .defaultCritical
+            )
+        }
+    }
+
+    private func postNotification(
+        title: String, body: String, interruptionLevel: UNNotificationInterruptionLevel, sound: UNNotificationSound
+    ) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = sound
+        content.interruptionLevel = interruptionLevel
+
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                NSLog("Foolscap: couldn't post notification \"\(title)\": \(error)")
+            }
+        }
     }
 }
 
