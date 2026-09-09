@@ -6,8 +6,10 @@ import FoolscapCore
 /// FoolscapCore (ROADMAP B1) — this file is the app/renderer layer, plain Foundation, no
 /// AppKit.
 ///
-/// Raw `@`/`#`/`!` tokens still show in the rendered metadata line — tidying those into
-/// chips/icons is B4, not this ticket.
+/// Each task row's tidy content (sentence + due chip + type tag + priority dot + source
+/// icon, no raw `@`/`#`/`!` tokens — DESIGN.md → Tasks, ROADMAP B4) is rendered by
+/// `FoolscapCore.DashboardTaskRenderer`; this file only wraps that fragment in the `<li>`
+/// that carries the write-back `data-file`/`data-line` attributes and the checkbox.
 enum DashboardRenderer {
     static func renderBody(_ dashboard: Dashboard) -> String {
         var html = "<div class=\"dashboard\">\n"
@@ -48,22 +50,9 @@ enum DashboardRenderer {
     /// `data-file`/`data-line` carry enough for a later write-back path (A4) to find its
     /// way back to the source line; nothing wires them up to a click yet — see A4.
     private static func renderTask(_ task: DashboardTask) -> String {
-        let block = task.block
-        let label = escape(block.text)
-
-        var dueSpan = ""
-        if let due = block.due {
-            dueSpan = "<span class=\"due\">@\(escape(due.description))</span>"
-        }
-
-        var metaTokens: [String] = []
-        if let priority = block.priority { metaTokens.append("!\(priority.rawValue)") }
-        if let type = block.type { metaTokens.append("#\(type)") }
-        metaTokens.append(block.source.rawValue)
-        let metaSpan = "<span class=\"meta\">\(escape(metaTokens.joined(separator: " · ")))</span>"
-
+        let tidy = DashboardTaskRenderer.render(task.block)
         return """
-        <li class="task" data-file="\(escape(task.sourceFile))" data-line="\(task.line)"><input type="checkbox"><span class="label">\(label)</span>\(dueSpan)\(metaSpan)</li>
+        <li class="task" data-file="\(escape(task.sourceFile))" data-line="\(task.line)"><input type="checkbox">\(tidy)</li>
 
         """
     }

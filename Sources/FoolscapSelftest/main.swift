@@ -562,6 +562,37 @@ do {
     failures.append("Dashboard vault compose threw: \(error)")
 }
 
+// MARK: - DashboardTaskRenderer (B4 — tidy task rendering)
+
+// Display ≠ storage (DESIGN.md → Tasks): the rendered fragment must carry none of the
+// raw @/#/! metadata tokens, however it dresses that data up as chips/tags/dots/icons.
+let tidyFull = DashboardTaskRenderer.render(fullBlock)
+expect(tidyFull.contains("@"), false, "no raw @ in a fully-tagged task's render")
+expect(tidyFull.contains("#"), false, "no raw # in a fully-tagged task's render")
+expect(tidyFull.contains("!"), false, "no raw ! in a fully-tagged task's render")
+expect(
+    tidyFull,
+    "<span class=\"label\">Prep the client deck</span><span class=\"due\">2026-08-20</span>"
+        + "<span class=\"type\">schoolwork</span><span class=\"priority-dot high\" title=\"high priority\"></span>"
+        + "<span class=\"source-icon calendar\" title=\"calendar\">📅</span>",
+    "a fully-tagged task renders as sentence + due chip + type tag + priority dot + source icon"
+)
+
+// A task with only @due (no priority/type/note) renders cleanly: the sentence, its due
+// chip, and the always-present source icon — no stray markup for the absent fields.
+let tidyBare = DashboardTaskRenderer.render(bare)
+expect(tidyBare.contains("@"), false, "no raw @ in a due-only task's render")
+expect(tidyBare.contains("#"), false, "no raw # in a due-only task's render")
+expect(tidyBare.contains("!"), false, "no raw ! in a due-only task's render")
+expect(tidyBare.contains("type"), false, "no type tag when #type is absent")
+expect(tidyBare.contains("priority-dot"), false, "no priority dot when !priority is absent")
+expect(
+    tidyBare,
+    "<span class=\"label\">Email the landlord</span><span class=\"due\">2026-08-12</span>"
+        + "<span class=\"source-icon manual\" title=\"manual\">✎</span>",
+    "a due-only task renders cleanly with no stray markup for the absent fields"
+)
+
 // MARK: - Report
 
 if failures.isEmpty {

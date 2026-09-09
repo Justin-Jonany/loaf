@@ -58,5 +58,11 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `.accessory` to `.regular` (and `LSUIElement` removed from `Info.plist`) so it shows in the
   Dock and Cmd+Tab. See DECISIONS.md for why the desktop-widget model this replaces was tried
   and reverted without merging to `main`.
+- `DashboardTaskRenderer` (`FoolscapCore`): tidies each dashboard task row into the plain
+  sentence + a due-date chip + a faint `#type` tag + a priority dot + a source icon — no raw
+  `@`/`#`/`!` tokens reach the DOM (DESIGN.md → Tasks: "Display ≠ storage"). `DashboardRenderer`
+  now wraps this fragment instead of joining the raw metadata tokens into a `.meta` span.
+  `frosted.css` gains `.type`/`.priority-dot`/`.source-icon` rules; the now-unused `.meta` rule
+  is removed. Self-test suite grown to 187 checks.
 
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.
