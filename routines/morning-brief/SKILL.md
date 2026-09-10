@@ -117,10 +117,11 @@ Full contents, in order:
    a markdown parser, so don't reformat it, don't add anything else on that line, and
    don't put anything before it.
 
-2. A `# Brief` heading, then **2-5 sentences of prose**: what got done since yesterday
-   (per yesterday's brief and today's tasks that are now `✓done`... though ticking is the
-   user's job through the day, not yours), what's due today, what slipped. Plain prose,
-   no raw `@`/`#` tokens, no bullet list here.
+2. **2-5 sentences of prose, directly** — no heading of your own (the panel already draws
+   a "Brief" section title; a `# Brief` heading here would just stack a second one under
+   it): what got done since yesterday (per yesterday's brief and today's tasks that are
+   now `✓done`... though ticking is the user's job through the day, not yours), what's
+   due today, what slipped. Plain prose, no raw `@`/`#` tokens, no bullet list here.
 
 3. A `## What changed` section: a bullet per task you added, moved, or pruned this run.
    **Every calendar-derived addition must cite its source event by name** — this is the
@@ -133,7 +134,8 @@ Full contents, in order:
    ```
 
    If you changed nothing (a genuinely quiet run), say so plainly rather than omitting
-   the section: `- (nothing changed today)`.
+   the section — but as a single italic prose line, not a bullet (there's nothing to
+   itemize): `_Nothing changed today._`
 
 ## When today needs a decision
 

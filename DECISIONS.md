@@ -4,6 +4,37 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-10 — Panel UI polish: the panel owns section chrome, custom checkbox, human dates
+
+**Decided:** A pass of visual fixes to the composed dashboard, driven by dogfooding the real
+panel:
+
+- **The panel owns the section labels; the brief content must not repeat them.** The routine
+  was told (SKILL.md) to open `brief.md` with a `# Brief` heading, which the panel then rendered
+  *below* its own "Brief" section title — two "Brief" headings stacked. The routine no longer
+  writes that heading (brief.md is the stamp line + prose directly), and `DashboardRenderer`
+  additionally strips a redundant leading "Brief" heading defensively, so an existing brief that
+  still carries one renders cleanly. Same principle as Today/This-week/Long-term: those labels
+  live in the viewer, never in the files.
+- **Heading hierarchy.** Every heading rendered at one weight (15px/600), so an in-brief
+  sub-heading ("What changed") shouted as loud as a top-level section. Section titles stay
+  dominant; markdown headings *inside* the brief are demoted to a small muted sub-label.
+- **Custom checkbox.** The raw WebKit `<input type=checkbox>` (a bright, heavy square) clashed
+  with the translucent theme and sat misaligned above the task text. Restyled via
+  `appearance: none` to a subtle rounded control in the theme's muted palette — a visual set
+  with the `★` focus toggle (B7) — and aligned to the first text line. It stays a real `<input>`
+  so the X2 VoiceOver/ARIA contract is untouched.
+- **Human due dates.** The chip showed the raw ISO date (`2026-09-10`). It now reads
+  `Today` / `Tomorrow` / `Yesterday`, else `MMM d` (same year) or `MMM d, yyyy`, computed
+  against the panel's rollover-aware today; the exact ISO date remains as the chip's `title`
+  tooltip. (Advances the "locale-aware date display" good-first-issue in ROADMAP.)
+
+**Why:** these are the first things a real user notices, and none change the data model or the
+files on disk — they're display-layer only (CSS + the render path), consistent with DESIGN.md's
+"Display ≠ storage."
+
+**Status:** settled; implemented in one UI-polish PR.
+
 ## 2026-09-10 — "Today" is curated: a `★` focus flag pulls a task in, decoupled from `@due` (ticket B7)
 
 **Decided:** A task can be pulled into the **Today** section by *starring* it, independent of
