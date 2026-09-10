@@ -53,7 +53,9 @@ is *not* a folder browser: it reads three known files, nothing else.
    here struck-through, sorted below the open items, until the 6am rollover drops it.
 3. **This week** — unchecked tasks due within the week that aren't already shown in Today.
    (Each task renders in exactly one section — most-urgent bucket wins. That's the dedup.)
-4. **Long-term** — target-dated goals. Shared: you and Claude both add and edit here.
+4. **Long-term** — target-dated goals. Shared: you and Claude both add and edit here, but
+   only *interactively* — see "Files in the vault" for the write-access rule that keeps this
+   from becoming a dumping ground for far-dated calendar events.
 
 Everything is **driven by due dates** — which is why every task has one. A task with no due
 date couldn't be placed in any bucket.
@@ -92,7 +94,15 @@ sentence, a small date chip, a faint type tag, a priority dot, a source icon —
 - `brief.md` — the prose summary, regenerated each run. **Claude-owned.**
 - `tasks.md` — all dated tasks (Today + This-week buckets). Completed tasks stay here with
   `✓done` for ~7 days so the retrospective can read them, then Claude prunes. **Shared.**
-- `longterm.md` — target-dated goals. **Shared** (mostly you, but Claude can discuss and edit).
+- `longterm.md` — target-dated goals. **Shared**, but *interactively-shared only*: you edit
+  it directly, or an interactive Claude Code chat edits it because you asked it to. **The
+  unattended 6am morning-brief routine never writes to this file** — it's scoped to
+  `brief.md` + `tasks.md`. Long-term is for standing commitments/goals with a deadline
+  spanning more than a week (e.g. "take the driving test before 15oct"), not "any task
+  whose due date happens to be far away" — a far-dated calendar event stays in `tasks.md`
+  (it'll surface in This week once it's close) rather than auto-promoting to Long-term. This
+  is a write-access rule, not a classification heuristic: the routine that reads your
+  calendar is structurally barred from this file, so there's no judgment call to get wrong.
 
 Three tidy files. No `daily/YYYY-MM-DD.md` sprawl — the retrospective is prose, not an archive.
 
