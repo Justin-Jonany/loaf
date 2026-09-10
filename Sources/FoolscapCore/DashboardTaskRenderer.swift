@@ -56,6 +56,21 @@ public enum DashboardTaskRenderer {
             + " aria-label=\"\(escapeAttribute(block.text))\"\(checkedAttr)>"
     }
 
+    /// The per-row focus toggle (ROADMAP B7 — Curated Today: a `★` focus flag). A plain
+    /// `<button>` with `aria-pressed` mirroring `block.focus` and an `aria-label` naming
+    /// both the action and the task, same accessibility contract as `renderCheckbox`
+    /// above. Kept in `FoolscapCore` (rather than the app's `DashboardRenderer`, which
+    /// wraps this in the `<li>` that carries the write-back `data-file`/`data-line`
+    /// attributes) so `FoolscapSelftest` can assert the ARIA contract directly.
+    public static func renderFocusToggle(_ block: TaskBlock) -> String {
+        let pressed = block.focus ? "true" : "false"
+        let action = block.focus ? "Remove from Today" : "Add to Today"
+        let onClass = block.focus ? " on" : ""
+        return "<button type=\"button\" class=\"focus-toggle\(onClass)\" aria-pressed=\"\(pressed)\""
+            + " aria-label=\"\(escapeAttribute(action)): \(escapeAttribute(block.text))\""
+            + " title=\"\(escapeAttribute(action))\">★</button>"
+    }
+
     private static func escape(_ text: String) -> String {
         var result = ""
         result.reserveCapacity(text.count)

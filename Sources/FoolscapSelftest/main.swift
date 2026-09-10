@@ -302,6 +302,71 @@ let recurringBlock = "- [x] Water the plants\n      @2026-08-12 · manual · eve
 let recurringRendered = TaskBlock.parse(recurringBlock, today: date("2026-08-01"))!.rendered()
 expect(recurringRendered, recurringBlock, "recurring + done block round trips")
 
+// MARK: - TaskBlock (B7 — ★ focus flag)
+
+// A lone ★ token sets focus, independent of @due; its absence leaves focus false.
+let focusedBlock = TaskBlock.parse("- [ ] Ping the client\n      @fri · manual · ★", today: blockToday)!
+expect(focusedBlock.focus, true, "a ★ token in the metadata line sets focus")
+expect(focusedBlock.due?.description, "2026-08-14", "★ doesn't disturb the rest of the metadata parse")
+let unfocusedBlock = TaskBlock.parse("- [ ] Ping the client\n      @fri · manual", today: blockToday)!
+expect(unfocusedBlock.focus, false, "no ★ token means focus defaults to false")
+
+// rendered() places ★ after #type, before every:/✓done, and the block round-trips.
+let focusedFullBlock = TaskBlock.parse(
+    "- [x] Water the plants\n      @2026-08-12 · manual · #chores · ★ · every:week · ✓2026-08-05",
+    today: blockToday
+)!
+expect(focusedFullBlock.focus, true, "★ parses alongside every other field")
+let focusedFullRendered = focusedFullBlock.rendered()
+expect(
+    focusedFullRendered, "- [x] Water the plants\n      @2026-08-12 · manual · #chores · ★ · every:week · ✓2026-08-05",
+    "★ renders after #type and before every:/✓done"
+)
+expect(
+    TaskBlock.parse(focusedFullRendered, today: blockToday)!.focus, true,
+    "re-parsing a rendered focused block still reads focus == true"
+)
+
+// MARK: - TaskBlock.settingFocus (B7 — focus-flag write-back)
+
+let focusRef = date("2026-08-20")
+
+// Adding ★ to a block that lacked it, and removing it again, preserves every other field.
+let focusDoc = [
+    "- [ ] Prep the client deck",
+    "      @2026-08-20 · calendar · !high · #schoolwork",
+    "      Focus on the pricing slide — they pushed back last time.",
+]
+let starredLines = TaskBlock.settingFocus(focusDoc, at: 0, focus: true, today: focusRef)!
+expect(
+    starredLines[1], "      @2026-08-20 · calendar · !high · #schoolwork · ★",
+    "settingFocus(true) appends ★ after the existing metadata fields"
+)
+expect(starredLines[2], focusDoc[2], "the note line is untouched by starring")
+let unstarredLines = TaskBlock.settingFocus(starredLines, at: 0, focus: false, today: focusRef)!
+expect(
+    unstarredLines[1], "      @2026-08-20 · calendar · !high · #schoolwork",
+    "settingFocus(false) removes ★ again, restoring the original metadata line"
+)
+expect(unstarredLines[2], focusDoc[2], "the note line is still untouched by unstarring")
+
+// A stale click — the line no longer starts a checkbox — is dropped, not written.
+expectNil(
+    TaskBlock.settingFocus(["# Heading"], at: 0, focus: true, today: focusRef),
+    "settingFocus on a non-checkbox line returns nil"
+)
+
+// Ticking a focused task keeps its ★ — the two flags are independent.
+let focusedToggleDoc = [
+    "- [ ] Email the landlord",
+    "      @today · manual · ★",
+]
+let focusedTicked = TaskBlock.toggling(focusedToggleDoc, at: 0, checked: true, today: focusRef)!
+expect(
+    focusedTicked[1], "      @2026-08-20 · manual · ★ · ✓2026-08-20",
+    "ticking a focused task keeps its ★ alongside the new ✓done"
+)
+
 // MARK: - TaskBlock.toggling (checkbox write-back, A4)
 
 let toggleRef = date("2026-08-20")
@@ -635,6 +700,36 @@ do {
     failures.append("Dashboard vault compose threw: \(error)")
 }
 
+// MARK: - Dashboard (B7 — Curated Today: ★ pulls a task into Today)
+
+// A task due 3 days out normally lands in This week (see the B1 case above); starring it
+// pulls it into Today instead, and it's claimed by exactly one bucket, not both.
+let starredSoonTasks = "- [ ] Return library books\n      @2026-08-15 · manual · ★"
+let starredSoonDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: starredSoonTasks, longtermMarkdown: "", today: dashToday
+)
+expect(starredSoonDash.today.count, 1, "a starred task due in 3 days lands in Today")
+expect(starredSoonDash.thisWeek.count, 0, "a starred task is not also claimed by This week")
+
+// The same task, unstarred, reverts to its ordinary due-date bucket.
+let unstarredSoonDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: dueSoonTasks, longtermMarkdown: "", today: dashToday
+)
+expect(unstarredSoonDash.thisWeek.count, 1, "without ★ the same task lands in This week, not Today")
+expect(unstarredSoonDash.today.count, 0, "without ★ the same task doesn't land in Today")
+
+// A starred longterm.md item is pulled into Today too, not left in Long-term.
+let starredLongtermTasks = "- [ ] Ship v2\n      @2027-01-01 · manual · ★"
+let starredLongtermDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: "", longtermMarkdown: starredLongtermTasks, today: dashToday
+)
+expect(starredLongtermDash.today.count, 1, "a starred longterm.md item lands in Today")
+expect(starredLongtermDash.longTerm.count, 0, "a starred longterm.md item is not also claimed by Long-term")
+expect(
+    starredLongtermDash.today.first?.sourceFile, "longterm.md",
+    "the pulled-forward item still carries its longterm.md source file"
+)
+
 // MARK: - ConflictGuard (X1 — write-conflict guard)
 
 // The pure decision rule, all four combinations of the two facts it takes.
@@ -821,6 +916,17 @@ expect(
         + "<span class=\"source-icon manual\" title=\"manual\">✎</span>",
     "a due-only task renders cleanly with no stray markup for the absent fields"
 )
+
+// MARK: - DashboardTaskRenderer.renderFocusToggle (B7 — focus toggle)
+
+let focusToggleOn = DashboardTaskRenderer.renderFocusToggle(focusedBlock)
+expect(focusToggleOn.contains("aria-pressed=\"true\""), true, "a focused block's toggle reports aria-pressed=\"true\"")
+let focusToggleOff = DashboardTaskRenderer.renderFocusToggle(bare)
+expect(focusToggleOff.contains("aria-pressed=\"false\""), true, "an unfocused block's toggle reports aria-pressed=\"false\"")
+
+// The tidy render(...) chips never gain a raw ★ — the toggle above is the only star
+// element (Display ≠ storage, same as the @/#/! tokens above).
+expect(DashboardTaskRenderer.render(focusedBlock).contains("★"), false, "the tidy label/chip render carries no raw ★")
 
 // MARK: - RoutineSignal / SignalNudge (D2 — decision notification + loud failure path)
 

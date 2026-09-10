@@ -99,6 +99,41 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   flex-shrink: 0;
 }
 
+/* Focus toggle (ROADMAP B7 — Curated Today: a ★ focus flag). An unstyled <button> at the
+   row's trailing edge (it's simply the last child in the flex row); stays invisible until
+   the row is hovered or has focus-within so an untouched row isn't cluttered with a star
+   for every task, but a starred row (.on) always shows it, filled in the same accent used
+   for an overdue due-chip — the panel's one existing "this needs attention" color. */
+.dashboard .task .focus-toggle {
+  appearance: none;
+  border: none;
+  background: none;
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ink-soft);
+  opacity: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.1s ease, color 0.1s ease;
+}
+.dashboard .task:hover .focus-toggle,
+.dashboard .task:focus-within .focus-toggle {
+  opacity: 0.45;
+}
+.dashboard .task .focus-toggle:hover,
+.dashboard .task .focus-toggle:focus-visible {
+  opacity: 0.8;
+}
+.dashboard .task .focus-toggle.on {
+  opacity: 1;
+  color: var(--due-over);
+}
+.dashboard .task .focus-toggle.on:hover {
+  opacity: 0.8;
+}
+
 /* Completed-today rows (ROADMAP B6): the task stays in its @due-based section, sorted
    below the open items, until the 6am rollover drops it. `.task.done .label` (above)
    already strikes through and dims the sentence; this dims the chips alongside it so

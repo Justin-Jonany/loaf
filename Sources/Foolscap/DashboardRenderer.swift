@@ -71,9 +71,10 @@ enum DashboardRenderer {
     private static func renderTask(_ task: DashboardTask) -> String {
         let tidy = DashboardTaskRenderer.render(task.block)
         let checkbox = DashboardTaskRenderer.renderCheckbox(task.block)
+        let focusToggle = DashboardTaskRenderer.renderFocusToggle(task.block)
         let doneClass = task.block.isDone ? " done" : ""
         return """
-        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)</li>
+        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)\(focusToggle)</li>
 
         """
     }

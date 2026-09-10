@@ -59,14 +59,16 @@ final class NoteWindow: NSWindow {
         webView.loadHTMLString(html, baseURL: baseURL)
     }
 
-    /// Wires up checkbox write-back: registers `handler` under message name `toggleTask`
-    /// and injects the script that listens for checkbox clicks and posts to it. Keeping
-    /// the WKWebView plumbing here means the app target only ever sees
-    /// `{file, line, checked}` — the dashboard stitches several files, so the click carries
-    /// its `data-file` (which note) alongside `data-line` (where in it).
+    /// Wires up checkbox and focus-toggle write-back: registers `handler` under message
+    /// names `toggleTask` and `focusTask`, and injects the script that listens for
+    /// checkbox changes and focus-toggle clicks and posts to them. Keeping the WKWebView
+    /// plumbing here means the app target only ever sees `{file, line, checked}` /
+    /// `{file, line, focus}` — the dashboard stitches several files, so each message
+    /// carries its `data-file` (which note) alongside `data-line` (where in it).
     func installTaskToggleHandler(_ handler: WKScriptMessageHandler) {
         let controller = webView.configuration.userContentController
         controller.add(handler, name: "toggleTask")
+        controller.add(handler, name: "focusTask")
 
         let source = """
         document.addEventListener('change', function (event) {
@@ -78,6 +80,18 @@ final class NoteWindow: NSWindow {
                 file: row.dataset.file,
                 line: parseInt(row.dataset.line, 10),
                 checked: box.checked
+            });
+        });
+        document.addEventListener('click', function (event) {
+            var btn = event.target.closest && event.target.closest('.focus-toggle');
+            if (!btn) { return; }
+            var row = btn.closest('.task');
+            if (!row || !row.dataset.file || !row.dataset.line) { return; }
+            var nextFocus = btn.getAttribute('aria-pressed') !== 'true';
+            window.webkit.messageHandlers.focusTask.postMessage({
+                file: row.dataset.file,
+                line: parseInt(row.dataset.line, 10),
+                focus: nextFocus
             });
         });
         """

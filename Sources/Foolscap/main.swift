@@ -309,13 +309,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // MARK: - Checkbox write-back
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "toggleTask" else { return }
-        guard let body = message.body as? [String: Any],
-              let file = body["file"] as? String,
-              let line = (body["line"] as? NSNumber)?.intValue,
-              let checked = (body["checked"] as? NSNumber)?.boolValue
-        else { return }
-        toggleTask(file: file, atLine: line, checked: checked)
+        switch message.name {
+        case "toggleTask":
+            guard let body = message.body as? [String: Any],
+                  let file = body["file"] as? String,
+                  let line = (body["line"] as? NSNumber)?.intValue,
+                  let checked = (body["checked"] as? NSNumber)?.boolValue
+            else { return }
+            toggleTask(file: file, atLine: line, checked: checked)
+        case "focusTask":
+            guard let body = message.body as? [String: Any],
+                  let file = body["file"] as? String,
+                  let line = (body["line"] as? NSNumber)?.intValue,
+                  let focus = (body["focus"] as? NSNumber)?.boolValue
+            else { return }
+            setFocus(file: file, atLine: line, focus: focus)
+        default:
+            return
+        }
     }
 
     /// A4's write-back, adapted to the dashboard: the click carries `data-file` (one of the
@@ -338,6 +349,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
         guard line >= 1, line <= lines.count,
               let updatedLines = TaskBlock.toggling(lines, at: line - 1, checked: checked)
+        else {
+            renderDashboard()
+            return
+        }
+
+        saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot)
+        // Whether the write went through, got saved as a conflict copy, or (in principle)
+        // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.
+        renderDashboard()
+    }
+
+    /// B7's write-back for the per-row `★` focus toggle, mirroring `toggleTask` exactly:
+    /// re-reads the note fresh from disk, validates that `line` still starts a task block,
+    /// and either applies the flag or drops a stale click and re-renders. Writes through
+    /// `TaskBlock.settingFocus` (the metadata-below format — see DESIGN.md → Tasks), so `★`
+    /// lands on the metadata line and `@due` is left untouched either way.
+    private func setFocus(file: String, atLine line: Int, focus: Bool) {
+        guard Self.dashboardFiles.contains(file) else { return }
+        let noteURL = vault.root.appendingPathComponent(file)
+        guard let markdown = try? vault.read(noteURL) else { return }
+        // Snapshot the file as we found it — the version the toggle below is based on —
+        // so the X1 guard can tell whether the morning run (or anything else) rewrote it
+        // out from under this click before the write below lands.
+        guard let readSnapshot = FileSnapshot.current(at: noteURL) else { return }
+        let lines = markdown.components(separatedBy: "\n")
+
+        guard line >= 1, line <= lines.count,
+              let updatedLines = TaskBlock.settingFocus(lines, at: line - 1, focus: focus)
         else {
             renderDashboard()
             return

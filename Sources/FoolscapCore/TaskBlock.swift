@@ -25,6 +25,10 @@ public struct TaskBlock: Equatable, Sendable {
     public var source: Source
     public var priority: Priority?
     public var type: String?
+    /// The `★` token (DESIGN.md → Curated Today): pulls the task into the dashboard's
+    /// Today section regardless of `@due`, independent of it — starring never touches
+    /// `due`, and unstarring returns the task to its ordinary due-date bucket.
+    public var focus: Bool
     public var done: CalendarDate?
     public var every: Recurrence?
     public var note: String?
@@ -46,6 +50,7 @@ public struct TaskBlock: Equatable, Sendable {
         source: Source = .manual,
         priority: Priority? = nil,
         type: String? = nil,
+        focus: Bool = false,
         done: CalendarDate? = nil,
         every: Recurrence? = nil,
         note: String? = nil
@@ -58,6 +63,7 @@ public struct TaskBlock: Equatable, Sendable {
         self.source = source
         self.priority = priority
         self.type = type
+        self.focus = focus
         self.done = done
         self.every = every
         self.note = note
@@ -148,6 +154,8 @@ public struct TaskBlock: Equatable, Sendable {
                 block.priority = priority
             } else if token.hasPrefix("#") {
                 block.type = String(token.dropFirst())
+            } else if token == "★" {
+                block.focus = true
             } else if token.hasPrefix("every:"), let rule = Recurrence(String(token.dropFirst(6))) {
                 block.every = rule
             } else if let source = Source(rawValue: token.lowercased()) {
@@ -164,7 +172,7 @@ public struct TaskBlock: Equatable, Sendable {
 
     // MARK: - Rendering
 
-    /// Canonical form: `@due · source · !priority · #type · every:… · ✓done`, field
+    /// Canonical form: `@due · source · !priority · #type · ★ · every:… · ✓done`, field
     /// order fixed so repeated parse/render round-trips are stable (mirrors
     /// `TaskLine.rendered()`). Dates always render as ISO — natural-language
     /// normalisation on write (`@friday` → the ISO date) is Epic F, not this parser.
@@ -174,6 +182,7 @@ public struct TaskBlock: Equatable, Sendable {
         fields.append(source.rawValue)
         if let priority { fields.append("!\(priority.rawValue)") }
         if let type { fields.append("#\(type)") }
+        if focus { fields.append("★") }
         if let every { fields.append("every:\(every.rawValue)") }
         if let done { fields.append("✓\(done)") }
 
@@ -201,6 +210,22 @@ public struct TaskBlock: Equatable, Sendable {
         updated.isDone = checked
         updated.done = checked ? today : nil
 
+        var result = lines
+        result.replaceSubrange(index..<(index + consumed), with: updated.rendered().components(separatedBy: "\n"))
+        return result
+    }
+
+    /// Applies a focus-flag toggle to the block starting at `lines[index]` and returns the
+    /// document with that block's lines replaced by its re-rendered form — the `★` token
+    /// moves onto the metadata line, `@due` untouched either way. Returns `nil` when `index`
+    /// isn't a checkbox line, so a caller can tell a stale click (the file changed underneath
+    /// it) from a real toggle and drop it rather than write something corrupt.
+    public static func settingFocus(
+        _ lines: [String], at index: Int, focus: Bool, today: CalendarDate = .today()
+    ) -> [String]? {
+        guard let (block, consumed) = parse(lines, at: index, today: today) else { return nil }
+        var updated = block
+        updated.focus = focus
         var result = lines
         result.replaceSubrange(index..<(index + consumed), with: updated.rendered().components(separatedBy: "\n"))
         return result
