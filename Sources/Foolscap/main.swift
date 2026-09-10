@@ -13,8 +13,12 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--dump-dashboard"),
     let vaultPath = CommandLine.arguments[flagIndex + 1]
     let outputPath = CommandLine.arguments[flagIndex + 2]
     let vault = Vault(root: URL(fileURLWithPath: vaultPath))
-    let dashboard = DashboardComposer.compose(vault: vault)
-    let body = DashboardRenderer.renderBody(dashboard)
+    // Matches `DashboardComposer.compose`'s own default (`.today()`, not the 6am-rollover
+    // `.effectiveToday()` the real app uses) — this dump is a standalone snapshot tool, so
+    // composing and rendering must agree on the same "today" the composer already used.
+    let today = CalendarDate.today()
+    let dashboard = DashboardComposer.compose(vault: vault, today: today)
+    let body = DashboardRenderer.renderBody(dashboard, today: today)
     let html = HTMLPage.wrap(body: body, theme: Config.defaultTheme)
     do {
         try html.write(toFile: outputPath, atomically: true, encoding: .utf8)
@@ -253,8 +257,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// Buckets against `CalendarDate.effectiveToday()`, not `.today()` — the dashboard's
     /// "today" rolls over at 6am local, not midnight (DESIGN.md → "The daily loop").
     private func renderDashboard() {
-        let dashboard = DashboardComposer.compose(vault: vault, today: .effectiveToday())
-        let body = DashboardRenderer.renderBody(dashboard)
+        let today = CalendarDate.effectiveToday()
+        let dashboard = DashboardComposer.compose(vault: vault, today: today)
+        let body = DashboardRenderer.renderBody(dashboard, today: today)
         window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
     }
 

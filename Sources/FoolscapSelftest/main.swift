@@ -890,21 +890,23 @@ do {
 
 // Display ≠ storage (DESIGN.md → Tasks): the rendered fragment must carry none of the
 // raw @/#/! metadata tokens, however it dresses that data up as chips/tags/dots/icons.
-let tidyFull = DashboardTaskRenderer.render(fullBlock)
+// `blockToday` (2026-08-12) drives the due chip's human phrasing (C1) here too — the raw
+// ISO date still lives in `title` so hovering shows the exact date.
+let tidyFull = DashboardTaskRenderer.render(fullBlock, today: blockToday)
 expect(tidyFull.contains("@"), false, "no raw @ in a fully-tagged task's render")
 expect(tidyFull.contains("#"), false, "no raw # in a fully-tagged task's render")
 expect(tidyFull.contains("!"), false, "no raw ! in a fully-tagged task's render")
 expect(
     tidyFull,
-    "<span class=\"label\">Prep the client deck</span><span class=\"due\">2026-08-20</span>"
+    "<span class=\"label\">Prep the client deck</span><span class=\"due\" title=\"2026-08-20\">Aug 20</span>"
         + "<span class=\"type\">schoolwork</span><span class=\"priority-dot high\" title=\"high priority\"></span>"
         + "<span class=\"source-icon calendar\" title=\"calendar\">📅</span>",
-    "a fully-tagged task renders as sentence + due chip + type tag + priority dot + source icon"
+    "a fully-tagged task renders as sentence + due chip (human text, ISO title) + type tag + priority dot + source icon"
 )
 
 // A task with only @due (no priority/type/note) renders cleanly: the sentence, its due
 // chip, and the always-present source icon — no stray markup for the absent fields.
-let tidyBare = DashboardTaskRenderer.render(bare)
+let tidyBare = DashboardTaskRenderer.render(bare, today: blockToday)
 expect(tidyBare.contains("@"), false, "no raw @ in a due-only task's render")
 expect(tidyBare.contains("#"), false, "no raw # in a due-only task's render")
 expect(tidyBare.contains("!"), false, "no raw ! in a due-only task's render")
@@ -912,7 +914,7 @@ expect(tidyBare.contains("type"), false, "no type tag when #type is absent")
 expect(tidyBare.contains("priority-dot"), false, "no priority dot when !priority is absent")
 expect(
     tidyBare,
-    "<span class=\"label\">Email the landlord</span><span class=\"due\">2026-08-12</span>"
+    "<span class=\"label\">Email the landlord</span><span class=\"due\" title=\"2026-08-12\">Today</span>"
         + "<span class=\"source-icon manual\" title=\"manual\">✎</span>",
     "a due-only task renders cleanly with no stray markup for the absent fields"
 )
@@ -926,7 +928,30 @@ expect(focusToggleOff.contains("aria-pressed=\"false\""), true, "an unfocused bl
 
 // The tidy render(...) chips never gain a raw ★ — the toggle above is the only star
 // element (Display ≠ storage, same as the @/#/! tokens above).
-expect(DashboardTaskRenderer.render(focusedBlock).contains("★"), false, "the tidy label/chip render carries no raw ★")
+expect(DashboardTaskRenderer.render(focusedBlock, today: blockToday).contains("★"), false, "the tidy label/chip render carries no raw ★")
+
+// MARK: - DashboardTaskRenderer.humanDue (C1 — human-readable due chip)
+
+// The raw ISO date (`2026-09-10`) reads fine in a file but not at a glance in a chip —
+// `humanDue` gives the due chip's visible text a human phrasing, computed against
+// `today`. All against `blockToday` (2026-08-12, a Wednesday).
+expect(DashboardTaskRenderer.humanDue(blockToday, today: blockToday), "Today", "a due date equal to today reads \"Today\"")
+expect(
+    DashboardTaskRenderer.humanDue(blockToday.adding(days: 1), today: blockToday), "Tomorrow",
+    "a due date one day after today reads \"Tomorrow\""
+)
+expect(
+    DashboardTaskRenderer.humanDue(blockToday.adding(days: -1), today: blockToday), "Yesterday",
+    "a due date one day before today reads \"Yesterday\""
+)
+expect(
+    DashboardTaskRenderer.humanDue(CalendarDate(iso: "2026-12-25")!, today: blockToday), "Dec 25",
+    "a same-year date outside today/tomorrow/yesterday reads \"MMM d\", no year"
+)
+expect(
+    DashboardTaskRenderer.humanDue(CalendarDate(iso: "2027-01-01")!, today: blockToday), "Jan 1, 2027",
+    "a different-year date reads \"MMM d, yyyy\", year included"
+)
 
 // MARK: - RoutineSignal / SignalNudge (D2 — decision notification + loud failure path)
 
@@ -1022,9 +1047,9 @@ expect(
     "open items sort above the completed-today item"
 )
 expect(lingeringDash.today.last?.block.isDone, true, "the lingering task is still marked done")
-let lingeringLabel = DashboardTaskRenderer.render(lingeringDash.today.last!.block)
+let lingeringLabel = DashboardTaskRenderer.render(lingeringDash.today.last!.block, today: dashToday)
 expect(lingeringLabel.contains("class=\"label done\""), true, "a completed-today row renders struck-through (the done label class)")
-let openLabel = DashboardTaskRenderer.render(lingeringDash.today.first!.block)
+let openLabel = DashboardTaskRenderer.render(lingeringDash.today.first!.block, today: dashToday)
 expect(openLabel.contains("done"), false, "an open row carries no done class")
 
 // Completed *yesterday* does not linger — only a completion matching `today` qualifies.
@@ -1137,7 +1162,7 @@ expect(
 // No B6 regression: the wrapped row's tidy label keeps its `done` class alongside the
 // new accessible checkbox.
 expect(
-    DashboardTaskRenderer.render(lingeringDash.today.last!.block).contains("class=\"label done\""),
+    DashboardTaskRenderer.render(lingeringDash.today.last!.block, today: dashToday).contains("class=\"label done\""),
     true, "a completed-today row's label still carries the done class (no B6 regression)"
 )
 
@@ -1223,6 +1248,59 @@ expect(
     BriefStamp.stripStampLine(from: "# Brief\n\nNo stamp here."), "# Brief\n\nNo stamp here.",
     "a brief with no stamp line is returned unchanged"
 )
+
+// MARK: - BriefStamp.stripLeadingBriefHeading (double "Brief" heading fix)
+
+// The panel draws its own "Brief" section title; an older brief.md that still opens with
+// its own `# Brief` heading must have that heading stripped so the two don't stack.
+expect(
+    BriefStamp.stripLeadingBriefHeading(from: "# Brief\n\nShipped the deck."), "Shipped the deck.",
+    "strips a leading level-1 \"Brief\" heading"
+)
+expect(
+    BriefStamp.stripLeadingBriefHeading(from: "## Brief\n\nShipped the deck."), "Shipped the deck.",
+    "strips a leading heading at any # level, not just level-1"
+)
+expect(
+    BriefStamp.stripLeadingBriefHeading(from: "# BRIEF\n\nShipped the deck."), "Shipped the deck.",
+    "matches \"Brief\" case-insensitively"
+)
+expect(
+    BriefStamp.stripLeadingBriefHeading(from: "Shipped the deck, no heading."), "Shipped the deck, no heading.",
+    "a brief with no leading heading at all is returned unchanged"
+)
+expect(
+    BriefStamp.stripLeadingBriefHeading(from: "# Today\n\nShipped the deck."), "# Today\n\nShipped the deck.",
+    "a leading heading with different text is left alone — only \"Brief\" is redundant"
+)
+expect(
+    BriefStamp.stripLeadingBriefHeading(from: "Shipped the deck.\n\n# Brief"), "Shipped the deck.\n\n# Brief",
+    "only a *leading* \"Brief\" heading is stripped — one later in the body survives"
+)
+
+// `DashboardRenderer.renderBrief` (Sources/Foolscap) composes exactly these FoolscapCore
+// primitives — parse the stamp, strip the stamp line, strip a redundant leading "Brief"
+// heading, then hand the rest to `MarkdownRenderer` — before wrapping the result in its
+// own "<h2>Brief ...</h2>" section title. The selftest target deliberately carries no
+// AppKit dependency (see Package.swift) so it can't import `Foolscap` and call
+// `renderBrief` directly; reconstructing its exact pipeline here proves the same thing —
+// an old brief.md that still opens with its own "# Brief" heading no longer stacks a
+// second "Brief" title under the panel's own one, and the prose still renders.
+let doubleHeadingBrief = "<!-- built: 2026-08-22T06:03:11-07:00 -->\n# Brief\n\nShipped the deck and prepped the agenda for tomorrow."
+let doubleHeadingStripped = BriefStamp.stripStampLine(from: doubleHeadingBrief).trimmingCharacters(in: .whitespacesAndNewlines)
+let doubleHeadingTrimmed = BriefStamp.stripLeadingBriefHeading(from: doubleHeadingStripped)
+let doubleHeadingBody = MarkdownRenderer.renderHTML(from: doubleHeadingTrimmed)
+let doubleHeadingSection = "<section class=\"brief\">\n<h2>Brief <span class=\"freshness\">built 6:03am</span></h2>\n\(doubleHeadingBody)</section>\n"
+
+expect(
+    doubleHeadingSection.components(separatedBy: "<h2>Brief").count - 1, 1,
+    "a brief.md that still opens with its own \"# Brief\" heading yields exactly one <h2>Brief ...> section title, not two"
+)
+expect(
+    doubleHeadingBody.contains("Shipped the deck and prepped the agenda for tomorrow"), true,
+    "the prose after a stripped leading heading still renders"
+)
+expect(doubleHeadingBody.contains("<h1>"), false, "the leading \"# Brief\" heading itself is gone, not just downgraded")
 
 // MARK: - Report
 

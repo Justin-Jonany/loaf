@@ -9,7 +9,7 @@ import Foundation
 /// `FoolscapSelftest` can assert against it directly — the same split `MarkdownRenderer`
 /// already uses for the single-note task view.
 public enum DashboardTaskRenderer {
-    public static func render(_ block: TaskBlock) -> String {
+    public static func render(_ block: TaskBlock, today: CalendarDate) -> String {
         // A completed-today task lingers in its bucket rather than vanishing (ROADMAP
         // B6) — the `done` class is what the frosted theme hooks the struck-through/
         // dimmed treatment on.
@@ -17,7 +17,9 @@ public enum DashboardTaskRenderer {
         var html = "<span class=\"label\(doneClass)\">\(escape(block.text))</span>"
 
         if let due = block.due {
-            html += "<span class=\"due\">\(escape(due.description))</span>"
+            // Human phrasing for the chip's visible text (C1 — "Today"/"Tomorrow"/"MMM d"),
+            // with the exact ISO date kept in `title` so hovering still shows the real date.
+            html += "<span class=\"due\" title=\"\(escape(due.description))\">\(escape(humanDue(due, today: today)))</span>"
         }
         if let type = block.type {
             html += "<span class=\"type\">\(escape(type))</span>"
@@ -28,6 +30,28 @@ public enum DashboardTaskRenderer {
         html += "<span class=\"source-icon \(block.source.rawValue)\" title=\"\(block.source.rawValue)\">\(icon(for: block.source))</span>"
 
         return html
+    }
+
+    private static let monthAbbreviations = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]
+
+    /// The due chip's human phrasing (C1), computed against `today` — the raw ISO date
+    /// (`2026-09-10`) reads fine in a file but not at a glance in a chip. Built entirely
+    /// from `CalendarDate`'s own fields/arithmetic rather than round-tripping through
+    /// `Date`: a `Date`-based formatter would need a time zone to turn `due` back into a
+    /// day, and picking the wrong instant (midnight? noon?) risks landing on the wrong
+    /// side of a DST transition (see `CalendarDate`'s own doc comment on this hazard).
+    public static func humanDue(_ due: CalendarDate, today: CalendarDate) -> String {
+        if due == today { return "Today" }
+        if due == today.adding(days: 1) { return "Tomorrow" }
+        if due == today.adding(days: -1) { return "Yesterday" }
+
+        let month = monthAbbreviations[due.month - 1]
+        if due.year == today.year {
+            return "\(month) \(due.day)"
+        }
+        return "\(month) \(due.day), \(due.year)"
     }
 
     /// Plain glyphs, not images — the panel has no attachments pipeline for icons, and a

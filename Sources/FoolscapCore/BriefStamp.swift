@@ -47,6 +47,29 @@ public enum BriefStamp: Equatable, Sendable {
         return String(firstLine.dropFirst(prefix.count).dropLast(suffix.count))
     }
 
+    /// `markdown` with a redundant *leading* "Brief" heading removed. The panel already
+    /// draws its own "Brief" section title (with the freshness stamp) next to this stamp,
+    /// so an older `brief.md` that still opens with its own `# Brief` heading would stack
+    /// a second, identical title under it. Only a heading whose text is exactly "Brief"
+    /// (case-insensitive, any `#` level) *as the very first line* is stripped — nothing
+    /// else about the body is touched, so a heading anywhere else in the prose (unlikely,
+    /// but not this helper's business) survives untouched. Lives alongside
+    /// `stripStampLine` for the same reason: both are brief.md-text normalization steps
+    /// `DashboardRenderer` runs before handing the body to `MarkdownRenderer`, kept here so
+    /// `FoolscapSelftest` can assert them directly without a `WKWebView`.
+    public static func stripLeadingBriefHeading(from markdown: String) -> String {
+        let lines = markdown.split(separator: "\n", omittingEmptySubsequences: false)
+        guard let firstLine = lines.first else { return markdown }
+
+        let hashCount = firstLine.prefix(while: { $0 == "#" }).count
+        let headingText = String(firstLine.dropFirst(hashCount)).trimmingCharacters(in: .whitespaces)
+        guard hashCount > 0, headingText.caseInsensitiveCompare("Brief") == .orderedSame else {
+            return markdown
+        }
+
+        return lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private static let isoFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
