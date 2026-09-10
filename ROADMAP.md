@@ -170,8 +170,14 @@ Depends only on A's *format*, so it runs parallel to Epic B.
     user (in a Claude Code chat) **only** when today needs a judgment call — silent on a clear
     day; writes a **change-log** of what it added/moved with **provenance** for calendar-derived
     tasks; stamps `brief.md` with build time; on failure leaves a signal the app can surface.
+    **Never writes `longterm.md`** — that file is interactively-shared only (user or a chat
+    session the user is driving), never the unattended routine (see DECISIONS.md 2026-09-09).
+    This is a write-access rule, not a classification heuristic: a far-dated calendar event
+    stays in `tasks.md` rather than getting promoted to Long-term on its due-date distance.
   - **Tests:** a dry-run against a fixture calendar + vault produces tasks A1 can parse; a clear
-    day produces no interruption; a forced failure leaves the failure signal, not a stale brief.
+    day produces no interruption; a forced failure leaves the failure signal, not a stale brief;
+    a fixture with a far-`@due` calendar event (e.g. an event two months out) produces a
+    `tasks.md` entry and leaves `longterm.md` byte-for-byte unchanged.
   - **Verify:** *the routine* — run transcript + the `brief.md`/`tasks.md` `git diff`.
 
 ### Cross-cutting (Wave 2)

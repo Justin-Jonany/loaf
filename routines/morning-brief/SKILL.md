@@ -33,9 +33,13 @@ below — this routine and that file must never disagree. In short:
   prose, not a task list.
 - `tasks.md` — **shared** with the user. All dated tasks, metadata-below format (see
   below). Don't touch lines you didn't add and don't reformat the user's prose.
-- `longterm.md` — **shared**, mostly the user's. Read it for context; only add or edit an
-  entry here if a calendar event or note clearly implies a new *target-dated goal*, which
-  is rare. Most runs don't touch this file at all.
+- `longterm.md` — **read-only for you.** It holds the user's standing long-term goals. Read
+  it for context (a task you add to `tasks.md` may relate to one), but **never add to, edit,
+  or reformat it.** `longterm.md` is interactively-shared only: the user edits it directly,
+  or an interactive Claude Code chat does so at the user's request — never this unattended
+  routine, which is scoped to `brief.md` + `tasks.md`. A far-dated calendar event belongs in
+  `tasks.md` (it surfaces in This-week as it nears); it is never promoted to Long-term on its
+  due-date distance alone. See DECISIONS.md 2026-09-09 (ticket C1).
 
 ## Reading the calendar
 

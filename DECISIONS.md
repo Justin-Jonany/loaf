@@ -4,6 +4,39 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-09 — Long-term is interactively-shared only; the unattended morning routine never writes it (ticket C1)
+
+**Decided:** `longterm.md` can be edited by the user directly or by an *interactive* Claude
+Code chat session the user is driving, but the unattended 6am morning-brief routine
+(`routines/morning-brief/`) is scoped to `brief.md` + `tasks.md` only and must never write
+`longterm.md`. Long-term is for standing commitments/goals with a deadline spanning more than
+a week — not "any task whose `@due` happens to be far away." A far-dated calendar event stays
+in `tasks.md`; it isn't promoted to Long-term just because its due date is distant.
+
+**Why:** The bucketing worry that prompted this ("a calendar event two months out shouldn't
+land in Long-term") turned out not to be a `DashboardComposer` bug — Long-term is already its
+own file, not a due-distance bucket computed from `tasks.md` (`Dashboard.swift`; confirmed by
+the `FoolscapSelftest` case asserting `longterm.md` entries land in Long-term "regardless of
+how far out `@due` is"). The actual gap was `routines/morning-brief/SKILL.md`, which gave the
+*unattended* routine permission to add to `longterm.md` on its own judgment ("only add an
+entry here if a calendar event or note clearly implies a new target-dated goal") — a vague
+heuristic with only a far due date as its cue, and broader than ticket C1's own stated scope
+(brief.md + tasks.md). Considered classification approaches instead (an explicit `#goal`
+marker, a `source`-based exclusion rule) but rejected them: `longterm.md` vs. `tasks.md` is
+already the marker — the file boundary — so a second in-band marker would be redundant. Fixing
+*who can write the file* removes the judgment call entirely rather than trying to make the
+judgment call more precise: the pipeline that reads the calendar is structurally barred from
+this file, so it can't misclassify what it never touches.
+
+**Consequence:** `routines/morning-brief/SKILL.md` must be corrected to drop its
+longterm.md-writing permission (currently lines 36–38) before the routine is trusted against a
+real vault — tracked as part of ticket C1, which never scoped longterm.md writes in the first
+place. `dry_run.sh all`'s fixtures should include a case with a far-`@due` calendar event and
+assert `longterm.md` is untouched by the run.
+
+**Status:** settled. Ticket C1's Solution/Tests updated in ROADMAP.md; `SKILL.md` fix is
+implementation work under C1, done before the first live run against the real vault.
+
 ## 2026-09-09 — A malformed `.routine-signal.md` is treated as a failure, not silence (ticket D2)
 
 **Decided:** `RoutineSignal.parse` distinguishes three outcomes, not two: `nil` for an
