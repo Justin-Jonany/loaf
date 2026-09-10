@@ -47,18 +47,24 @@ is *not* a folder browser: it reads three known files, nothing else.
    finish **today** also lingers struck-through in its own section (below) until the 6am
    rollover, after which only the brief remembers it. Also carries the freshness stamp
    ("built 7:58am").
-2. **Today** — every unchecked task with `@due` at or before today. That is spillover +
-   due-tonight, computed automatically from due dates — nothing is stored as a literal "today
-   list." Plus anything you or Claude explicitly add for today. A task you complete today stays
-   here struck-through, sorted below the open items, until the 6am rollover drops it.
+2. **Today** — every unchecked task with `@due` at or before today (spillover + due-tonight,
+   computed automatically from due dates), **plus any task you've _starred_ (`★`) for today**,
+   whatever its deadline. Nothing is stored as a literal "today list": the due-date part is
+   derived, and the starred part is a per-task flag you set from the panel (see Focus, below) —
+   a starred task keeps its real `@due` and simply surfaces here instead of its due-date bucket.
+   A task you complete today stays here struck-through, sorted below the open items, until the
+   6am rollover drops it.
 3. **This week** — unchecked tasks due within the week that aren't already shown in Today.
-   (Each task renders in exactly one section — most-urgent bucket wins. That's the dedup.)
+   (Each task renders in exactly one section — most-urgent-or-starred bucket wins. That's the
+   dedup.)
 4. **Long-term** — target-dated goals. Shared: you and Claude both add and edit here, but
    only *interactively* — see "Files in the vault" for the write-access rule that keeps this
    from becoming a dumping ground for far-dated calendar events.
 
-Everything is **driven by due dates** — which is why every task has one. A task with no due
-date couldn't be placed in any bucket.
+Bucketing is **driven by due dates** — which is why every task has one; a task with no due
+date couldn't be placed in any bucket. The one thing that isn't a due date is the star (`★`):
+it doesn't move a task's deadline, it just overrides *which* bucket the task shows in, pulling
+it into Today. Take the star off and the task falls back to its due-date bucket, unchanged.
 
 ## Tasks
 
@@ -71,9 +77,14 @@ strung along the task line — so the task reads as a plain sentence:
       Focus on the pricing slide — they pushed back last time.
 - [ ] Email the landlord
       @today · manual
+- [ ] Draft the proposal
+      @fri · manual · ★
 - [x] Read chapter 4
       @fri · #cs101 · ✓18aug
 ```
+
+(The `★` on "Draft the proposal" pulls it into **Today** even though it's not due until Friday —
+its deadline stays Friday.)
 
 | Token | Required? | Meaning |
 |---|---|---|
@@ -82,12 +93,23 @@ strung along the task line — so the task reads as a plain sentence:
 | `✓done` | auto | Stamped when you tick the box. |
 | `!priority` | optional | `!high` / `!med` / `!low`. **On-command only** — Claude adds it when you ask, never automatically. Absent = normal. |
 | `#type` | optional | A category tag: `#schoolwork`, `#cs101`, `#daily`, whatever you like. |
+| `★` | optional | **Focus flag.** Pulls the task into Today regardless of its `@due`; the deadline is untouched. You set/clear it from the panel (see Focus). |
 | note | optional | Free prose on a further indented line — context for the task. |
 | `every` | optional | Recurrence (`every:week` …), from the existing model. |
 
 **Display ≠ storage.** The block above is the *raw file*. The panel renders it tidy — the
 sentence, a small date chip, a faint type tag, a priority dot, a source icon — with no raw
 `@`/`#` tokens showing. It stays notes-style, not a Jira grid.
+
+**Focus (`★`).** "Today" used to mean *only* "due at or before today," which made pulling a
+task you wanted to work on today — but whose deadline is still days out — impossible without
+lying about its due date. The star fixes that: each task row has a star toggle (revealed on
+hover), and starring a task writes a `★` onto its metadata line so the panel surfaces it in
+Today while its `@due` stays put. Unstarring removes the token and the task falls back to its
+due-date bucket. The star is a **you-only affordance** set from the panel — the morning routine
+never writes it. Because the panel edit is a *user* action, starring a `longterm.md` goal into
+today is allowed under the same interactively-shared rule that bars the unattended routine (see
+Files, and DECISIONS.md 2026-09-09 / 2026-09-10).
 
 ## Files in the vault
 

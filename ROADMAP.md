@@ -156,6 +156,31 @@ Viewer UI. Depends on Epic A.
     Playwright screenshot of the canonical fixture vault (decision-day) via `--dump-dashboard`
     showing struck-through done rows.
 
+- [ ] **B7 — Curated Today: a `★` focus flag** · 1 PR · depends: A1, B1, B4, B6 · blocks: —
+  - **Problem:** Today shows only tasks with `@due` ≤ today, so there's no way to say "I want to
+    work on this today" for a task whose deadline is legitimately a few days out — short of
+    rewriting its `@due` to today and destroying the real deadline (surfaced dogfooding the real
+    vault, DECISIONS.md 2026-09-10).
+  - **Solution:** A per-task **focus flag**, stored as a `★` token on the metadata line,
+    independent of `@due`. `TaskBlock` gains `focus: Bool` (parsed from `★`, rendered in fixed
+    field order `@due · source · !priority · #type · ★ · every: · ✓done`). `DashboardComposer`
+    buckets into **Today** when `@due` ≤ today **or** `focus` — a starred task keeps its real
+    `@due` and renders in Today instead of This-week/Long-term (still exactly one bucket;
+    most-urgent-or-starred wins). A per-row **star toggle** (revealed on hover) writes/clears the
+    token through the existing X1 conflict-guarded path: a `TaskBlock.settingFocus(…)` mutator
+    mirroring `toggling(…)`, a core `renderFocusToggle` with `aria-pressed`, and a `focusTask`
+    message handler alongside `toggleTask`. The routine never writes `★`; starring a `longterm.md`
+    goal is a user write, allowed under the 2026-09-09 rule.
+  - **Tests:** `★` parses to `focus == true`, absent → false, full block round-trips with `★` in
+    fixed order; a `tasks.md` task with `★` and a future `@due` buckets into **Today**, not This
+    week; clearing `★` returns it to This week; a `longterm.md` item with `★` shows in Today, one
+    bucket only; `settingFocus` adds/removes `★` and preserves every other field, returns `nil`
+    for a non-checkbox line; ticking a `★` task keeps the star; the focus toggle renders with
+    `aria-pressed` mirroring `focus` and no raw `★` in the tidy label text.
+  - **Verify:** *pure logic* — green parser + bucketing selftest — **plus** *rendering* — a
+    `--dump-dashboard` screenshot of a starred, future-dated task appearing in Today with its
+    Friday chip intact.
+
 ### Epic C — The morning brief routine — *not app code*
 
 A scheduled **local** Claude Code run (prompt/skill + `CLAUDE.md` template + schedule config).

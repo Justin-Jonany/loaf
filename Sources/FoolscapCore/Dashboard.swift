@@ -81,18 +81,31 @@ public enum DashboardComposer {
             // A task ticked today keeps its bucket too (ROADMAP B6) — see `isEligible`.
             guard isEligible(task.block, today: today), let due = task.block.due else { continue }
 
-            if due <= today {
+            if task.block.focus {
+                // A starred task is pulled into Today regardless of @due (B7 — Curated
+                // Today) — @due is left untouched, it just stops driving the bucket.
+                todayBucket.append(task)
+            } else if due <= today {
                 // Spillover (overdue) + due-tonight both read as "Today."
                 todayBucket.append(task)
             } else if today.days(until: due) <= weekLookaheadDays {
                 // Not already claimed by Today — each task renders in exactly one
-                // bucket, most-urgent wins. That's the dedup.
+                // bucket, most-urgent-or-starred wins. That's the dedup.
                 weekBucket.append(task)
             }
         }
 
-        let longTermBucket = parseBlocks(longtermMarkdown, sourceFile: "longterm.md", today: today)
-            .filter { isEligible($0.block, today: today) && $0.block.due != nil }
+        var longTermBucket: [DashboardTask] = []
+        for task in parseBlocks(longtermMarkdown, sourceFile: "longterm.md", today: today) {
+            guard isEligible(task.block, today: today), task.block.due != nil else { continue }
+            // Same star pull-forward as tasks.md: a focused long-term goal shows up in
+            // Today rather than waiting in Long-term (B7 — Curated Today).
+            if task.block.focus {
+                todayBucket.append(task)
+            } else {
+                longTermBucket.append(task)
+            }
+        }
 
         return Dashboard(
             brief: brief,

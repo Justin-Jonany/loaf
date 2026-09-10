@@ -4,6 +4,42 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-10 — "Today" is curated: a `★` focus flag pulls a task in, decoupled from `@due` (ticket B7)
+
+**Decided:** A task can be pulled into the **Today** section by *starring* it, independent of
+its due date. The star is stored as a `★` token on the task's metadata line
+(`@fri · manual · ★`). `DashboardComposer` buckets a task into Today when it is `@due` at or
+before today **or** carries `★`; a starred task keeps its real `@due` and simply renders in
+Today instead of its due-date bucket (This week / Long-term). Unstarring removes the token and
+the task falls back to that bucket. The star is set/cleared from the panel via a per-row toggle,
+written through the existing conflict-guarded write-back path (ticket X1) — the same way a
+checkbox tick is.
+
+**Why:** dogfooding against the real vault surfaced that "Today = `@due` ≤ today" is too rigid —
+there was no way to say "I want to work on this today" for a task whose deadline is legitimately
+a few days out, short of rewriting its `@due` to today and destroying the real deadline.
+Considered exactly that (make the pull action rewrite `@due` to today): rejected because it
+conflates *when a thing is due* with *when I choose to do it*, loses the true deadline, and
+leaves "send it back to the backlog" with no original date to restore. A separate flag keeps the
+two orthogonal — the deadline stays the source of truth for urgency/colour/sort, the star only
+overrides section placement.
+
+**Why `★` and not `@today`:** `@` is already the **due-date** prefix, so `@today` parses today as
+a *due date* (`TaskBlock` → `DateToken`), not a focus flag — it can't do double duty. `!` and `#`
+are taken by priority and type. A bare `★` token is unused, reads unambiguously as "starred /
+focused," and stays out of the tidy render's `@`/`#`/`!` token space. It renders as a small star
+affordance in the panel, never as raw text.
+
+**Consequence:** `TaskBlock` gains a `focus: Bool` field (parsed from `★`, rendered in fixed
+field order so round-trips stay stable) and a `settingFocus(…)` write-back mutator mirroring
+`toggling(…)`. `DashboardComposer` bucketing gains the star-override rule. The panel gains a
+star toggle per row and a `focusTask` message handler alongside `toggleTask`. Consistent with
+the 2026-09-09 rule: starring is a *user* write, so a `longterm.md` goal may be starred into
+Today from the panel even though the unattended routine still never writes either file's star.
+Tracked as ticket **B7**.
+
+**Status:** settled. Implemented under ticket B7 (ROADMAP.md → Epic B).
+
 ## 2026-09-09 — Long-term is interactively-shared only; the unattended morning routine never writes it (ticket C1)
 
 **Decided:** `longterm.md` can be edited by the user directly or by an *interactive* Claude
