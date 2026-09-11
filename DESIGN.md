@@ -115,7 +115,9 @@ Files, and DECISIONS.md 2026-09-09 / 2026-09-10).
 
 - `brief.md` — the prose summary, regenerated each run. **Claude-owned.**
 - `tasks.md` — all dated tasks (Today + This-week buckets). Completed tasks stay here with
-  `✓done` for ~7 days so the retrospective can read them, then Claude prunes. **Shared.**
+  `✓done` until the user clears them by hand — the morning routine never prunes. Clearing
+  moves the task to a permanent archive rather than deleting it (decided, not yet built —
+  see DECISIONS.md 2026-09-11). **Shared.**
 - `longterm.md` — target-dated goals. **Shared**, but *interactively-shared only*: you edit
   it directly, or an interactive Claude Code chat edits it because you asked it to. **The
   unattended 6am morning-brief routine never writes to this file** — it's scoped to
@@ -126,7 +128,9 @@ Files, and DECISIONS.md 2026-09-09 / 2026-09-10).
   is a write-access rule, not a classification heuristic: the routine that reads your
   calendar is structurally barred from this file, so there's no judgment call to get wrong.
 
-Three tidy files. No `daily/YYYY-MM-DD.md` sprawl — the retrospective is prose, not an archive.
+Three tidy files the panel composes, plus a monthly-sharded `archive/YYYY-MM.md` (decided,
+not yet built) that holds tasks the user has cleared. Still no unbounded
+`daily/YYYY-MM-DD.md` sprawl — the archive shards by month, not by day.
 
 ## The daily loop
 

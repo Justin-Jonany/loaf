@@ -344,8 +344,10 @@ dependency on `Sources/Foolscap/` (true by convention only), and the VoiceOver g
 
 ### Large vaults / staleness
 Less pressing now — the panel composes only three files, so full re-parse per event is cheap.
-If completed tasks accumulate in `tasks.md`, the morning run prunes those older than the
-retrospective window (~7 days) so the file stays small.
+The morning routine is add-only and never prunes `tasks.md` (DECISIONS.md 2026-09-11); instead,
+clearing a done task moves it to a permanent monthly-sharded archive (`archive/YYYY-MM.md`,
+decided but not yet built) so the file stays small without automation silently deleting
+anything.
 
 ### Distribution
 Unsigned builds are Gatekeeper-blocked on first launch. Either document
