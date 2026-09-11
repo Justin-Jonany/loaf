@@ -120,15 +120,15 @@ public enum DashboardTaskRenderer {
     /// Unlike `renderFocusToggle`, this is a one-shot action, not a toggle — no
     /// `aria-pressed`, just a labelled `<button>` naming the action and the task, same
     /// accessible-name contract as `renderCheckbox`/`renderFocusToggle` above. Visible
-    /// content is a muted glyph (an inbox tray, echoing the "clear it away" gesture) —
-    /// not the word "Archive" — so it sits permanently at the row's trailing edge
-    /// (`DashboardRenderer.renderTask` no longer gates this on `block.isDone`) without
-    /// reading as a loud text button; `aria-label`/`title` still spell out the action for
-    /// VoiceOver/tooltip.
+    /// content is a muted line-art glyph (a downward arrow to a bar — the "file it away"
+    /// gesture), monochrome rather than a color emoji, so it sits permanently at the row's
+    /// trailing edge (`DashboardRenderer.renderTask` no longer gates this on `block.isDone`)
+    /// without reading as a loud text button; `aria-label`/`title` still spell out the
+    /// action for VoiceOver/tooltip.
     public static func renderArchiveButton(_ block: TaskBlock) -> String {
         "<button type=\"button\" class=\"archive-button\""
             + " aria-label=\"Archive: \(escapeAttribute(block.text))\""
-            + " title=\"Archive\">📥</button>"
+            + " title=\"Archive\">\u{2913}</button>"
     }
 
     private static func escape(_ text: String) -> String {
