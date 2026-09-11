@@ -230,6 +230,23 @@ public struct TaskBlock: Equatable, Sendable {
         result.replaceSubrange(index..<(index + consumed), with: updated.rendered().components(separatedBy: "\n"))
         return result
     }
+
+    // MARK: - Urgency
+
+    public enum Urgency: Equatable, Sendable {
+        case none, later, soon, dueToday, overdue
+    }
+
+    /// Mirrors `TaskLine.urgency(on:soonWithinDays:)` exactly — the dashboard (this type)
+    /// and the single-note view (`TaskLine`) must agree on what counts as overdue/soon so
+    /// the same due date reads the same way in both places.
+    public func urgency(on today: CalendarDate, soonWithinDays: Int = Config.defaultSoonWithinDays) -> Urgency {
+        guard !isDone, let due else { return .none }
+        let remaining = today.days(until: due)
+        if remaining < 0 { return .overdue }
+        if remaining == 0 { return .dueToday }
+        return remaining <= soonWithinDays ? .soon : .later
+    }
 }
 
 /// How `@due`/`✓done` tokens resolve against a reference date. Arithmetic goes through

@@ -262,6 +262,17 @@ expect(
     "weekday due resolves stably across the DST boundary"
 )
 
+// MARK: - TaskBlock.urgency (Part 2 — overdue urgency, mirrors TaskLine.urgency above)
+
+expect(dueBlock("2026-08-10").urgency(on: blockToday), .overdue, "past due is overdue")
+expect(dueBlock("today").urgency(on: blockToday), .dueToday, "same day is due today")
+expect(dueBlock("2026-08-14").urgency(on: blockToday), .soon, "within two days is soon")
+expect(dueBlock("2026-08-19").urgency(on: blockToday), .later, "beyond two days is later")
+expect(
+    TaskBlock.parse("- [x] x\n      @2026-08-10", today: blockToday)!.urgency(on: blockToday),
+    .none, "done tasks are never urgent"
+)
+
 // A full block: metadata plus a further-indented note.
 let fullBlock = TaskBlock.parse(
     "- [ ] Prep the client deck\n      @2026-08-20 · calendar · !high · #schoolwork\n      Focus on the pricing slide — they pushed back last time.",
@@ -914,9 +925,47 @@ expect(tidyBare.contains("type"), false, "no type tag when #type is absent")
 expect(tidyBare.contains("priority-dot"), false, "no priority dot when !priority is absent")
 expect(
     tidyBare,
-    "<span class=\"label\">Email the landlord</span><span class=\"due\" title=\"2026-08-12\">Today</span>"
+    "<span class=\"label\">Email the landlord</span><span class=\"due due-soon\" title=\"2026-08-12\">Today</span>"
         + "<span class=\"source-icon manual\" title=\"manual\">✎</span>",
-    "a due-only task renders cleanly with no stray markup for the absent fields"
+    "a due-only task renders cleanly with no stray markup for the absent fields — its due date"
+        + " (today) carries the due-soon class"
+)
+
+// MARK: - DashboardTaskRenderer urgency classes (Part 2 — overdue urgency wired into the chip)
+
+func urgencyBlock(_ due: String) -> TaskBlock {
+    TaskBlock.parse("- [ ] x\n      @\(due)", today: blockToday)!
+}
+
+let overdueDashHTML = DashboardTaskRenderer.render(urgencyBlock("2026-08-10"), today: blockToday)
+expect(overdueDashHTML.contains("class=\"due due-over\""), true, "overdue task's due chip carries due-over")
+
+let dueTodayDashHTML = DashboardTaskRenderer.render(urgencyBlock("2026-08-12"), today: blockToday)
+expect(dueTodayDashHTML.contains("class=\"due due-soon\""), true, "due-today task's due chip carries due-soon, not due-over")
+
+let soonDashHTML = DashboardTaskRenderer.render(urgencyBlock("2026-08-14"), today: blockToday)
+expect(soonDashHTML.contains("class=\"due due-soon\""), true, "soon task's due chip carries due-soon")
+
+let laterDashHTML = DashboardTaskRenderer.render(urgencyBlock("2026-08-19"), today: blockToday)
+expect(laterDashHTML.contains("due-soon"), false, "a distant due date carries no urgency class")
+expect(laterDashHTML.contains("due-over"), false, "a distant due date carries no urgency class")
+
+let doneOverdueDashHTML = DashboardTaskRenderer.render(
+    TaskBlock.parse("- [x] x\n      @2026-08-10", today: blockToday)!, today: blockToday
+)
+expect(doneOverdueDashHTML.contains("due-soon"), false, "a done task's past due date carries no urgency class")
+expect(doneOverdueDashHTML.contains("due-over"), false, "a done task's past due date carries no urgency class")
+
+// soonWithinDays threading: a task 4 days out only reads as soon once the caller widens
+// the window — proves the parameter (not just the default) is actually read.
+let thresholdBlock = urgencyBlock("2026-08-16")
+expect(
+    DashboardTaskRenderer.render(thresholdBlock, today: blockToday).contains("due-soon"),
+    false, "4 days out is not soon under the default 2-day window"
+)
+expect(
+    DashboardTaskRenderer.render(thresholdBlock, today: blockToday, soonWithinDays: 5).contains("class=\"due due-soon\""),
+    true, "4 days out is soon once soonWithinDays widens to 5"
 )
 
 // MARK: - DashboardTaskRenderer.renderFocusToggle (B7 — focus toggle)

@@ -11,12 +11,14 @@ import FoolscapCore
 /// `FoolscapCore.DashboardTaskRenderer`; this file only wraps that fragment in the `<li>`
 /// that carries the write-back `data-file`/`data-line` attributes and the checkbox.
 enum DashboardRenderer {
-    static func renderBody(_ dashboard: Dashboard, today: CalendarDate) -> String {
+    static func renderBody(
+        _ dashboard: Dashboard, today: CalendarDate, soonWithinDays: Int = Config.defaultSoonWithinDays
+    ) -> String {
         var html = "<div class=\"dashboard\">\n"
         html += renderBrief(dashboard.brief)
-        html += renderSection(title: "Today", tasks: dashboard.today, emptyText: "Nothing due today.", today: today)
-        html += renderSection(title: "This week", tasks: dashboard.thisWeek, emptyText: "Nothing else due this week.", today: today)
-        html += renderSection(title: "Long-term", tasks: dashboard.longTerm, emptyText: "No long-term goals yet.", today: today)
+        html += renderSection(title: "Today", tasks: dashboard.today, emptyText: "Nothing due today.", today: today, soonWithinDays: soonWithinDays)
+        html += renderSection(title: "This week", tasks: dashboard.thisWeek, emptyText: "Nothing else due this week.", today: today, soonWithinDays: soonWithinDays)
+        html += renderSection(title: "Long-term", tasks: dashboard.longTerm, emptyText: "No long-term goals yet.", today: today, soonWithinDays: soonWithinDays)
         html += "</div>\n"
         return html
     }
@@ -47,7 +49,9 @@ enum DashboardRenderer {
         return "<section class=\"brief\">\n<h2>Brief \(stampHTML)</h2>\n\(body)</section>\n"
     }
 
-    private static func renderSection(title: String, tasks: [DashboardTask], emptyText: String, today: CalendarDate) -> String {
+    private static func renderSection(
+        title: String, tasks: [DashboardTask], emptyText: String, today: CalendarDate, soonWithinDays: Int
+    ) -> String {
         guard !tasks.isEmpty else {
             return """
             <section class="section">
@@ -58,7 +62,7 @@ enum DashboardRenderer {
             """
         }
         var html = "<section class=\"section\">\n<h2>\(escape(title))</h2>\n<ul class=\"tasks\">\n"
-        for task in tasks { html += renderTask(task, today: today) }
+        for task in tasks { html += renderTask(task, today: today, soonWithinDays: soonWithinDays) }
         html += "</ul>\n</section>\n"
         return html
     }
@@ -75,8 +79,8 @@ enum DashboardRenderer {
     /// Accessibility pass): `role="checkbox"`/`aria-checked`/`aria-label` so VoiceOver
     /// announces the row as a checkbox with its state and the task sentence as its name,
     /// rather than a bare, unlabelled checkbox.
-    private static func renderTask(_ task: DashboardTask, today: CalendarDate) -> String {
-        let tidy = DashboardTaskRenderer.render(task.block, today: today)
+    private static func renderTask(_ task: DashboardTask, today: CalendarDate, soonWithinDays: Int) -> String {
+        let tidy = DashboardTaskRenderer.render(task.block, today: today, soonWithinDays: soonWithinDays)
         let checkbox = DashboardTaskRenderer.renderCheckbox(task.block)
         let focusToggle = DashboardTaskRenderer.renderFocusToggle(task.block)
         let doneClass = task.block.isDone ? " done" : ""

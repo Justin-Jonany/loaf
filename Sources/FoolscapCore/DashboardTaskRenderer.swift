@@ -9,7 +9,9 @@ import Foundation
 /// `FoolscapSelftest` can assert against it directly — the same split `MarkdownRenderer`
 /// already uses for the single-note task view.
 public enum DashboardTaskRenderer {
-    public static func render(_ block: TaskBlock, today: CalendarDate) -> String {
+    public static func render(
+        _ block: TaskBlock, today: CalendarDate, soonWithinDays: Int = Config.defaultSoonWithinDays
+    ) -> String {
         // A completed-today task lingers in its bucket rather than vanishing (ROADMAP
         // B6) — the `done` class is what the frosted theme hooks the struck-through/
         // dimmed treatment on.
@@ -17,9 +19,19 @@ public enum DashboardTaskRenderer {
         var html = "<span class=\"label\(doneClass)\">\(escape(block.text))</span>"
 
         if let due = block.due {
+            // Urgency drives the chip's class (unlike MarkdownRenderer's single-note view,
+            // due-today is deliberately NOT treated as overdue-red here — the panel is a
+            // glanceable daily surface, so "due today" and "due soon" read the same, and
+            // only a genuinely missed date gets the loud treatment.
+            let urgencyClass: String
+            switch block.urgency(on: today, soonWithinDays: soonWithinDays) {
+            case .overdue: urgencyClass = " due-over"
+            case .dueToday, .soon: urgencyClass = " due-soon"
+            case .later, .none: urgencyClass = ""
+            }
             // Human phrasing for the chip's visible text (C1 — "Today"/"Tomorrow"/"MMM d"),
             // with the exact ISO date kept in `title` so hovering still shows the real date.
-            html += "<span class=\"due\" title=\"\(escape(due.description))\">\(escape(humanDue(due, today: today)))</span>"
+            html += "<span class=\"due\(urgencyClass)\" title=\"\(escape(due.description))\">\(escape(humanDue(due, today: today)))</span>"
         }
         if let type = block.type {
             html += "<span class=\"type\">\(escape(type))</span>"

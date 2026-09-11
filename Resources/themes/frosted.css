@@ -2,15 +2,16 @@
 
 :root {
   --ink:        #1B1E24;
-  --ink-soft:   rgba(27, 30, 36, 0.55);
+  --ink-dim:    rgba(27, 30, 36, 0.55);
   --rule:       rgba(27, 30, 36, 0.14);
+  --surface:    transparent; /* NSVisualEffectView shows through */
   --due-soon:   #9A5F1E;
   --due-soon-bg: rgba(168, 112, 44, 0.16);
   --due-over:   #9E3F35;
   --due-over-bg: rgba(166, 69, 60, 0.16);
-  /* The checkbox's checkmark glyph (B5) sits on an --ink-soft fill, so it needs the
+  /* The checkbox's checkmark glyph (B5) sits on an --ink-dim fill, so it needs the
      *opposite* end of the ink scale to read — the light theme's --ink is too dark on
-     top of --ink-soft's own dark tint. */
+     top of --ink-dim's own dark tint. */
   --checkbox-mark: #EDEFF2;
   --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
 }
@@ -18,7 +19,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --ink:        #EDEFF2;
-    --ink-soft:   rgba(237, 239, 242, 0.55);
+    --ink-dim:    rgba(237, 239, 242, 0.55);
     --rule:       rgba(255, 255, 255, 0.14);
     --due-soon:   #E8B87A;
     --due-soon-bg: rgba(214, 160, 92, 0.18);
@@ -28,216 +29,14 @@
   }
 }
 
-body {
-  margin: 0;
-  padding: 13px 15px;
-  font: 13.5px/1.5 var(--font);
-  color: var(--ink);
-  background: transparent; /* NSVisualEffectView shows through */
-  -webkit-font-smoothing: antialiased;
-}
-
-h1, h2, h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
-hr { border: 0; border-top: 0.5px solid var(--rule); margin: 10px 0; }
-a { color: inherit; }
-
-ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
-.task { display: flex; align-items: flex-start; gap: 8px; margin: 7px 0; }
-.task.done .label { text-decoration: line-through; opacity: 0.45; }
-.task .label { flex: 1; }
-
-/* Custom checkbox (B5): a plain native box reads as a totally different control from the
-   ★ focus toggle beside it. Restyled to the same muted, rounded-square language — border
-   only when unchecked, a soft fill + check glyph when checked — so the two read as one
-   set. `appearance: none` drops the platform control entirely; everything below is drawn
-   by hand. Stays a real `<input type="checkbox">` (ARIA/role/aria-checked come from
-   `DashboardTaskRenderer.renderCheckbox` and must not move) — only its paint changes.
-   `margin-top` centers the 14px box on the first line of 20px-ish body text (13.5px/1.5),
-   matching the row's `align-items: flex-start`. */
-.task input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  margin: 3px 0 0;
-  flex-shrink: 0;
-  border: 1.5px solid var(--ink-soft);
-  border-radius: 4px;
-  background: transparent;
-  position: relative;
-  cursor: pointer;
-}
-.task input[type="checkbox"]:checked {
-  background: var(--ink-soft);
-  border-color: transparent;
-}
-.task input[type="checkbox"]:checked::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 7px;
-  border: solid var(--checkbox-mark);
-  border-width: 0 1.5px 1.5px 0;
-  transform: rotate(45deg);
-}
-
-.due {
-  font-size: 10.5px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.5;
-  margin-top: 3px;
-  line-height: 14px;
-}
-.due-soon { color: var(--due-soon); background: var(--due-soon-bg); opacity: 1; }
-.due-over { color: var(--due-over); background: var(--due-over-bg); opacity: 1; }
-
-/* The composed dashboard (DESIGN.md → "The panel"): four fixed sections, no tree. Task
-   rows are tidied (ROADMAP B4): the sentence, a due chip (.due, above), a faint #type
-   tag, a priority dot, and a source icon — no raw @/#/! tokens ever reach the DOM. */
-.dashboard { display: flex; flex-direction: column; gap: 16px; }
-.dashboard section { border-top: 0.5px solid var(--rule); padding-top: 10px; }
-.dashboard section:first-child { border-top: none; padding-top: 0; }
-.dashboard .brief p { margin: 0 0 6px; }
-.dashboard .empty { color: var(--ink-soft); font-style: italic; margin: 0; }
-
-/* Freshness stamp (ROADMAP D1; DESIGN.md → Trust): "built 7:58am" next to the Brief
-   heading, so you never act on a stale plan without knowing. A missing/unparseable stamp
-   ("build time unknown") tints with `--due-over` instead of `--ink-soft` — the same
-   semantic used for overdue tasks — so a stale/unknown brief actually reads as a warning,
-   not just a quieter label. */
-.dashboard .brief h2 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.dashboard .freshness {
-  font-size: 10.5px;
-  font-weight: 400;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
-}
-.dashboard .freshness.unknown { color: var(--due-over); }
-
-/* Demote content headings inside the brief (B4): the section title itself is the
-   `.brief`'s first child `<h2>` (carrying `.freshness`, styled above) and must stay
-   dominant — the `:not(:first-child)` on h2 below is what keeps this from also catching
-   that one. Anything the brief's own markdown renders as a heading (a stray `## What
-   changed`-style heading some brief.md still carries) reads instead as a small muted
-   sub-label, not a second title fighting the section's. */
-.dashboard .brief h1,
-.dashboard .brief h2:not(:first-child),
-.dashboard .brief h3,
-.dashboard .brief h4 {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  margin: 12px 0 4px;
-}
-
-/* Brief list indent (B7): the base `ul`/`ol` have no rule of their own (only `ul.tasks`,
-   above, is tightened), so a markdown list in the brief's free prose would otherwise fall
-   back to the browser default indent and float its bullets far from the text. */
-.dashboard .brief ul { padding-left: 18px; margin: 0 0 6px; }
-.dashboard .brief li { margin: 2px 0; }
-
-.dashboard .task .type {
-  font-size: 10.5px;
-  color: var(--ink-soft);
-  opacity: 0.7;
-  white-space: nowrap;
-  margin-top: 3px;
-  line-height: 14px;
-}
-.dashboard .task .priority-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-top: 7px;
-  flex-shrink: 0;
-}
-.dashboard .task .priority-dot.high { background: var(--due-over); }
-.dashboard .task .priority-dot.med  { background: var(--due-soon); }
-.dashboard .task .priority-dot.low  { background: var(--ink-soft); }
-.dashboard .task .source-icon {
-  font-size: 10.5px;
-  opacity: 0.45;
-  flex-shrink: 0;
-  margin-top: 3px;
-  line-height: 14px;
-}
-
-/* Focus toggle (ROADMAP B7 — Curated Today: a ★ focus flag). An unstyled <button> at the
-   row's trailing edge (it's simply the last child in the flex row); stays invisible until
-   the row is hovered or has focus-within so an untouched row isn't cluttered with a star
-   for every task, but a starred row (.on) always shows it, filled in the same accent used
-   for an overdue due-chip — the panel's one existing "this needs attention" color. */
-.dashboard .task .focus-toggle {
-  appearance: none;
-  border: none;
-  background: none;
-  margin: 0;
-  padding: 0;
-  font-size: 11px;
-  line-height: 1;
-  color: var(--ink-soft);
-  opacity: 0;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: opacity 0.1s ease, color 0.1s ease;
-}
-.dashboard .task:hover .focus-toggle,
-.dashboard .task:focus-within .focus-toggle {
-  opacity: 0.45;
-}
-.dashboard .task .focus-toggle:hover,
-.dashboard .task .focus-toggle:focus-visible {
-  opacity: 0.8;
-}
-.dashboard .task .focus-toggle.on {
-  opacity: 1;
-  color: var(--due-over);
-}
-.dashboard .task .focus-toggle.on:hover {
-  opacity: 0.8;
-}
-
-/* Completed-today rows (ROADMAP B6): the task stays in its @due-based section, sorted
-   below the open items, until the 6am rollover drops it. `.task.done .label` (above)
-   already strikes through and dims the sentence; this dims the chips alongside it so
-   the whole row reads as finished. */
-.dashboard .task.done { opacity: 0.6; }
-.dashboard .task.done .due,
-.dashboard .task.done .type,
-.dashboard .task.done .priority-dot,
-.dashboard .task.done .source-icon { opacity: 0.5; }
-
-img { max-width: 100%; border-radius: 5px; }
-pre { overflow-x: auto; font-size: 12px; }
-.mermaid { color: var(--ink-soft); }
-
-/* Reduce Transparency is handled in Swift by disabling vibrancy; this keeps the
-   text readable against the resulting solid background. */
-@media (prefers-reduced-transparency: reduce) {
-  body { background: Canvas; color: CanvasText; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; animation: none !important; }
-}
-
-/* Increase Contrast: the default --rule is a low-opacity hairline, fine at full
-   vibrancy but close to invisible for a user who has asked macOS for more contrast.
-   Strengthen it everywhere it's used (section dividers) and add an explicit border
-   around the panel edge and each task row, rather than introducing a second colour. */
+/* Increase Contrast: base.css's `prefers-contrast: more` query already draws an explicit
+   border around the panel and each task row (keyed off --ink, always fully opaque); this
+   is frosted's own tuning on top of that — its hairlines (`hr`, section dividers) run on
+   a low-opacity --rule that's fine at full vibrancy but close to invisible once contrast
+   is turned up, so bump it here rather than in base, which has no single "right" value
+   for every theme. */
 @media (prefers-contrast: more) {
   :root { --rule: rgba(27, 30, 36, 0.75); }
-  body { border: 1px solid var(--rule); box-sizing: border-box; }
-  .dashboard section { border-top-width: 1px; }
-  .dashboard .task { border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; }
 }
 
 @media (prefers-contrast: more) and (prefers-color-scheme: dark) {

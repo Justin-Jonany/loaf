@@ -259,7 +259,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private func renderDashboard() {
         let today = CalendarDate.effectiveToday()
         let dashboard = DashboardComposer.compose(vault: vault, today: today)
-        let body = DashboardRenderer.renderBody(dashboard, today: today)
+        let body = DashboardRenderer.renderBody(dashboard, today: today, soonWithinDays: config.soonWithinDays)
         window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
     }
 
