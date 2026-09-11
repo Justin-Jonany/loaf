@@ -19,7 +19,11 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--dump-dashboard"),
     let today = CalendarDate.today()
     let dashboard = DashboardComposer.compose(vault: vault, today: today)
     let body = DashboardRenderer.renderBody(dashboard, today: today)
-    let html = HTMLPage.wrap(body: body, theme: Config.defaultTheme)
+    // Reads the real config's theme (same default path the app itself loads) rather than
+    // the hardcoded default — now that the live app re-reads `theme` on every repaint
+    // (live theme switching, DECISIONS.md 2026-09-11), this dump tool would otherwise
+    // silently stop matching "the exact HTML the app would show" for a non-default theme.
+    let html = HTMLPage.wrap(body: body, theme: Config.load().theme)
     do {
         try html.write(toFile: outputPath, atomically: true, encoding: .utf8)
         exit(0)
@@ -350,6 +354,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Show Notes", action: #selector(toggle), keyEquivalent: "n"))
         menu.addItem(NSMenuItem(title: "View Archive", action: #selector(viewArchive), keyEquivalent: "a"))
+        let themeItem = NSMenuItem(title: "Theme", action: nil, keyEquivalent: "")
+        themeItem.submenu = buildThemeMenu()
+        menu.addItem(themeItem)
         menu.addItem(NSMenuItem(title: "Open Vault in Finder", action: #selector(openVaultInFinder), keyEquivalent: "o"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Foolscap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -358,6 +365,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             item.target = (item.action == #selector(NSApplication.terminate(_:))) ? nil : self
         }
         return menu
+    }
+
+    /// The "Theme" submenu (DECISIONS.md 2026-09-11 — live theme switching, the picker
+    /// half). Populated from `HTMLPage.availableThemeNames()` — every palette file under
+    /// `Resources/themes/` — rather than a hardcoded list, so a new theme shows up here on
+    /// its own. The checkmark tracks `config.theme`, which `buildMenu()`'s caller keeps
+    /// current before rebuilding (see `selectTheme`).
+    private func buildThemeMenu() -> NSMenu {
+        let submenu = NSMenu()
+        for name in HTMLPage.availableThemeNames() {
+            let item = NSMenuItem(title: name.capitalized, action: #selector(selectTheme(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = name
+            item.state = (name == config.theme) ? .on : .off
+            submenu.addItem(item)
+        }
+        return submenu
+    }
+
+    /// Writes the picked theme to the config file, then repaints — `renderDashboard`/
+    /// `renderArchiveView`'s own re-read (Part A) is what actually swaps the CSS live.
+    /// Rebuilds the whole status-item menu afterward so the checkmark moves to the new
+    /// selection.
+    @objc private func selectTheme(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String else { return }
+        do {
+            try Config.setTheme(name)
+        } catch {
+            NSLog("Foolscap: couldn't write theme \"\(name)\" to the config file: \(error)")
+            return
+        }
+        config.theme = name
+        statusItem?.menu = buildMenu()
+        refreshCurrentView()
     }
 
     @objc private func toggle() {
@@ -392,6 +433,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// "today" rolls over at 6am local, not midnight (DESIGN.md → "The daily loop").
     private func renderDashboard() {
         currentView = .dashboard
+        // Live theme switching (DECISIONS.md 2026-09-11): the theme is no longer read
+        // once at launch — every repaint re-reads it so a menu-bar pick (or a hand edit)
+        // takes effect without a relaunch. The CSS itself already hot-reloads on repaint.
+        config.theme = Config.load().theme
         let today = CalendarDate.effectiveToday()
         let dashboard = DashboardComposer.compose(vault: vault, today: today)
         let body = DashboardRenderer.renderBody(dashboard, today: today, soonWithinDays: config.soonWithinDays)
@@ -404,6 +449,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// deferred; this only ever reads this month's shard.
     private func renderArchiveView() {
         currentView = .archive
+        // See renderDashboard's matching re-read — live theme switching applies to
+        // whichever view is actually being painted.
+        config.theme = Config.load().theme
         let today = CalendarDate.effectiveToday()
         let archiveURL = Archive.archiveShardURL(for: Date(), vault: vault)
         let shardMarkdown = (try? vault.read(archiveURL)) ?? ""
