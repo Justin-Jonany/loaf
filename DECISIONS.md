@@ -4,6 +4,70 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-11 — Overdue severity, theme templating, and lifecycle sub-decisions
+
+**Context:** A review pass (four investigation lenses over the panel's visuals and the
+still-unimplemented redesign below) surfaced a set of concrete decisions and resolved the
+open sub-choice left in that entry. Two findings are latent bugs, not just polish: the
+dashboard due chip never emits an urgency class, so the themes' `.due-soon`/`.due-over`
+styling is dead on the panel; and the `card`/`console` themes don't style the dashboard at
+all — every dashboard-only class falls back to browser defaults when they're selected.
+
+**Decided:**
+
+- **Overdue reads as more severe on the dashboard; due-today does not.** Wire the existing
+  urgency logic into `DashboardTaskRenderer` (a new `TaskBlock.urgency`, mirroring
+  `TaskLine`'s, with `soon_within_days` threaded from config). A task due before today gets
+  a restrained red treatment; **due-today maps to the softer `due-soon`, not red** —
+  reddening the common case would make every day's list read as an emergency. Severity is
+  scoped to the `.due-over`/`.due-soon` *class selectors*, never the `--due-over` CSS
+  variable (which is shared by the priority dot, focus control, and freshness badge). No
+  "days late" count in the chip — the panel is narrow; the color/edge-marker carries it.
+
+- **Themes become a shared base plus a palette.** Structure moves to a single
+  `Resources/themes/base.css` written against a documented token contract; each theme file
+  (`frosted`/`card`/`console`) shrinks to a `:root` palette (plus any signature extras and
+  its own optional dark/contrast blocks). `HTMLPage.wrap` concatenates base + theme. This
+  makes the ROADMAP promise ("a new theme is one CSS file, no Swift") true and fixes
+  `card`/`console` silently leaving the dashboard unstyled. Dead selectors (`.mermaid`,
+  `.task .box .tick`) are dropped. Migrate `frosted` first and diff the composed output to
+  prove the extraction is inert before it becomes the only path.
+
+- **Live theme switching.** The selected theme name is read once at launch; make the app
+  re-read `config`'s `theme` on its existing repaint triggers and add a menu-bar picker
+  that writes the `theme` key, so themes swap without a relaunch (the CSS already
+  hot-reloads on repaint).
+
+- **Fix `saveSharedFile` swallowing write failures (`main.swift`).** It currently logs and
+  returns on a failed atomic write while the caller repaints as if it succeeded — a latent
+  data-safety bug today (a failed tick/focus looks applied), and the prerequisite for the
+  archive's archive-first-then-strip crash-safety.
+
+Resolving the open sub-choices from the entry below:
+
+- **The on-disk placement token is renamed `★` → `today`.** Since the star glyph is retired
+  from the UI, a bare `★` in `tasks.md` would correspond to nothing visible; `today` reads
+  honestly in the plain-text file. Existing `★` lines get a one-time migration. The `focus`
+  boolean and its conflict-guarded write-back are unchanged; only the rendered token
+  spelling changes.
+
+- **Restore reopens the task.** `restoring` clears `✓done`/`isDone` so a restored task
+  returns as an active item — otherwise it would land back in `tasks.md` but be filtered out
+  of every dashboard bucket (done-and-not-today), an invisible "restore."
+
+- **Manual drag-reorder, if built, is scoped to the Today section only**, stored as a
+  gap-numbered `order:` field. This-week/Long-term stay sorted by `@due` (a manual order
+  there would fight the deadline sort). Deferred — a later slice, after drag-to-Today.
+
+**Why:** the visuals work is mostly connecting logic and CSS that already exist, and it
+directly answers the "make overdue severe" and "several easily-swappable themes" asks while
+keeping the panel calm — red stays rare and meaningful, and structure stops being copied per
+theme. The lifecycle resolutions favor the plain-text-you-own principle (a legible on-disk
+token, no silently-lost data) over saving a trivial migration.
+
+**References:** resolves the "Open sub-choice" and fills in the implementation slices of the
+2026-09-11 "Task lifecycle redesign" entry below.
+
 ## 2026-09-11 — Task lifecycle redesign: add-only routine, human-owned removal, permanent archive, sticky drag-to-Today
 
 **Context:** dogfooding surfaced that the unattended morning routine silently deleted a
