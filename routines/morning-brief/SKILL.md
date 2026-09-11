@@ -80,17 +80,30 @@ A task is a checkbox with its metadata on an indented line beneath it:
 | `✓done` | — | You never add this — that's the checkbox-click write path (A4), not this routine. |
 | note | no | A further-indented line of free prose, only if it adds real context. |
 
-**When you add a task from a calendar event, `source` is always `calendar`**, and you
-must be able to point back to the specific event — you'll cite it in the change-log.
-Don't invent a task from an event unless the action item is reasonably obvious (e.g. an
-event titled "Client mtg — deck review" whose description asks you to "bring the pricing
-slide" clearly implies prep work; a plain "Weekly sync" with no description doesn't imply
-anything). When in doubt, don't invent it — under-adding is safe, inventing noise isn't.
+**Calendar tiering:** not every event is a binary invent-a-task-or-not call. Three tiers:
 
-**Pruning:** a completed task (`✓done`) more than 7 days before today can be removed from
-`tasks.md` (DESIGN.md -> "Files in the vault"). Note anything you prune in the
-change-log. Never remove an unchecked task, and never remove a task completed within the
-last 7 days — the retrospective window needs it.
+- **Routine/recurring blocks** (a class, a standing weekly sync, a recurring gym slot) —
+  **never** a task, however far out it repeats. Surface it as brief context only, if it's
+  worth mentioning at all (e.g. "your usual 10am lecture").
+- **An important event with a real action item** — a **task**, `source: calendar`. You
+  must be able to point back to the specific event — you'll cite it in the change-log.
+  Don't invent a task unless the action item is reasonably obvious (e.g. an event titled
+  "Client mtg — deck review" whose description asks you to "bring the pricing slide"
+  clearly implies prep work; a plain "Weekly sync" with no description doesn't imply
+  anything).
+- **Minor but worth mentioning** (a one-off with no real follow-up, a heads-up worth a
+  sentence) — **brief prose only**, no task.
+
+When a tier call is close, prefer the lighter one — under-adding is safe, inventing noise
+isn't.
+
+**Add-only.** This routine may only **add** calendar-derived tasks to `tasks.md` and
+write `brief.md` + its change-log. It must **never** remove, prune, or relocate a task —
+removal is a user-only action now (DECISIONS.md 2026-09-11 "Task lifecycle redesign"). A
+completed task (`✓done`) simply stays in `tasks.md` until the user clears it by hand,
+which moves it to a permanent archive; that's not something this routine does. You also
+never set Today-placement — that's now a sticky drag gesture the user drives from the
+panel, not a token this routine writes.
 
 ## Writing `tasks.md`
 
@@ -123,14 +136,14 @@ Full contents, in order:
    now `✓done`... though ticking is the user's job through the day, not yours), what's
    due today, what slipped. Plain prose, no raw `@`/`#` tokens, no bullet list here.
 
-3. A `## What changed` section: a bullet per task you added, moved, or pruned this run.
-   **Every calendar-derived addition must cite its source event by name** — this is the
-   whole point of provenance (DESIGN.md -> "Trust"):
+3. A `## What changed` section: a bullet per task you added or rescheduled this run —
+   this routine is add-only, so there's nothing to prune. **Every calendar-derived
+   addition must cite its source event by name** — this is the whole point of provenance
+   (DESIGN.md -> "Trust"):
 
    ```
    - added "Prep the client deck" — from calendar event "Client mtg 3pm"
    - moved "Return library books" from This week to Today (now overdue)
-   - pruned "Renew library card" — completed over a week ago
    ```
 
    If you changed nothing (a genuinely quiet run), say so plainly rather than omitting

@@ -14,7 +14,7 @@ nothing else; don't create `daily/` notes or a `todo.md`.
 | File | Owner | Contents |
 |---|---|---|
 | `brief.md` | **You.** Regenerated each run. | 2–5 sentence prose recap: what got done, what's due, what slipped. Stamp it with the build time. |
-| `tasks.md` | Shared. | All dated tasks. Completed tasks stay with `✓done` for about a week (for the retrospective), then you prune them. |
+| `tasks.md` | Shared. | All dated tasks. Completed tasks stay with `✓done` until the user clears them by hand — you never prune or remove a task. |
 | `longterm.md` | Shared. | Target-dated goals. Mostly the user's, but discuss and edit it with them. |
 
 ## Task format
