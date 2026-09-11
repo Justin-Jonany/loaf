@@ -204,6 +204,69 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   opacity: 0.8;
 }
 
+/* Archive button (DECISIONS.md 2026-09-11 — the permanent archive): a plain one-shot
+   action, not a toggle like .focus-toggle beside it — no .on state, just the same
+   hover-revealed treatment at the row's trailing edge. Only emitted for a done row (the
+   app layer gates that), so it never competes with the focus toggle on an open task. */
+.dashboard .task .archive-button {
+  appearance: none;
+  border: none;
+  background: none;
+  margin: 0;
+  padding: 0;
+  font-size: 10.5px;
+  line-height: 14px;
+  margin-top: 3px;
+  color: var(--ink-dim);
+  opacity: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.1s ease, color 0.1s ease;
+}
+.dashboard .task:hover .archive-button,
+.dashboard .task:focus-within .archive-button {
+  opacity: 0.6;
+}
+.dashboard .task .archive-button:hover,
+.dashboard .task .archive-button:focus-visible {
+  opacity: 1;
+}
+
+/* Archive viewer (minimal — current month only; ArchiveRenderer, Sources/Foolscap). It
+   reuses the dashboard's own .section/.task chrome above; these two rules are its only
+   additions — the back-navigation control and the always-visible restore action (unlike
+   the archive button above, a restore is the *only* action on an archived row, so it
+   doesn't need the hover-reveal treatment). */
+.dashboard.archive .back-to-dashboard {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.dashboard.archive .back-to-dashboard:hover {
+  color: var(--ink);
+}
+.dashboard .task .restore-button {
+  appearance: none;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: none;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  line-height: 14px;
+  color: var(--ink-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.dashboard .task .restore-button:hover {
+  color: var(--ink);
+  border-color: var(--ink-dim);
+}
+
 /* Completed-today rows (ROADMAP B6): the task stays in its @due-based section, sorted
    below the open items, until the 6am rollover drops it. `.task.done .label` (above)
    already strikes through and dims the sentence; this dims the chips alongside it so

@@ -107,6 +107,19 @@ public enum DashboardTaskRenderer {
             + " title=\"\(escapeAttribute(action))\">★</button>"
     }
 
+    /// The per-row "Archive" action (DECISIONS.md 2026-09-11 — the permanent archive):
+    /// moves a completed task off `tasks.md`/`longterm.md` into the monthly archive shard.
+    /// Unlike `renderFocusToggle`, this is a one-shot action, not a toggle — no
+    /// `aria-pressed`, just a labelled `<button>` naming the action and the task, same
+    /// accessible-name contract as `renderCheckbox`/`renderFocusToggle` above. Only
+    /// meaningful once a task is done; the caller (`DashboardRenderer.renderTask`) gates
+    /// on `block.isDone` before emitting it, same split as the rest of this file.
+    public static func renderArchiveButton(_ block: TaskBlock) -> String {
+        "<button type=\"button\" class=\"archive-button\""
+            + " aria-label=\"Archive: \(escapeAttribute(block.text))\""
+            + " title=\"Archive\">Archive</button>"
+    }
+
     private static func escape(_ text: String) -> String {
         var result = ""
         result.reserveCapacity(text.count)

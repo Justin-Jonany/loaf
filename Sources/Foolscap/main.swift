@@ -108,6 +108,99 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-conflict-guard")
     }
 }
 
+/// The body of `--demo-archive`, factored out so it reads top-to-bottom as the demo
+/// script it is (mirrors `runConflictGuardDemo` above). Seeds a vault with one open and
+/// one already-completed task, archives the completed one — exercising the same
+/// archive-shard-first-then-strip write ORDER `archiveTask` uses in the real app
+/// (DECISIONS.md 2026-09-11: a crash between the two writes must leave a recoverable
+/// duplicate, never a loss) — then restores it back, the symmetric mirror. Prints
+/// `tasks.md`/the archive shard at each step so the two-file write and its ordering are
+/// inspectable without a GUI.
+func runArchiveDemo(in dir: URL) throws {
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let vault = Vault(root: dir)
+    let tasksURL = dir.appendingPathComponent("tasks.md")
+
+    let original = """
+    - [ ] Email the landlord
+          @today · manual
+    - [x] Prep the client deck
+          @2026-08-20 · calendar · !high · #schoolwork · ✓2026-08-20
+    """
+    try vault.writeAtomically(original, to: tasksURL)
+    print("--- BEFORE: tasks.md ---")
+    print(original)
+
+    // The done task is the second block, starting at (0-based) line index 2.
+    let archivedAt = Date()
+    guard let (archivedBlockText, remainingLines) = TaskBlock.archiving(
+        original.components(separatedBy: "\n"), at: 2, archivedAt: archivedAt
+    ) else {
+        print("Unexpected: line 2 isn't an archivable checkbox — nothing written.")
+        return
+    }
+
+    let archiveURL = Archive.archiveShardURL(for: archivedAt, vault: vault)
+
+    // STEP 1: the archive shard is written FIRST.
+    try vault.writeAtomically(archivedBlockText, to: archiveURL)
+    print("\n--- STEP 1: archive shard written first (\(archiveURL.lastPathComponent)) ---")
+    print(try vault.read(archiveURL))
+
+    // STEP 2: tasks.md is only stripped once step 1 has actually landed.
+    try vault.writeAtomically(remainingLines.joined(separator: "\n"), to: tasksURL)
+    print("\n--- STEP 2: tasks.md stripped of the archived block ---")
+    print(try vault.read(tasksURL))
+
+    // Restore: the symmetric mirror — append to tasks.md FIRST, strip the shard SECOND.
+    let archiveLines = try vault.read(archiveURL).components(separatedBy: "\n")
+    guard let (restoredBlockText, archiveRemaining) = TaskBlock.restoring(archiveLines, at: 0) else {
+        print("Unexpected: the archived block didn't parse back — nothing restored.")
+        return
+    }
+
+    let beforeRestore = try vault.read(tasksURL)
+    let restoredTasks = beforeRestore.isEmpty ? restoredBlockText : beforeRestore + "\n" + restoredBlockText
+
+    // STEP 3: tasks.md gets the restored, reopened block FIRST.
+    try vault.writeAtomically(restoredTasks, to: tasksURL)
+    print("\n--- STEP 3: restored block appended to tasks.md first ---")
+    print(try vault.read(tasksURL))
+
+    // STEP 4: the archive shard is only stripped once step 3 has actually landed.
+    try vault.writeAtomically(archiveRemaining.joined(separator: "\n"), to: archiveURL)
+    let afterRestoreShard = try vault.read(archiveURL)
+    print("\n--- STEP 4: archive shard stripped of the restored block ---")
+    print(afterRestoreShard.isEmpty ? "(empty — the shard held only that one block)" : afterRestoreShard)
+
+    let restoredParsed = TaskBlock.parse(restoredBlockText, today: .today())!
+    print("\n--- CHECK: the restored task is reopened, not just un-archived ---")
+    print("isDone: \(restoredParsed.isDone), done: \(String(describing: restoredParsed.done)), archivedAt: \(String(describing: restoredParsed.archivedAt))")
+
+    print("\nVault directory listing:")
+    for name in try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted() {
+        print("  \(name)")
+    }
+    print("archive/ directory listing:")
+    for name in try FileManager.default.contentsOfDirectory(atPath: dir.appendingPathComponent("archive").path).sorted() {
+        print("  \(name)")
+    }
+}
+
+// The `--demo-archive <dir>` entry point, the archive's non-GUI proof path (mirrors
+// `--demo-conflict-guard` above) — must run before AppKit is touched below.
+if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-archive"),
+   CommandLine.arguments.count > flagIndex + 1 {
+    let demoDir = URL(fileURLWithPath: CommandLine.arguments[flagIndex + 1])
+    do {
+        try runArchiveDemo(in: demoDir)
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("Foolscap: archive demo failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+}
+
 /// The vault-root sidecar the morning routine writes when today needs a decision or a run
 /// failed (ROADMAP.md → D2; DECISIONS.md 2026-08-23). A dotfile, so `VaultWatcher`'s `.md`
 /// filter still catches changes to it while `Vault.notePaths()` skips it as a note.
@@ -189,6 +282,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private var config = Config()
     private var vault: Vault!
 
+    /// Which HTML is currently loaded into the single `NoteWindow.webView` — the ordinary
+    /// dashboard, or the minimal archive viewer swapped in over it (DECISIONS.md
+    /// 2026-09-11 — no second `WKWebView`). Tracked so a repaint trigger (the watcher, the
+    /// day-change/wake observers) refreshes whichever one is actually on screen instead of
+    /// always snapping back to the dashboard.
+    private enum PanelView { case dashboard, archive }
+    private var currentView: PanelView = .dashboard
+
     /// The three known files the dashboard composes from — nothing else. Matched by
     /// filename against watcher events so an unrelated vault edit doesn't trigger a
     /// repaint, and a stray file (`notes.md`, …) is never read at all.
@@ -225,6 +326,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Show Notes", action: #selector(toggle), keyEquivalent: "n"))
+        menu.addItem(NSMenuItem(title: "View Archive", action: #selector(viewArchive), keyEquivalent: "a"))
         menu.addItem(NSMenuItem(title: "Open Vault in Finder", action: #selector(openVaultInFinder), keyEquivalent: "o"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Foolscap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -249,6 +351,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         NSWorkspace.shared.open(vault.root)
     }
 
+    @objc private func viewArchive() {
+        renderArchiveView()
+        guard let window else { return }
+        if !window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
     // MARK: - Dashboard composition + rendering
 
     /// Reads exactly `brief.md`/`tasks.md`/`longterm.md` (`DashboardComposer`), buckets
@@ -257,10 +368,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// Buckets against `CalendarDate.effectiveToday()`, not `.today()` — the dashboard's
     /// "today" rolls over at 6am local, not midnight (DESIGN.md → "The daily loop").
     private func renderDashboard() {
+        currentView = .dashboard
         let today = CalendarDate.effectiveToday()
         let dashboard = DashboardComposer.compose(vault: vault, today: today)
         let body = DashboardRenderer.renderBody(dashboard, today: today, soonWithinDays: config.soonWithinDays)
         window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
+    }
+
+    /// The minimal archive viewer (DECISIONS.md 2026-09-11): swaps the same webView to a
+    /// listing of the CURRENT month's archive shard, built by `ArchiveRenderer`. No second
+    /// window/config — see `currentView`'s doc comment. Multi-month navigation is
+    /// deferred; this only ever reads this month's shard.
+    private func renderArchiveView() {
+        currentView = .archive
+        let today = CalendarDate.effectiveToday()
+        let archiveURL = Archive.archiveShardURL(for: Date(), vault: vault)
+        let shardMarkdown = (try? vault.read(archiveURL)) ?? ""
+        let shardRelativePath = "archive/\(archiveURL.lastPathComponent)"
+        let body = ArchiveRenderer.renderBody(shardMarkdown, shardFile: shardRelativePath, today: today)
+        window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
+    }
+
+    /// Refreshes whichever view is actually on screen — used by repaint triggers that
+    /// aren't themselves tied to a specific view (the watcher, wake/day-change).
+    private func refreshCurrentView() {
+        switch currentView {
+        case .dashboard: renderDashboard()
+        case .archive: renderArchiveView()
+        }
     }
 
     // MARK: - Recompute on wake / day change
@@ -284,7 +419,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
 
     @objc private func recomputeOnSystemNotification() {
-        renderDashboard()
+        refreshCurrentView()
     }
 
     // MARK: - Accessibility display options (ROADMAP X2 — Accessibility pass)
@@ -329,6 +464,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                   let focus = (body["focus"] as? NSNumber)?.boolValue
             else { return }
             setFocus(file: file, atLine: line, focus: focus)
+        case "archiveTask":
+            guard let body = message.body as? [String: Any],
+                  let file = body["file"] as? String,
+                  let line = (body["line"] as? NSNumber)?.intValue
+            else { return }
+            archiveTask(file: file, atLine: line)
+        case "restoreTask":
+            guard let body = message.body as? [String: Any],
+                  let file = body["file"] as? String,
+                  let line = (body["line"] as? NSNumber)?.intValue
+            else { return }
+            restoreTask(archiveFile: file, atLine: line)
+        case "showDashboard":
+            renderDashboard()
         default:
             return
         }
@@ -359,7 +508,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             return
         }
 
-        saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot)
+        if !saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot) {
+            NSLog("Foolscap: checkbox toggle for \(file) line \(line) did not land — see the write/conflict log above")
+        }
         // Whether the write went through, got saved as a conflict copy, or (in principle)
         // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.
         renderDashboard()
@@ -387,10 +538,100 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             return
         }
 
-        saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot)
+        if !saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot) {
+            NSLog("Foolscap: focus toggle for \(file) line \(line) did not land — see the write/conflict log above")
+        }
         // Whether the write went through, got saved as a conflict copy, or (in principle)
         // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.
         renderDashboard()
+    }
+
+    /// The permanent-archive write-back for the panel's "Archive" button on a completed
+    /// task (DECISIONS.md 2026-09-11). Mirrors `toggleTask`/`setFocus`'s
+    /// read-snapshot-mutate-write shape, but as a TWO-file write: the archive shard is
+    /// written FIRST, and `file` is only stripped of the block SECOND, once the shard
+    /// write actually lands (now observable via `saveSharedFile`'s `Bool` return — the
+    /// step-0 fix) — so a crash between the two writes leaves a recoverable duplicate on
+    /// disk, never a loss. Both writes are routed through the same conflict-guarded
+    /// `saveSharedFile` the existing mutators use.
+    private func archiveTask(file: String, atLine line: Int) {
+        guard Self.dashboardFiles.contains(file) else { return }
+        let noteURL = vault.root.appendingPathComponent(file)
+        guard let markdown = try? vault.read(noteURL) else { return }
+        guard let readSnapshot = FileSnapshot.current(at: noteURL) else { return }
+        let lines = markdown.components(separatedBy: "\n")
+
+        let archivedAt = Date()
+        guard line >= 1, line <= lines.count,
+              let (archivedBlockText, remainingLines) = TaskBlock.archiving(lines, at: line - 1, archivedAt: archivedAt)
+        else {
+            renderDashboard()
+            return
+        }
+
+        let archiveURL = Archive.archiveShardURL(for: archivedAt, vault: vault)
+        let existingShard = (try? vault.read(archiveURL)) ?? ""
+        let updatedShard = existingShard.isEmpty ? archivedBlockText : existingShard + "\n" + archivedBlockText
+        // The shard commonly doesn't exist yet (first archive of the month) — a sentinel
+        // snapshot that can never match a real file makes ConflictGuard treat "someone
+        // created it since we looked" as an external change, same as an edited file.
+        let archiveSnapshot = FileSnapshot.current(at: archiveURL) ?? FileSnapshot(mtime: .distantPast, size: -1)
+
+        guard saveSharedFile(updatedShard, to: archiveURL, readSnapshot: archiveSnapshot) else {
+            NSLog("Foolscap: couldn't append the archived task to \(archiveURL.lastPathComponent) — leaving \(file) untouched so nothing is lost")
+            renderDashboard()
+            return
+        }
+
+        if !saveSharedFile(remainingLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot) {
+            NSLog("Foolscap: the block landed in \(archiveURL.lastPathComponent) but the strip from \(file) did not — it's now duplicated on disk (recoverable), not lost")
+        }
+        renderDashboard()
+    }
+
+    /// The inverse of `archiveTask`, driven by the archive viewer's per-row "Restore"
+    /// button. `TaskBlock.restoring` reopens the task (clears `isDone`/`done`/
+    /// `archivedAt` — DECISIONS.md 2026-09-11, "restore reopens the task"). The symmetric
+    /// mirror of `archiveTask`'s write order: `tasks.md` gets the restored block FIRST,
+    /// the archive shard is stripped SECOND, so a crash between the two again leaves a
+    /// recoverable duplicate rather than a loss.
+    private func restoreTask(archiveFile: String, atLine line: Int) {
+        guard Self.isArchiveShardPath(archiveFile) else { return }
+        let archiveURL = vault.root.appendingPathComponent(archiveFile)
+        guard let markdown = try? vault.read(archiveURL) else { return }
+        guard let readSnapshot = FileSnapshot.current(at: archiveURL) else { return }
+        let lines = markdown.components(separatedBy: "\n")
+
+        guard line >= 1, line <= lines.count,
+              let (restoredBlockText, remainingLines) = TaskBlock.restoring(lines, at: line - 1)
+        else {
+            renderArchiveView()
+            return
+        }
+
+        let tasksURL = vault.root.appendingPathComponent("tasks.md")
+        let existingTasks = (try? vault.read(tasksURL)) ?? ""
+        let updatedTasks = existingTasks.isEmpty ? restoredBlockText : existingTasks + "\n" + restoredBlockText
+        let tasksSnapshot = FileSnapshot.current(at: tasksURL) ?? FileSnapshot(mtime: .distantPast, size: -1)
+
+        guard saveSharedFile(updatedTasks, to: tasksURL, readSnapshot: tasksSnapshot) else {
+            NSLog("Foolscap: couldn't append the restored task to tasks.md — leaving \(archiveFile) untouched so nothing is lost")
+            renderArchiveView()
+            return
+        }
+
+        if !saveSharedFile(remainingLines.joined(separator: "\n"), to: archiveURL, readSnapshot: readSnapshot) {
+            NSLog("Foolscap: the block landed in tasks.md but the strip from \(archiveFile) did not — it's now duplicated on disk (recoverable), not lost")
+        }
+        renderArchiveView()
+    }
+
+    /// Guards a `restoreTask` message payload the same way `dashboardFiles` guards the
+    /// other handlers — never trust a path straight off a `WKScriptMessage`. Only the
+    /// current month's shard is ever rendered with a restore button, but this holds for
+    /// any past shard too, since a restore from an older month is a legitimate action.
+    private static func isArchiveShardPath(_ file: String) -> Bool {
+        file.hasPrefix("archive/") && file.hasSuffix(".md")
     }
 
     /// X1's write-conflict guard (ROADMAP.md → Cross-cutting), applied to a pending change
@@ -398,14 +639,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// only reaches this with a toggle it wants written — so `.reloadClean` can't come back
     /// from this call site; that case is what `startWatching`'s plain repaint already
     /// handles when disk changes with nothing of ours pending.
-    private func saveSharedFile(_ dirtyContent: String, to url: URL, readSnapshot: FileSnapshot) {
+    ///
+    /// Returns whether `dirtyContent` actually landed AT `url` — `false` on a thrown write
+    /// error or a caught conflict (the on-disk version was kept and the app's change saved
+    /// aside instead). Previously this swallowed a write failure (logged and returned
+    /// `Void`), so a caller had no way to tell success from failure — a latent data-safety
+    /// bug on its own, and the reason the archive's two-file write below couldn't safely
+    /// decide whether to strip the source file after the shard write.
+    @discardableResult
+    private func saveSharedFile(_ dirtyContent: String, to url: URL, readSnapshot: FileSnapshot) -> Bool {
         let diskChanged = ConflictGuard.hasExternalChange(at: url, since: readSnapshot, vault: vault)
         switch ConflictDecision.decide(diskChangedSinceRead: diskChanged, bufferDirty: true) {
         case .writeThrough:
             do {
                 try vault.writeAtomically(dirtyContent, to: url)
+                return true
             } catch {
                 NSLog("Foolscap: couldn't write \(url.path): \(error)")
+                return false
             }
         case .conflictKeepDiskSaveCopy:
             // Last-write-wins would silently destroy whichever side loses the race
@@ -422,8 +673,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             } catch {
                 NSLog("Foolscap: couldn't save conflict copy for \(url.path): \(error)")
             }
+            return false
         case .reloadClean:
-            break
+            return false
         }
     }
 
@@ -454,9 +706,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                     self.checkRoutineSignal()
                 }
             }
-            guard changedNames.contains(where: { Self.dashboardFiles.contains($0) }) else { return }
+
+            let dashboardFileChanged = changedNames.contains(where: { Self.dashboardFiles.contains($0) })
+            // Only worth checking while the archive viewer is actually open — an external
+            // edit to an old month's shard shouldn't yank the dashboard into view.
+            let archiveShardChanged = self.currentView == .archive && changedPaths.contains(where: {
+                $0.deletingLastPathComponent().lastPathComponent == "archive" && $0.pathExtension.lowercased() == "md"
+            })
+            guard dashboardFileChanged || archiveShardChanged else { return }
             DispatchQueue.main.async {
-                self.renderDashboard()
+                self.refreshCurrentView()
             }
         }
         watcher.start()

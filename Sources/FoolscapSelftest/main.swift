@@ -420,6 +420,128 @@ expect(bareTicked[1], "      manual · ✓2026-08-20", "the new metadata line ca
 // A stale click — the line no longer starts a checkbox — is dropped, not written.
 expectNil(TaskBlock.toggling(["just prose"], at: 0, checked: true, today: toggleRef), "toggling a non-checkbox line returns nil")
 
+// MARK: - TaskBlock (archive — `archived:` field)
+
+// A well-formed archived: token parses as the same instant ISO8601DateFormatter would,
+// and its presence doesn't disturb the rest of the parse.
+let archiveStampBlock = TaskBlock.parse(
+    "- [x] Water the plants\n      @2026-08-12 · manual · every:week · ✓2026-08-05 · archived:2026-08-20T14:58:00Z",
+    today: blockToday
+)!
+expect(
+    archiveStampBlock.archivedAt, ISO8601DateFormatter().date(from: "2026-08-20T14:58:00Z"),
+    "archived: parses as the same instant ISO8601DateFormatter would"
+)
+expect(archiveStampBlock.due?.description, "2026-08-12", "archived: doesn't disturb the rest of the metadata parse")
+
+// archived: renders as the NEW LAST field, after ✓done — and the block round-trips.
+let archiveRenderRoundTrip = archiveStampBlock.rendered()
+expect(
+    archiveRenderRoundTrip,
+    "- [x] Water the plants\n      @2026-08-12 · manual · every:week · ✓2026-08-05 · archived:2026-08-20T14:58:00Z",
+    "archived: renders after every:/✓done, matching the source"
+)
+expect(
+    TaskBlock.parse(archiveRenderRoundTrip, today: blockToday)!.archivedAt, archiveStampBlock.archivedAt,
+    "re-parsing a rendered archived block still reads the same archivedAt"
+)
+
+// Absent optionals still fall back to their defaults — no archived: token means nil.
+expectNil(bare.archivedAt, "no archived: token means archivedAt is nil by default")
+
+// A malformed archived: payload (present, but not a valid ISO-8601-with-offset instant)
+// must not silently vanish on a parse→render round trip — unlike an ordinary unrecognized
+// token, this one is the archive's own audit stamp, so losing it would be real data loss,
+// not a harmless drop (risk flagged in review).
+let malformedArchiveBlock = TaskBlock.parse(
+    "- [x] Water the plants\n      @2026-08-12 · manual · archived:not-a-real-instant",
+    today: blockToday
+)!
+expectNil(malformedArchiveBlock.archivedAt, "an unparseable archived: payload does not resolve to a Date")
+let malformedArchiveRendered = malformedArchiveBlock.rendered()
+expect(
+    malformedArchiveRendered.contains("archived:not-a-real-instant"), true,
+    "a malformed archived: payload is preserved verbatim on render, not silently dropped"
+)
+expect(
+    TaskBlock.parse(malformedArchiveRendered, today: blockToday)!.rendered(), malformedArchiveRendered,
+    "the malformed archived: field round-trips stably (idempotent render)"
+)
+
+// MARK: - TaskBlock.archiving / restoring (permanent archive write-back)
+
+let archiveInstant = ISO8601DateFormatter().date(from: "2026-08-20T14:58:00Z")!
+
+// Archiving a single-block document removes the block entirely and stamps archivedAt,
+// leaving every other field (including the note line) untouched.
+let archivingDoc = [
+    "- [x] Prep the client deck",
+    "      @2026-08-20 · calendar · !high · #schoolwork · ✓2026-08-20",
+    "      Focus on the pricing slide — they pushed back last time.",
+]
+let archivingResult = TaskBlock.archiving(archivingDoc, at: 0, archivedAt: archiveInstant)!
+expect(archivingResult.remainingLines, [], "archiving the document's only block leaves nothing behind")
+let archivedParsed = TaskBlock.parse(archivingResult.archivedBlockText, today: blockToday)!
+expect(archivedParsed.text, "Prep the client deck", "the archived block keeps the task text")
+expect(archivedParsed.archivedAt, archiveInstant, "the archived block carries the archivedAt stamp")
+expect(archivedParsed.isDone, true, "archiving doesn't touch isDone — that's a separate ✓done concern")
+expect(archivedParsed.priority, .high, "archiving leaves other metadata untouched")
+expect(archivedParsed.note, "Focus on the pricing slide — they pushed back last time.", "the note line survives archiving")
+
+// Archiving mid-document only removes the archived block's own lines.
+let archivingMultiDoc = [
+    "- [ ] Email the landlord",
+    "      @today · manual",
+    "- [x] Prep the client deck",
+    "      @2026-08-20 · calendar · ✓2026-08-20",
+]
+let archivingMultiResult = TaskBlock.archiving(archivingMultiDoc, at: 2, archivedAt: archiveInstant)!
+expect(
+    archivingMultiResult.remainingLines, ["- [ ] Email the landlord", "      @today · manual"],
+    "archiving one block leaves the rest of the document untouched"
+)
+
+// A stale click — the line no longer starts a checkbox — is dropped, not written.
+expectNil(TaskBlock.archiving(["# Heading"], at: 0), "archiving a non-checkbox line returns nil")
+
+// restoring is the inverse: clears archivedAt AND reopens the task (isDone/done cleared —
+// DECISIONS.md 2026-09-11, "restore reopens the task") so it doesn't land back in
+// tasks.md invisible to every dashboard bucket (DashboardComposer.isEligible only shows a
+// done task when done == today).
+let restoringDoc = [
+    "- [x] Prep the client deck",
+    "      @2026-08-20 · calendar · !high · #schoolwork · ✓2026-08-20 · archived:2026-08-20T14:58:00Z",
+]
+let restoringResult = TaskBlock.restoring(restoringDoc, at: 0)!
+expect(restoringResult.remainingLines, [], "restoring the shard's only block leaves nothing behind")
+let restoredParsed = TaskBlock.parse(restoringResult.restoredBlockText, today: blockToday)!
+expect(restoredParsed.isDone, false, "restoring reopens the task — isDone is cleared")
+expectNil(restoredParsed.done, "restoring clears the ✓done stamp")
+expectNil(restoredParsed.archivedAt, "restoring clears the archived: stamp")
+expect(restoredParsed.due?.description, "2026-08-20", "restoring leaves @due untouched")
+expect(restoredParsed.priority, .high, "restoring leaves other metadata (priority) untouched")
+
+// A stale click on the archive shard — the line no longer starts a checkbox — is dropped.
+expectNil(TaskBlock.restoring(["# Heading"], at: 0), "restoring a non-checkbox line returns nil")
+
+// MARK: - Archive (archive shard pathing)
+
+let archiveTestVaultDir = tempVaultDir()
+let archiveTestVault = Vault(root: archiveTestVaultDir)
+let archiveTestUTC = TimeZone(identifier: "UTC")!
+
+let shardInstant = localDate(2026, 9, 5, 12, 0, timeZone: archiveTestUTC)
+let shardURL = Archive.archiveShardURL(for: shardInstant, vault: archiveTestVault, timeZone: archiveTestUTC)
+expect(
+    shardURL.path, archiveTestVaultDir.appendingPathComponent("archive/2026-09.md").path,
+    "archiveShardURL builds <vault>/archive/YYYY-MM.md for the instant's month"
+)
+
+// A single-digit month is zero-padded, not left as a stray "2026-9.md".
+let januaryInstant = localDate(2026, 1, 3, 9, 0, timeZone: archiveTestUTC)
+let januaryShard = Archive.archiveShardURL(for: januaryInstant, vault: archiveTestVault, timeZone: archiveTestUTC)
+expect(januaryShard.lastPathComponent, "2026-01.md", "archiveShardURL zero-pads a single-digit month")
+
 // MARK: - Vault
 
 func tempVaultDir() -> URL {
@@ -978,6 +1100,18 @@ expect(focusToggleOff.contains("aria-pressed=\"false\""), true, "an unfocused bl
 // The tidy render(...) chips never gain a raw ★ — the toggle above is the only star
 // element (Display ≠ storage, same as the @/#/! tokens above).
 expect(DashboardTaskRenderer.render(focusedBlock, today: blockToday).contains("★"), false, "the tidy label/chip render carries no raw ★")
+
+// MARK: - DashboardTaskRenderer.renderArchiveButton (archive — clear/archive action)
+
+// A one-shot action, not a toggle like renderFocusToggle above — no aria-pressed, just a
+// labelled button naming the action and the task.
+let archiveButtonHTML = DashboardTaskRenderer.renderArchiveButton(fullBlock)
+expect(archiveButtonHTML.contains("aria-pressed"), false, "the archive button is an action, not a toggle — no aria-pressed")
+expect(
+    archiveButtonHTML.contains("aria-label=\"Archive: Prep the client deck\""), true,
+    "the archive button's accessible name names the action and the task"
+)
+expect(archiveButtonHTML.contains("class=\"archive-button\""), true, "the archive button carries its own class for styling/click-routing")
 
 // MARK: - DashboardTaskRenderer.humanDue (C1 — human-readable due chip)
 

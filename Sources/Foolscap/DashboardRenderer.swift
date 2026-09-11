@@ -83,9 +83,12 @@ enum DashboardRenderer {
         let tidy = DashboardTaskRenderer.render(task.block, today: today, soonWithinDays: soonWithinDays)
         let checkbox = DashboardTaskRenderer.renderCheckbox(task.block)
         let focusToggle = DashboardTaskRenderer.renderFocusToggle(task.block)
+        // Archiving only makes sense once a task is done (DECISIONS.md 2026-09-11) — an
+        // open task has nothing to clear yet.
+        let archiveButton = task.block.isDone ? DashboardTaskRenderer.renderArchiveButton(task.block) : ""
         let doneClass = task.block.isDone ? " done" : ""
         return """
-        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)\(focusToggle)</li>
+        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)\(focusToggle)\(archiveButton)</li>
 
         """
     }
