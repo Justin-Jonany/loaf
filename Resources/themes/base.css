@@ -36,7 +36,7 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 .task .label { flex: 1; }
 
 /* Custom checkbox (B5): a plain native box reads as a totally different control from the
-   ★ focus toggle beside it. Restyled to the same muted, rounded-square language — border
+   focus toggle/drag handle beside it. Restyled to the same muted, rounded-square language — border
    only when unchecked, a soft fill + check glyph when checked — so the two read as one
    set. `appearance: none` drops the platform control entirely; everything below is drawn
    by hand. Stays a real `<input type="checkbox">` (ARIA/role/aria-checked come from
@@ -86,7 +86,7 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 /* Overdue reads louder than soon (Part 2 — overdue urgency): bold weight plus a leading
    edge-marker, on top of the same chip shape/color treatment as due-soon. This is scoped
    to the `.due-over` class only — it must not touch the `--due-over` variable itself,
-   which `.priority-dot.high`/`.focus-toggle.on`/`.freshness.unknown` also key off. */
+   which `.priority-dot.high`/`.freshness.unknown` also key off. */
 .due-over {
   color: var(--due-over);
   background: var(--due-over-bg, transparent);
@@ -101,6 +101,11 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 .dashboard { display: flex; flex-direction: column; gap: 16px; }
 .dashboard section { border-top: 0.5px solid var(--rule); padding-top: 10px; }
 .dashboard section:first-child { border-top: none; padding-top: 0; }
+/* Drag-to-Today drop feedback (DECISIONS.md 2026-09-11): toggled by the injected drag JS
+   (`NoteWindow.installTaskToggleHandler`) on `dragenter`/`dragleave`/`drop` of a
+   `[data-section]` container, so a section reads as a live drop target while a row is
+   dragged over it. */
+.dashboard section.drop-target { outline: 1.5px dashed var(--ink-dim); outline-offset: 4px; border-radius: 6px; }
 .dashboard .brief p { margin: 0 0 6px; }
 .dashboard .empty { color: var(--ink-dim); font-style: italic; margin: 0; }
 
@@ -169,11 +174,14 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   line-height: 14px;
 }
 
-/* Focus toggle (ROADMAP B7 — Curated Today: a ★ focus flag). An unstyled <button> at the
-   row's trailing edge (it's simply the last child in the flex row); stays invisible until
-   the row is hovered or has focus-within so an untouched row isn't cluttered with a star
-   for every task, but a starred row (.on) always shows it, filled in the same accent used
-   for an overdue due-chip — the panel's one existing "this needs attention" color. */
+/* Today-placement handle (DECISIONS.md 2026-09-11 — sticky drag-to-Today, replacing the
+   ★ focus flag). An unstyled <button> at the row's trailing edge (it's simply the last
+   child in the flex row) and the drag SOURCE for drag-to-Today; stays invisible until the
+   row is hovered or has focus-within so an untouched row isn't cluttered with chrome for
+   every task. No `.on`/filled state any more — a task's mere presence in the Today
+   section is the only placement indicator now (a star wrongly read as importance, which
+   priority already owns), so the handle looks identical whether `block.focus` is true or
+   false; only its `aria-pressed` (read by VoiceOver, not painted) still varies. */
 .dashboard .task .focus-toggle {
   appearance: none;
   border: none;
@@ -184,9 +192,9 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   line-height: 1;
   color: var(--ink-dim);
   opacity: 0;
-  cursor: pointer;
+  cursor: grab;
   flex-shrink: 0;
-  transition: opacity 0.1s ease, color 0.1s ease;
+  transition: opacity 0.1s ease;
 }
 .dashboard .task:hover .focus-toggle,
 .dashboard .task:focus-within .focus-toggle {
@@ -194,13 +202,6 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 }
 .dashboard .task .focus-toggle:hover,
 .dashboard .task .focus-toggle:focus-visible {
-  opacity: 0.8;
-}
-.dashboard .task .focus-toggle.on {
-  opacity: 1;
-  color: var(--due-over);
-}
-.dashboard .task .focus-toggle.on:hover {
   opacity: 0.8;
 }
 

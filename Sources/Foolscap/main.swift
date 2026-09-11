@@ -325,6 +325,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         } catch {
             NSLog("Foolscap: couldn't bootstrap vault at \(vault.root.path): \(error)")
         }
+        migrateFocusToken()
 
         let window = NoteWindow(contentRect: NSRect(x: 0, y: 0, width: 340, height: 486))
         window.installTaskToggleHandler(self)
@@ -566,6 +567,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         // Whether the write went through, got saved as a conflict copy, or (in principle)
         // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.
         renderDashboard()
+    }
+
+    /// One-time on-disk rename of the retired `★` placement glyph to the `today` token
+    /// (DECISIONS.md 2026-09-11). Runs once at launch, BEFORE the watcher starts, so a
+    /// migration write can't be mistaken for an external edit or race a pending toggle.
+    /// Covers every shared file that could carry the token: `tasks.md` and `longterm.md`
+    /// (a long-term goal can be pulled into Today too — ticket B7), and each existing
+    /// `archive/*.md` shard (a focused task may have been archived). `TokenMigration`
+    /// returns `nil` when a file has no `★`, so a clean vault is never rewritten and a
+    /// second launch is a no-op — the parser accepts both spellings regardless, so nothing
+    /// downstream depends on this having run.
+    private func migrateFocusToken() {
+        var targets = [vault.root.appendingPathComponent("tasks.md"),
+                       vault.root.appendingPathComponent("longterm.md")]
+        let archiveDir = vault.root.appendingPathComponent("archive", isDirectory: true)
+        if let shards = try? FileManager.default.contentsOfDirectory(at: archiveDir, includingPropertiesForKeys: nil) {
+            targets += shards.filter { $0.pathExtension == "md" }
+        }
+
+        for url in targets {
+            guard let markdown = try? vault.read(url),
+                  let migrated = TokenMigration.migrate(markdown) else { continue }
+            do {
+                try vault.writeAtomically(migrated, to: url)
+            } catch {
+                NSLog("Foolscap: couldn't migrate the ★→today token in \(url.lastPathComponent): \(error) — the file is unchanged and still parses (both spellings are accepted)")
+            }
+        }
     }
 
     /// The permanent-archive write-back for the panel's "Archive" button on a completed

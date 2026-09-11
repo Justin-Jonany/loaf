@@ -98,19 +98,27 @@ public enum DashboardTaskRenderer {
             + " aria-label=\"\(escapeAttribute(block.text))\"\(checkedAttr)\(disabledAttr)>"
     }
 
-    /// The per-row focus toggle (ROADMAP B7 — Curated Today: a `★` focus flag). A plain
-    /// `<button>` with `aria-pressed` mirroring `block.focus` and an `aria-label` naming
-    /// both the action and the task, same accessibility contract as `renderCheckbox`
-    /// above. Kept in `FoolscapCore` (rather than the app's `DashboardRenderer`, which
-    /// wraps this in the `<li>` that carries the write-back `data-file`/`data-line`
-    /// attributes) so `FoolscapSelftest` can assert the ARIA contract directly.
+    /// The per-row Today-placement control (DECISIONS.md 2026-09-11 — "sticky drag-to-
+    /// Today, replacing the `★` focus flag"). The star glyph and its filled `.on` state
+    /// are retired: a task's mere presence in the Today section is now the only placement
+    /// indicator, so this button shows the same neutral handle glyph regardless of
+    /// `block.focus` — it no longer doubles as a badge (a star wrongly connoted
+    /// importance, which `!high/!med/!low` priority already owns). It's also the drag
+    /// SOURCE the panel's drag-to-Today JS wires up (`draggable`) — scoped to this small
+    /// handle, not the whole row, so a drag can't swallow the checkbox/archive-icon click
+    /// beside it. Keeps the exact ARIA contract it always had (`aria-pressed` mirroring
+    /// `block.focus`, an `aria-label` naming both the action and the task) so a
+    /// keyboard/VoiceOver user can still toggle Today-placement by click/Enter without a
+    /// mouse drag (ROADMAP X2). Kept in `FoolscapCore` (rather than the app's
+    /// `DashboardRenderer`, which wraps this in the `<li>` that carries the write-back
+    /// `data-file`/`data-line` attributes) so `FoolscapSelftest` can assert the ARIA
+    /// contract directly.
     public static func renderFocusToggle(_ block: TaskBlock) -> String {
         let pressed = block.focus ? "true" : "false"
         let action = block.focus ? "Remove from Today" : "Add to Today"
-        let onClass = block.focus ? " on" : ""
-        return "<button type=\"button\" class=\"focus-toggle\(onClass)\" aria-pressed=\"\(pressed)\""
+        return "<button type=\"button\" class=\"focus-toggle\" draggable=\"true\" aria-pressed=\"\(pressed)\""
             + " aria-label=\"\(escapeAttribute(action)): \(escapeAttribute(block.text))\""
-            + " title=\"\(escapeAttribute(action))\">★</button>"
+            + " title=\"\(escapeAttribute(action))\">⠿</button>"
     }
 
     /// The per-row "Archive" action (DECISIONS.md 2026-09-11 — the permanent archive,

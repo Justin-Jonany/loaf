@@ -25,9 +25,12 @@ public struct TaskBlock: Equatable, Sendable {
     public var source: Source
     public var priority: Priority?
     public var type: String?
-    /// The `★` token (DESIGN.md → Curated Today): pulls the task into the dashboard's
-    /// Today section regardless of `@due`, independent of it — starring never touches
-    /// `due`, and unstarring returns the task to its ordinary due-date bucket.
+    /// The `today` placement token (DECISIONS.md 2026-09-11 — "sticky drag-to-Today"):
+    /// pulls the task into the dashboard's Today section regardless of `@due`, independent
+    /// of it — dragging a task into Today never touches `due`, and dragging it back out
+    /// returns it to its ordinary due-date bucket. Renders as `today`; the parser also
+    /// still accepts the retired `★` glyph this token replaced, so an old vault's lines
+    /// keep parsing `focus == true` without needing the migration to have run.
     public var focus: Bool
     public var done: CalendarDate?
     public var every: Recurrence?
@@ -167,7 +170,14 @@ public struct TaskBlock: Equatable, Sendable {
                 block.priority = priority
             } else if token.hasPrefix("#") {
                 block.type = String(token.dropFirst())
-            } else if token == "★" {
+            } else if token == "today" || token == "★" {
+                // `today` is the modern placement token (DECISIONS.md 2026-09-11); `★` is
+                // the retired glyph it replaced, still accepted so an unmigrated vault
+                // keeps parsing focus == true. Matched as a standalone token here, in the
+                // same slot `★` occupied — never a substring match, so a task whose free
+                // text happens to contain the word "today" (that's the `note`/`text`
+                // fields, not this metadata line) is never misread, and `@today` (a due
+                // date) is handled entirely separately above, by the `@`-prefix branch.
                 block.focus = true
             } else if token.hasPrefix("every:"), let rule = Recurrence(String(token.dropFirst(6))) {
                 block.every = rule
@@ -194,19 +204,21 @@ public struct TaskBlock: Equatable, Sendable {
 
     // MARK: - Rendering
 
-    /// Canonical form: `@due · source · !priority · #type · ★ · every:… · ✓done ·
+    /// Canonical form: `@due · source · !priority · #type · today · every:… · ✓done ·
     /// archived:…`, field order fixed so repeated parse/render round-trips are stable
     /// (mirrors `TaskLine.rendered()`). Dates always render as ISO — natural-language
     /// normalisation on write (`@friday` → the ISO date) is Epic F, not this parser.
     /// `archived:` is the newest field and always renders last, after `✓done`, so an
-    /// already-archived-once file doesn't get its existing fields reordered.
+    /// already-archived-once file doesn't get its existing fields reordered. The
+    /// placement token always renders as `today` (DECISIONS.md 2026-09-11), even when it
+    /// was parsed from the legacy `★` — the same field slot, just the new spelling.
     public func rendered() -> String {
         var fields: [String] = []
         if let due { fields.append("@\(due)") }
         fields.append(source.rawValue)
         if let priority { fields.append("!\(priority.rawValue)") }
         if let type { fields.append("#\(type)") }
-        if focus { fields.append("★") }
+        if focus { fields.append("today") }
         if let every { fields.append("every:\(every.rawValue)") }
         if let done { fields.append("✓\(done)") }
         if let archivedAt { fields.append("archived:\(ArchiveStamp.format(archivedAt))") }
@@ -242,8 +254,8 @@ public struct TaskBlock: Equatable, Sendable {
     }
 
     /// Applies a focus-flag toggle to the block starting at `lines[index]` and returns the
-    /// document with that block's lines replaced by its re-rendered form — the `★` token
-    /// moves onto the metadata line, `@due` untouched either way. Returns `nil` when `index`
+    /// document with that block's lines replaced by its re-rendered form — the `today`
+    /// token moves onto the metadata line, `@due` untouched either way. Returns `nil` when `index`
     /// isn't a checkbox line, so a caller can tell a stale click (the file changed underneath
     /// it) from a real toggle and drop it rather than write something corrupt.
     public static func settingFocus(
