@@ -4,6 +4,170 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-11 — Overdue severity, theme templating, and lifecycle sub-decisions
+
+**Context:** A review pass (four investigation lenses over the panel's visuals and the
+still-unimplemented redesign below) surfaced a set of concrete decisions and resolved the
+open sub-choice left in that entry. Two findings are latent bugs, not just polish: the
+dashboard due chip never emits an urgency class, so the themes' `.due-soon`/`.due-over`
+styling is dead on the panel; and the `card`/`console` themes don't style the dashboard at
+all — every dashboard-only class falls back to browser defaults when they're selected.
+
+**Decided:**
+
+- **Overdue reads as more severe on the dashboard; due-today does not.** Wire the existing
+  urgency logic into `DashboardTaskRenderer` (a new `TaskBlock.urgency`, mirroring
+  `TaskLine`'s, with `soon_within_days` threaded from config). A task due before today gets
+  a restrained red treatment; **due-today maps to the softer `due-soon`, not red** —
+  reddening the common case would make every day's list read as an emergency. Severity is
+  scoped to the `.due-over`/`.due-soon` *class selectors*, never the `--due-over` CSS
+  variable (which is shared by the priority dot, focus control, and freshness badge). No
+  "days late" count in the chip — the panel is narrow; the color/edge-marker carries it.
+
+- **Themes become a shared base plus a palette.** Structure moves to a single
+  `Resources/themes/base.css` written against a documented token contract; each theme file
+  (`frosted`/`card`/`console`) shrinks to a `:root` palette (plus any signature extras and
+  its own optional dark/contrast blocks). `HTMLPage.wrap` concatenates base + theme. This
+  makes the ROADMAP promise ("a new theme is one CSS file, no Swift") true and fixes
+  `card`/`console` silently leaving the dashboard unstyled. Dead selectors (`.mermaid`,
+  `.task .box .tick`) are dropped. Migrate `frosted` first and diff the composed output to
+  prove the extraction is inert before it becomes the only path.
+
+- **Live theme switching.** The selected theme name is read once at launch; make the app
+  re-read `config`'s `theme` on its existing repaint triggers and add a menu-bar picker
+  that writes the `theme` key, so themes swap without a relaunch (the CSS already
+  hot-reloads on repaint).
+
+- **Fix `saveSharedFile` swallowing write failures (`main.swift`).** It currently logs and
+  returns on a failed atomic write while the caller repaints as if it succeeded — a latent
+  data-safety bug today (a failed tick/focus looks applied), and the prerequisite for the
+  archive's archive-first-then-strip crash-safety.
+
+Resolving the open sub-choices from the entry below:
+
+- **The on-disk placement token is renamed `★` → `today`.** Since the star glyph is retired
+  from the UI, a bare `★` in `tasks.md` would correspond to nothing visible; `today` reads
+  honestly in the plain-text file. Existing `★` lines get a one-time migration. The `focus`
+  boolean and its conflict-guarded write-back are unchanged; only the rendered token
+  spelling changes.
+
+- **Restore reopens the task.** `restoring` clears `✓done`/`isDone` so a restored task
+  returns as an active item — otherwise it would land back in `tasks.md` but be filtered out
+  of every dashboard bucket (done-and-not-today), an invisible "restore."
+
+- **Manual drag-reorder, if built, is scoped to the Today section only**, stored as a
+  gap-numbered `order:` field. This-week/Long-term stay sorted by `@due` (a manual order
+  there would fight the deadline sort). Deferred — a later slice, after drag-to-Today.
+
+**Why:** the visuals work is mostly connecting logic and CSS that already exist, and it
+directly answers the "make overdue severe" and "several easily-swappable themes" asks while
+keeping the panel calm — red stays rare and meaningful, and structure stops being copied per
+theme. The lifecycle resolutions favor the plain-text-you-own principle (a legible on-disk
+token, no silently-lost data) over saving a trivial migration.
+
+**References:** resolves the "Open sub-choice" and fills in the implementation slices of the
+2026-09-11 "Task lifecycle redesign" entry below.
+
+## 2026-09-11 — Task lifecycle redesign: add-only routine, human-owned removal, permanent archive, sticky drag-to-Today
+
+**Context:** dogfooding surfaced that the unattended morning routine silently deleted a
+completed task (the >7-day prune, below), and that the checkout living under `~/Desktop`
+(a macOS TCC-protected folder) blocked the launchd morning-brief agent from executing
+`run.sh` at all ("Operation not permitted"). Both pushed a rethink of *who is allowed to
+mutate the task list, and when*. The decisions below reshape the daily loop around one
+principle: **automation may add or relocate, but only the user removes, and only on an
+explicit instruction.**
+
+**Decided:**
+
+- **Removal is user-instructed only.** Claude is *capable* of removing a task, but must
+  not remove one unless the user says so in that session (interactive chat). The
+  unattended routine never removes anything. This replaces the rule that the routine
+  auto-prunes completed tasks — see the reversal note below.
+
+- **The unattended routine is add-only on `tasks.md` (fork A).** It still creates tasks
+  from the calendar, because that needs *judgment* a script can't supply: the user's
+  calendar is full of recurring class blocks that must **not** become todos but should
+  still be *seen*. Tiering the routine applies:
+  - routine/recurring blocks (classes) → never a task; surfaced as **brief** context;
+  - an important event with a real action item → a **task** (`source: calendar`);
+  - minor-but-worth-mentioning → **brief** prose, no task.
+  The routine also writes `brief.md` + its "what changed" changelog. It does **not** prune
+  and does **not** set Today-placement (that's now a human gesture). Its only `tasks.md`
+  write is adding calendar-derived tasks.
+
+- **No 7-day auto-delete; the archive is permanent and append-only.** Completed tasks are
+  never destroyed by automation. When the user clears a done task it moves to an archive
+  and stays there indefinitely (a permanent completion log the retrospective can read).
+  A completed task not yet cleared simply stays in `tasks.md` (the panel already drops
+  done tasks from the *active* view on repaint, which is why they "disappear" visually
+  while the line persists — the source of today's confusion).
+
+- **Archive storage is sharded markdown, not a database.** The archive lives as
+  `archive/YYYY-MM.md` (one file per month) inside the vault — preserving the
+  plain-text-you-own, greppable, git-able property that is the whole point of the vault
+  (`tasks.md`/`longterm.md`/`brief.md` stay markdown, always). Monthly sharding solves the
+  unbounded-growth of a keep-forever log; the archive viewer loads only the month in view.
+  A local SQLite store was considered and **deferred**: it's only justified by a concrete
+  *query* need (completion velocity, "what did I finish in August"). If that arrives, the
+  correct shape is markdown-as-source-of-truth with SQLite as a rebuildable *index* over
+  it — never moving the data itself out of plain text.
+
+- **Archive mechanics.** Clearing a done task stamps an `archived:<ISO-8601 datetime>`
+  field (the precise "when it left the list", with time — `✓done` stays a date-only stamp
+  in `tasks.md` so that file's format and round-trip stay untouched) and moves the block to
+  the month shard. New `TaskBlock` mutations mirror the existing `toggling`/`settingFocus`
+  spine (parse-at-line, conflict-guard a stale click, re-render, atomic write): `archiving`
+  and `restoring`. Two-file writes append to the archive **first**, then strip from
+  `tasks.md`, so a crash between them duplicates (recoverable) rather than loses.
+  **Restore** is add-side: available from an archive viewer's per-row button and to
+  interactive Claude on request, but never to the unattended routine (no surprise
+  resurrections — same boundary that keeps it out of `longterm.md`). **Permanent delete**
+  is human-only and its UI is deferred (keep-forever is the default; nothing forces a
+  destroy path yet).
+
+- **Today-placement is a sticky drag, replacing the `★` focus flag (supersedes the
+  2026-09-10 B7 entry).** A task is pulled into Today by **dragging** it into the Today
+  section, not by starring. It is **sticky**: it stays in Today across days until the user
+  completes it or drags it back out — it does not auto-expire and never needs re-dragging.
+  `@due` is never touched (the deadline stays the source of truth for urgency/sort — the
+  reason B7 rejected rewriting `@due` still holds). The data stays the boolean `focus`
+  field and the conflict-guarded write-back (`settingFocus`); what changes is (a) the
+  trigger becomes drag instead of a per-row star toggle, (b) the `★` glyph is retired and
+  the panel shows **no** placement badge — a task's mere presence in the Today section is
+  the only indication (keeps priority, which is `!high/!med/!low`, visually distinct from
+  placement, which a star wrongly connoted as importance). A keyboard/click affordance is
+  kept alongside drag for the X2 accessibility contract.
+
+- **Operational:** the checkout was moved out of the TCC-protected `~/Desktop` to
+  `~/Projects/foolscap`, and both paths in `com.foolscap.morning-brief.plist` (ProgramArgs
+  + WorkingDirectory) were repointed and the launchd agent reloaded (last exit 126 → 0).
+  Rule of thumb recorded: never keep the checkout under `~/Desktop`/`~/Documents`/
+  `~/Downloads` (launchd/TCC can't reach it), and always `rm -rf .build` after moving a
+  Swift checkout — the module cache bakes in absolute paths and is not relocatable.
+
+**Why:** the through-line is *trust*. The one actor that runs with no live human
+instruction (the morning routine) is reduced to add-and-describe, so it structurally
+cannot surprise-delete or surprise-move the user's tasks; everything destructive or
+re-arranging is either deterministic (the panel buckets by `@due`) or an explicit human
+act. Keep-forever + plain-text archive means no data is ever silently lost and history
+stays owned and greppable. Sticky drag-placement matches how the user actually works
+("I'll focus on this until it's done") without overloading a star that read as priority.
+
+**Reverses:** the "morning routine prunes `✓done` tasks older than 7 days" behavior
+(`routines/morning-brief/SKILL.md` "Pruning", `DESIGN.md` → "Files in the vault", and the
+fixtures' `CLAUDE.md` wording) — the routine no longer deletes. **Supersedes** the
+2026-09-10 B7 decision (the `★` focus flag as a starred per-row toggle): the mechanism
+becomes a sticky drag with no visible token, though the underlying `focus` field and
+write-back path are retained.
+
+**Status:** decided this session; not yet implemented. Suggested implementation slices:
+(a) remove the routine prune (SKILL/DESIGN/fixtures); (b) `archived:` field + month-shard
+archive file + `archiving`/`restoring` on `TaskBlock` with selftests; (c) panel clear
+button + archive viewer (restore / deferred delete); (d) drag-to-Today interaction + `★`
+glyph retirement. Open sub-choice: the markdown token spelling for a pulled task, if any is
+kept on disk beyond the existing `focus` boolean's rendering.
+
 ## 2026-09-10 — Panel UI polish: the panel owns section chrome, custom checkbox, human dates
 
 **Decided:** A pass of visual fixes to the composed dashboard, driven by dogfooding the real
