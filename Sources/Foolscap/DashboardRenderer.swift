@@ -93,7 +93,7 @@ enum DashboardRenderer {
         let archiveButton = DashboardTaskRenderer.renderArchiveButton(task.block)
         let doneClass = task.block.isDone ? " done" : ""
         return """
-        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)\(focusToggle)\(archiveButton)</li>
+        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)\(archiveButton)\(focusToggle)</li>
 
         """
     }

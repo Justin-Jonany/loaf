@@ -63,13 +63,16 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 .task input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
-  left: 5px;
-  top: 1.5px;
-  width: 4px;
+  left: 50%;
+  top: 50%;
+  width: 3.5px;
   height: 7px;
   border: solid var(--checkbox-mark, var(--surface));
   border-width: 0 1.5px 1.5px 0;
-  transform: rotate(45deg);
+  /* Center the tick in the 14px box: translate off its own centre, then nudge up
+     (-60%, not -50%) because the L-shaped checkmark's visual mass sits low-right of its
+     geometric centre after the 45° rotation. */
+  transform: translate(-50%, -60%) rotate(45deg);
 }
 
 .due {
@@ -176,8 +179,8 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 
 /* Today-placement handle (DECISIONS.md 2026-09-11 — sticky drag-to-Today, replacing the
    ★ focus flag). An unstyled <button> at the row's trailing edge (it's simply the last
-   child in the flex row) and the drag SOURCE for drag-to-Today; stays invisible until the
-   row is hovered or has focus-within so an untouched row isn't cluttered with chrome for
+   child in the flex row) and the drag SOURCE for drag-to-Today; always visible, sized to
+   match the `.archive-button` beside it, so an untouched row isn't cluttered with chrome for
    every task. No `.on`/filled state any more — a task's mere presence in the Today
    section is the only placement indicator now (a star wrongly read as importance, which
    priority already owns), so the handle looks identical whether `block.focus` is true or
@@ -188,21 +191,24 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   background: none;
   margin: 0;
   padding: 0;
-  font-size: 11px;
-  line-height: 1;
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 14px;
   color: var(--ink-dim);
-  opacity: 0;
+  opacity: 0.45;
   cursor: grab;
   flex-shrink: 0;
+  /* WKWebView won't start an HTML5 drag from a non-anchor/-img element on `draggable`
+     alone — it needs an explicit -webkit-user-drag. user-select off so a drag attempt
+     doesn't become a text selection. (DECISIONS.md 2026-09-11 — drag-to-Today.) */
+  -webkit-user-drag: element;
+  user-select: none;
+  -webkit-user-select: none;
   transition: opacity 0.1s ease;
-}
-.dashboard .task:hover .focus-toggle,
-.dashboard .task:focus-within .focus-toggle {
-  opacity: 0.45;
 }
 .dashboard .task .focus-toggle:hover,
 .dashboard .task .focus-toggle:focus-visible {
-  opacity: 0.8;
+  opacity: 1;
 }
 
 /* Archive button (DECISIONS.md 2026-09-11 — the permanent archive, later widened to any
