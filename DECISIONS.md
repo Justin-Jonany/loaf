@@ -55,6 +55,13 @@ Resolving the open sub-choices from the entry below:
   returns as an active item — otherwise it would land back in `tasks.md` but be filtered out
   of every dashboard bucket (done-and-not-today), an invisible "restore."
 
+- **Archiving is no longer gated on done** (amends the archiving bullets in the 2026-09-11
+  "Task lifecycle redesign" entry below, which described it as clearing a *done* task).
+  Any task can be archived, not only a completed one — the archived record preserves
+  whatever done-state it had at that moment (a not-done task archives with no `✓done`; a
+  done task keeps its `✓done`), alongside the `archived:` stamp. Restore is unaffected: it
+  still reopens the task per the resolution just above.
+
 - **Manual drag-reorder, if built, is scoped to the Today section only**, stored as a
   gap-numbered `order:` field. This-week/Long-term stay sorted by `@due` (a manual order
   there would fight the deadline sort). Deferred — a later slice, after drag-to-Today.

@@ -31,13 +31,21 @@ enum ArchiveRenderer {
     /// YYYY-MM.md`) and 1-based source line, the same write-back contract
     /// `DashboardRenderer.renderTask` uses — `restoreTask` in `AppDelegate` reads them
     /// back off the click the same way `toggleTask`/`archiveTask` already do.
+    ///
+    /// Now that archiving isn't gated on done (DECISIONS.md 2026-09-11, widened), an
+    /// archived row needs its own "was it done" tell: the same checkbox the dashboard
+    /// uses (checked/unchecked mirrors `isDone` as it stood at archive time), rendered
+    /// `disabled` since this shard has no toggle write-back, plus the same `.task.done`
+    /// dimming/strikethrough the dashboard already gives a completed row — no new CSS.
     private static func renderArchivedRow(_ block: TaskBlock, line: Int, file: String, today: CalendarDate) -> String {
+        let checkbox = DashboardTaskRenderer.renderCheckbox(block, disabled: true)
         let tidy = DashboardTaskRenderer.render(block, today: today)
         let restoreButton = "<button type=\"button\" class=\"restore-button\""
             + " aria-label=\"Restore: \(escapeAttribute(block.text))\""
             + " title=\"Restore\">Restore</button>"
+        let doneClass = block.isDone ? " done" : ""
         return """
-        <li class="task" data-file="\(escape(file))" data-line="\(line)">\(tidy)\(restoreButton)</li>
+        <li class="task\(doneClass)" data-file="\(escape(file))" data-line="\(line)">\(checkbox)\(tidy)\(restoreButton)</li>
 
         """
     }

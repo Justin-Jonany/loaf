@@ -265,7 +265,9 @@ public struct TaskBlock: Equatable, Sendable {
     /// re-render, stale-click-returns-`nil` shape exactly — the caller (`archiveTask` in
     /// `Sources/Foolscap/main.swift`) is the one that decides the write ORDER (shard
     /// first, then this removal), since that's a two-file concern this pure function
-    /// doesn't touch.
+    /// doesn't touch. Deliberately leaves `isDone`/`done` exactly as found — archiving is
+    /// available on any task now, not only a done one, and the archived record's whole
+    /// point is to preserve whether it was done at the moment it left the list.
     public static func archiving(
         _ lines: [String], at index: Int, archivedAt: Date = Date()
     ) -> (archivedBlockText: String, remainingLines: [String])? {

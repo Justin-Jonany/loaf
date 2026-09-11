@@ -63,8 +63,8 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 .task input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
-  left: 4px;
-  top: 1px;
+  left: 5px;
+  top: 1.5px;
   width: 4px;
   height: 7px;
   border: solid var(--checkbox-mark, var(--surface));
@@ -204,10 +204,13 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   opacity: 0.8;
 }
 
-/* Archive button (DECISIONS.md 2026-09-11 — the permanent archive): a plain one-shot
-   action, not a toggle like .focus-toggle beside it — no .on state, just the same
-   hover-revealed treatment at the row's trailing edge. Only emitted for a done row (the
-   app layer gates that), so it never competes with the focus toggle on an open task. */
+/* Archive button (DECISIONS.md 2026-09-11 — the permanent archive, later widened to any
+   task, not just done rows): a plain one-shot action, not a toggle like .focus-toggle
+   beside it — no .on state. Now emitted on EVERY row (`DashboardRenderer.renderTask` no
+   longer gates on isDone), so it stays permanently visible rather than hover-revealed —
+   a row that only shows it on hover, while still on every row, would just move the
+   reveal-flicker from done-only rows to all of them. Muted like `.source-icon` beside it
+   (same opacity) so it reads as calm chrome, not a loud call-to-action. */
 .dashboard .task .archive-button {
   appearance: none;
   border: none;
@@ -218,14 +221,10 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   line-height: 14px;
   margin-top: 3px;
   color: var(--ink-dim);
-  opacity: 0;
+  opacity: 0.45;
   cursor: pointer;
   flex-shrink: 0;
   transition: opacity 0.1s ease, color 0.1s ease;
-}
-.dashboard .task:hover .archive-button,
-.dashboard .task:focus-within .archive-button {
-  opacity: 0.6;
 }
 .dashboard .task .archive-button:hover,
 .dashboard .task .archive-button:focus-visible {
@@ -234,9 +233,9 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 
 /* Archive viewer (minimal — current month only; ArchiveRenderer, Sources/Foolscap). It
    reuses the dashboard's own .section/.task chrome above; these two rules are its only
-   additions — the back-navigation control and the always-visible restore action (unlike
-   the archive button above, a restore is the *only* action on an archived row, so it
-   doesn't need the hover-reveal treatment). */
+   additions — the back-navigation control and the restore action (styled bolder, as an
+   outlined pill, than the archive button above — it's the one action on an archived row
+   worth making unmissable, not muted chrome). */
 .dashboard.archive .back-to-dashboard {
   appearance: none;
   border: none;

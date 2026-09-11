@@ -113,9 +113,11 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-conflict-guard")
 /// one already-completed task, archives the completed one — exercising the same
 /// archive-shard-first-then-strip write ORDER `archiveTask` uses in the real app
 /// (DECISIONS.md 2026-09-11: a crash between the two writes must leave a recoverable
-/// duplicate, never a loss) — then restores it back, the symmetric mirror. Prints
-/// `tasks.md`/the archive shard at each step so the two-file write and its ordering are
-/// inspectable without a GUI.
+/// duplicate, never a loss) — then restores it back, the symmetric mirror. Also archives
+/// the still-open task (DECISIONS.md 2026-09-11, widened: archiving is no longer gated
+/// on done), proving that path lands in the shard with no `✓done` rather than a done
+/// task's `✓done` surviving unchanged. Prints `tasks.md`/the archive shard at each step
+/// so the two-file write and its ordering are inspectable without a GUI.
 func runArchiveDemo(in dir: URL) throws {
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let vault = Vault(root: dir)
@@ -151,6 +153,26 @@ func runArchiveDemo(in dir: URL) throws {
     try vault.writeAtomically(remainingLines.joined(separator: "\n"), to: tasksURL)
     print("\n--- STEP 2: tasks.md stripped of the archived block ---")
     print(try vault.read(tasksURL))
+
+    // STEP 2b: archive the still-OPEN task too (DECISIONS.md 2026-09-11, widened —
+    // archiving is no longer gated on done). Same shard-first-then-strip order as above;
+    // the point of this step is what the archived block DOESN'T carry — no ✓done.
+    guard let (openArchivedText, afterOpenArchive) = TaskBlock.archiving(
+        remainingLines, at: 0, archivedAt: archivedAt
+    ) else {
+        print("Unexpected: the open task isn't an archivable checkbox — nothing written.")
+        return
+    }
+    let shardWithBoth = try vault.read(archiveURL) + "\n" + openArchivedText
+    try vault.writeAtomically(shardWithBoth, to: archiveURL)
+    try vault.writeAtomically(afterOpenArchive.joined(separator: "\n"), to: tasksURL)
+    print("\n--- STEP 2b: the still-open task archived too, with no ✓done ---")
+    print(try vault.read(archiveURL))
+    let openArchivedParsed = TaskBlock.parse(openArchivedText, today: .today())!
+    print(
+        "isDone: \(openArchivedParsed.isDone), done: \(String(describing: openArchivedParsed.done)), "
+            + "archivedAt: \(String(describing: openArchivedParsed.archivedAt))"
+    )
 
     // Restore: the symmetric mirror — append to tasks.md FIRST, strip the shard SECOND.
     let archiveLines = try vault.read(archiveURL).components(separatedBy: "\n")

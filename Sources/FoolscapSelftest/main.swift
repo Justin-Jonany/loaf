@@ -488,6 +488,19 @@ expect(archivedParsed.isDone, true, "archiving doesn't touch isDone — that's a
 expect(archivedParsed.priority, .high, "archiving leaves other metadata untouched")
 expect(archivedParsed.note, "Focus on the pricing slide — they pushed back last time.", "the note line survives archiving")
 
+// Archiving isn't gated on done anymore (DECISIONS.md 2026-09-11, widened): an open task
+// archives with no ✓done, still stamped archived: — the archived record is what tells
+// you it left the list still open, not silently dropped.
+let openArchivingDoc = [
+    "- [ ] Email the landlord",
+    "      @today · manual",
+]
+let openArchivingResult = TaskBlock.archiving(openArchivingDoc, at: 0, archivedAt: archiveInstant)!
+let openArchivedParsed = TaskBlock.parse(openArchivingResult.archivedBlockText, today: blockToday)!
+expect(openArchivedParsed.isDone, false, "archiving an open task leaves isDone false")
+expectNil(openArchivedParsed.done, "archiving an open task adds no ✓done stamp")
+expect(openArchivedParsed.archivedAt, archiveInstant, "the archived block still carries the archivedAt stamp")
+
 // Archiving mid-document only removes the archived block's own lines.
 let archivingMultiDoc = [
     "- [ ] Email the landlord",
@@ -1104,7 +1117,9 @@ expect(DashboardTaskRenderer.render(focusedBlock, today: blockToday).contains("�
 // MARK: - DashboardTaskRenderer.renderArchiveButton (archive — clear/archive action)
 
 // A one-shot action, not a toggle like renderFocusToggle above — no aria-pressed, just a
-// labelled button naming the action and the task.
+// labelled button naming the action and the task. Rendered on every row now (done or
+// not — DECISIONS.md 2026-09-11, widened), so its visible content is a muted glyph, not
+// the word "Archive"; the accessible name still spells the action out.
 let archiveButtonHTML = DashboardTaskRenderer.renderArchiveButton(fullBlock)
 expect(archiveButtonHTML.contains("aria-pressed"), false, "the archive button is an action, not a toggle — no aria-pressed")
 expect(
@@ -1112,6 +1127,16 @@ expect(
     "the archive button's accessible name names the action and the task"
 )
 expect(archiveButtonHTML.contains("class=\"archive-button\""), true, "the archive button carries its own class for styling/click-routing")
+expect(archiveButtonHTML.contains(">Archive<"), false, "the button's visible content is an icon glyph, not the word \"Archive\"")
+
+// The button renders identically off an open (not-done) block too — nothing here gates
+// on isDone; that gate was removed from the caller (DashboardRenderer.renderTask), not
+// added here.
+let archiveButtonOpenHTML = DashboardTaskRenderer.renderArchiveButton(bare)
+expect(
+    archiveButtonOpenHTML.contains("class=\"archive-button\""), true,
+    "the archive button renders the same for an open task — archiving is no longer done-only"
+)
 
 // MARK: - DashboardTaskRenderer.humanDue (C1 — human-readable due chip)
 
