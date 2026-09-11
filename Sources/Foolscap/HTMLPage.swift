@@ -20,11 +20,22 @@ enum HTMLPage {
         """
     }
 
-    /// Only `frosted` ships fully styled this slice — `card`/`console` are a later slice
-    /// (see ROADMAP) — so any other name falls back to it. CSS is inlined rather than
-    /// linked: the theme lives next to the app bundle, not in the vault, so a `<link
-    /// href>` relative to the `loadHTMLString` baseURL (the vault root) wouldn't resolve.
+    /// Every theme is `base.css` (structural rules, shared by all three) plus its own
+    /// palette + signature extras — base first, so a theme's `:root` overrides base's
+    /// fallback token values. Mirrors the old single-file loader's contract: `nil` only
+    /// when `name`'s own file is missing, so `wrap`'s `?? loadThemeCSS(named: "frosted")`
+    /// fallback still triggers exactly when it used to. A missing `base.css` means the
+    /// theme alone renders, unstyled, rather than nothing at all.
     private static func loadThemeCSS(named name: String) -> String? {
+        guard let theme = loadCSSFile(named: name) else { return nil }
+        let base = loadCSSFile(named: "base") ?? ""
+        return base + theme
+    }
+
+    /// CSS is inlined rather than linked: the theme lives next to the app bundle, not in
+    /// the vault, so a `<link href>` relative to the `loadHTMLString` baseURL (the vault
+    /// root) wouldn't resolve.
+    private static func loadCSSFile(named name: String) -> String? {
         var candidates: [URL] = []
         if let resourceURL = Bundle.main.resourceURL {
             candidates.append(resourceURL.appendingPathComponent("themes/\(name).css"))
