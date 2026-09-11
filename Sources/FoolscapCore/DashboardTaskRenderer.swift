@@ -84,12 +84,18 @@ public enum DashboardTaskRenderer {
     /// name. Kept in `FoolscapCore` (rather than the app's `DashboardRenderer`, which wraps
     /// this in the `<li>` that carries the write-back `data-file`/`data-line` attributes)
     /// so `FoolscapSelftest` can assert the ARIA contract directly, the same split B4 set up
-    /// for the tidy label/chip rendering above.
-    public static func renderCheckbox(_ block: TaskBlock) -> String {
+    /// for the tidy label/chip rendering above. `disabled` is for the archive viewer
+    /// (`ArchiveRenderer`), which reuses this same checkbox purely as a was-it-done
+    /// indicator on a row that has no write-back for it — undisabled, the box would still
+    /// natively flip its own `:checked` state on a stray click even though nothing is
+    /// listening for that shard's toggle, leaving the row visually lying about itself
+    /// until the next repaint.
+    public static func renderCheckbox(_ block: TaskBlock, disabled: Bool = false) -> String {
         let checkedAttr = block.isDone ? " checked" : ""
         let ariaChecked = block.isDone ? "true" : "false"
+        let disabledAttr = disabled ? " disabled" : ""
         return "<input type=\"checkbox\" role=\"checkbox\" aria-checked=\"\(ariaChecked)\""
-            + " aria-label=\"\(escapeAttribute(block.text))\"\(checkedAttr)>"
+            + " aria-label=\"\(escapeAttribute(block.text))\"\(checkedAttr)\(disabledAttr)>"
     }
 
     /// The per-row focus toggle (ROADMAP B7 — Curated Today: a `★` focus flag). A plain
@@ -105,6 +111,24 @@ public enum DashboardTaskRenderer {
         return "<button type=\"button\" class=\"focus-toggle\(onClass)\" aria-pressed=\"\(pressed)\""
             + " aria-label=\"\(escapeAttribute(action)): \(escapeAttribute(block.text))\""
             + " title=\"\(escapeAttribute(action))\">★</button>"
+    }
+
+    /// The per-row "Archive" action (DECISIONS.md 2026-09-11 — the permanent archive,
+    /// later widened to any task): moves a task, done or not, off `tasks.md`/
+    /// `longterm.md` into the monthly archive shard, preserving whatever `isDone`/
+    /// `✓done` state it already carries (`TaskBlock.archiving` doesn't touch either).
+    /// Unlike `renderFocusToggle`, this is a one-shot action, not a toggle — no
+    /// `aria-pressed`, just a labelled `<button>` naming the action and the task, same
+    /// accessible-name contract as `renderCheckbox`/`renderFocusToggle` above. Visible
+    /// content is a muted line-art glyph (a downward arrow to a bar — the "file it away"
+    /// gesture), monochrome rather than a color emoji, so it sits permanently at the row's
+    /// trailing edge (`DashboardRenderer.renderTask` no longer gates this on `block.isDone`)
+    /// without reading as a loud text button; `aria-label`/`title` still spell out the
+    /// action for VoiceOver/tooltip.
+    public static func renderArchiveButton(_ block: TaskBlock) -> String {
+        "<button type=\"button\" class=\"archive-button\""
+            + " aria-label=\"Archive: \(escapeAttribute(block.text))\""
+            + " title=\"Archive\">\u{2913}</button>"
     }
 
     private static func escape(_ text: String) -> String {

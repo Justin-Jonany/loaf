@@ -59,16 +59,21 @@ final class NoteWindow: NSWindow {
         webView.loadHTMLString(html, baseURL: baseURL)
     }
 
-    /// Wires up checkbox and focus-toggle write-back: registers `handler` under message
-    /// names `toggleTask` and `focusTask`, and injects the script that listens for
-    /// checkbox changes and focus-toggle clicks and posts to them. Keeping the WKWebView
-    /// plumbing here means the app target only ever sees `{file, line, checked}` /
-    /// `{file, line, focus}` — the dashboard stitches several files, so each message
-    /// carries its `data-file` (which note) alongside `data-line` (where in it).
+    /// Wires up checkbox, focus-toggle, and archive/restore write-back: registers
+    /// `handler` under message names `toggleTask`, `focusTask`, `archiveTask`,
+    /// `restoreTask`, and `showDashboard`, and injects the script that listens for the
+    /// corresponding DOM events and posts to them. Keeping the WKWebView plumbing here
+    /// means the app target only ever sees plain `{file, line, ...}` messages — the
+    /// dashboard (and the archive viewer, which swaps into the same webView) stitch
+    /// several files, so each message carries its `data-file` (which note/shard)
+    /// alongside `data-line` (where in it).
     func installTaskToggleHandler(_ handler: WKScriptMessageHandler) {
         let controller = webView.configuration.userContentController
         controller.add(handler, name: "toggleTask")
         controller.add(handler, name: "focusTask")
+        controller.add(handler, name: "archiveTask")
+        controller.add(handler, name: "restoreTask")
+        controller.add(handler, name: "showDashboard")
 
         let source = """
         document.addEventListener('change', function (event) {
@@ -93,6 +98,31 @@ final class NoteWindow: NSWindow {
                 line: parseInt(row.dataset.line, 10),
                 focus: nextFocus
             });
+        });
+        document.addEventListener('click', function (event) {
+            var btn = event.target.closest && event.target.closest('.archive-button');
+            if (!btn) { return; }
+            var row = btn.closest('.task');
+            if (!row || !row.dataset.file || !row.dataset.line) { return; }
+            window.webkit.messageHandlers.archiveTask.postMessage({
+                file: row.dataset.file,
+                line: parseInt(row.dataset.line, 10)
+            });
+        });
+        document.addEventListener('click', function (event) {
+            var btn = event.target.closest && event.target.closest('.restore-button');
+            if (!btn) { return; }
+            var row = btn.closest('.task');
+            if (!row || !row.dataset.file || !row.dataset.line) { return; }
+            window.webkit.messageHandlers.restoreTask.postMessage({
+                file: row.dataset.file,
+                line: parseInt(row.dataset.line, 10)
+            });
+        });
+        document.addEventListener('click', function (event) {
+            var btn = event.target.closest && event.target.closest('.back-to-dashboard');
+            if (!btn) { return; }
+            window.webkit.messageHandlers.showDashboard.postMessage({});
         });
         """
         let script = WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)

@@ -31,6 +31,19 @@ public struct TaskBlock: Equatable, Sendable {
     public var focus: Bool
     public var done: CalendarDate?
     public var every: Recurrence?
+    /// The permanent archive's stamp (DECISIONS.md 2026-09-11): "when it left the list."
+    /// A Foundation `Date` (an instant with time), not `CalendarDate` — a deliberate
+    /// carve-out from `CalendarDate`'s own rule against storing instants (see its doc
+    /// comment). `✓done` stays date-only so `tasks.md`'s existing round-trip is untouched;
+    /// this field only ever appears once a block moves to an archive shard.
+    public var archivedAt: Date?
+    /// An `archived:` payload that was present but didn't parse as ISO-8601-with-offset
+    /// (a half-written file, a future format this parser doesn't know yet, ...). Unlike an
+    /// ordinary unrecognized token, this one is the archive's own audit stamp — losing it
+    /// silently would be real data loss, not a harmless drop — so it's kept verbatim here
+    /// and rendered back out unchanged rather than discarded. Cleared whenever a valid
+    /// `archivedAt` is set.
+    private var archivedRaw: String?
     public var note: String?
 
     public enum Source: String, Equatable, Sendable {
@@ -158,6 +171,15 @@ public struct TaskBlock: Equatable, Sendable {
                 block.focus = true
             } else if token.hasPrefix("every:"), let rule = Recurrence(String(token.dropFirst(6))) {
                 block.every = rule
+            } else if token.hasPrefix("archived:") {
+                let payload = String(token.dropFirst("archived:".count))
+                if let parsed = ArchiveStamp.parse(payload) {
+                    block.archivedAt = parsed
+                    block.archivedRaw = nil
+                } else {
+                    // See `archivedRaw`'s doc comment: preserved verbatim, not dropped.
+                    block.archivedRaw = payload
+                }
             } else if let source = Source(rawValue: token.lowercased()) {
                 block.source = source
             }
@@ -172,10 +194,12 @@ public struct TaskBlock: Equatable, Sendable {
 
     // MARK: - Rendering
 
-    /// Canonical form: `@due · source · !priority · #type · ★ · every:… · ✓done`, field
-    /// order fixed so repeated parse/render round-trips are stable (mirrors
-    /// `TaskLine.rendered()`). Dates always render as ISO — natural-language
+    /// Canonical form: `@due · source · !priority · #type · ★ · every:… · ✓done ·
+    /// archived:…`, field order fixed so repeated parse/render round-trips are stable
+    /// (mirrors `TaskLine.rendered()`). Dates always render as ISO — natural-language
     /// normalisation on write (`@friday` → the ISO date) is Epic F, not this parser.
+    /// `archived:` is the newest field and always renders last, after `✓done`, so an
+    /// already-archived-once file doesn't get its existing fields reordered.
     public func rendered() -> String {
         var fields: [String] = []
         if let due { fields.append("@\(due)") }
@@ -185,6 +209,8 @@ public struct TaskBlock: Equatable, Sendable {
         if focus { fields.append("★") }
         if let every { fields.append("every:\(every.rawValue)") }
         if let done { fields.append("✓\(done)") }
+        if let archivedAt { fields.append("archived:\(ArchiveStamp.format(archivedAt))") }
+        else if let archivedRaw { fields.append("archived:\(archivedRaw)") }
 
         let metaIndent = indent + "      "
         var out = "\(indent)\(bullet) [\(isDone ? "x" : " ")] \(text)"
@@ -231,6 +257,51 @@ public struct TaskBlock: Equatable, Sendable {
         return result
     }
 
+    // MARK: - Permanent archive write-back (DECISIONS.md 2026-09-11)
+
+    /// Applies the archive stamp to the block at `lines[index]` and returns it rendered
+    /// (for appending to the month's archive shard) alongside the source document with
+    /// that block's lines removed. Mirrors `toggling`/`settingFocus`'s parse-at-line,
+    /// re-render, stale-click-returns-`nil` shape exactly — the caller (`archiveTask` in
+    /// `Sources/Foolscap/main.swift`) is the one that decides the write ORDER (shard
+    /// first, then this removal), since that's a two-file concern this pure function
+    /// doesn't touch. Deliberately leaves `isDone`/`done` exactly as found — archiving is
+    /// available on any task now, not only a done one, and the archived record's whole
+    /// point is to preserve whether it was done at the moment it left the list.
+    public static func archiving(
+        _ lines: [String], at index: Int, archivedAt: Date = Date()
+    ) -> (archivedBlockText: String, remainingLines: [String])? {
+        guard let (block, consumed) = parse(lines, at: index) else { return nil }
+        var archived = block
+        archived.archivedAt = archivedAt
+        archived.archivedRaw = nil
+
+        var remaining = lines
+        remaining.removeSubrange(index..<(index + consumed))
+        return (archived.rendered(), remaining)
+    }
+
+    /// The inverse of `archiving`: clears the archive stamp AND reopens the task
+    /// (`isDone`/`done` cleared — DECISIONS.md 2026-09-11, "restore reopens the task"),
+    /// since a restored-but-still-done block would land back in `tasks.md` invisible to
+    /// every dashboard bucket (`DashboardComposer.isEligible` only shows a done task when
+    /// `done == today`). Returns the block rendered for appending to `tasks.md` alongside
+    /// the archive shard's lines with that block removed.
+    public static func restoring(
+        _ lines: [String], at index: Int
+    ) -> (restoredBlockText: String, remainingLines: [String])? {
+        guard let (block, consumed) = parse(lines, at: index) else { return nil }
+        var restored = block
+        restored.archivedAt = nil
+        restored.archivedRaw = nil
+        restored.isDone = false
+        restored.done = nil
+
+        var remaining = lines
+        remaining.removeSubrange(index..<(index + consumed))
+        return (restored.rendered(), remaining)
+    }
+
     // MARK: - Urgency
 
     public enum Urgency: Equatable, Sendable {
@@ -247,6 +318,21 @@ public struct TaskBlock: Equatable, Sendable {
         if remaining == 0 { return .dueToday }
         return remaining <= soonWithinDays ? .soon : .later
     }
+}
+
+/// ISO-8601-with-offset parsing/formatting for the `archived:` stamp — an instant, not a
+/// `CalendarDate`, so it mirrors `BriefStamp`'s own `ISO8601DateFormatter` +
+/// `.withInternetDateTime` pattern (`Sources/FoolscapCore/BriefStamp.swift`) rather than
+/// `DateToken` below, which only ever resolves to a `CalendarDate`.
+private enum ArchiveStamp {
+    private static let formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static func parse(_ value: String) -> Date? { formatter.date(from: value) }
+    static func format(_ date: Date) -> String { formatter.string(from: date) }
 }
 
 /// How `@due`/`✓done` tokens resolve against a reference date. Arithmetic goes through
