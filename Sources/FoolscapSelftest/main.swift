@@ -313,25 +313,30 @@ let recurringBlock = "- [x] Water the plants\n      @2026-08-12 · manual · eve
 let recurringRendered = TaskBlock.parse(recurringBlock, today: date("2026-08-01"))!.rendered()
 expect(recurringRendered, recurringBlock, "recurring + done block round trips")
 
-// MARK: - TaskBlock (B7 — ★ focus flag)
+// MARK: - TaskBlock (placement token — DECISIONS.md 2026-09-11: ★ renamed to `today`)
 
-// A lone ★ token sets focus, independent of @due; its absence leaves focus false.
-let focusedBlock = TaskBlock.parse("- [ ] Ping the client\n      @fri · manual · ★", today: blockToday)!
-expect(focusedBlock.focus, true, "a ★ token in the metadata line sets focus")
-expect(focusedBlock.due?.description, "2026-08-14", "★ doesn't disturb the rest of the metadata parse")
+// A lone `today` token sets focus, independent of @due; the retired ★ glyph is still
+// accepted so an unmigrated vault keeps parsing focus == true; absence leaves focus false.
+let focusedBlock = TaskBlock.parse("- [ ] Ping the client\n      @fri · today", today: blockToday)!
+expect(focusedBlock.focus, true, "a `today` token in the metadata line sets focus")
+expect(focusedBlock.due?.description, "2026-08-14", "`today` doesn't disturb the rest of the metadata parse")
+let legacyStarBlock = TaskBlock.parse("- [ ] Ping the client\n      @fri · manual · ★", today: blockToday)!
+expect(legacyStarBlock.focus, true, "the retired ★ glyph is still parsed as focus (unmigrated vaults)")
 let unfocusedBlock = TaskBlock.parse("- [ ] Ping the client\n      @fri · manual", today: blockToday)!
-expect(unfocusedBlock.focus, false, "no ★ token means focus defaults to false")
+expect(unfocusedBlock.focus, false, "no placement token means focus defaults to false")
 
-// rendered() places ★ after #type, before every:/✓done, and the block round-trips.
+// rendered() places the `today` token after #type, before every:/✓done, and round-trips.
+// A legacy ★ input parses to focus and re-renders as `today` — the on-disk rename applied
+// on any write that re-renders the block (toggling/settingFocus/migration).
 let focusedFullBlock = TaskBlock.parse(
     "- [x] Water the plants\n      @2026-08-12 · manual · #chores · ★ · every:week · ✓2026-08-05",
     today: blockToday
 )!
-expect(focusedFullBlock.focus, true, "★ parses alongside every other field")
+expect(focusedFullBlock.focus, true, "a legacy ★ parses focus alongside every other field")
 let focusedFullRendered = focusedFullBlock.rendered()
 expect(
-    focusedFullRendered, "- [x] Water the plants\n      @2026-08-12 · manual · #chores · ★ · every:week · ✓2026-08-05",
-    "★ renders after #type and before every:/✓done"
+    focusedFullRendered, "- [x] Water the plants\n      @2026-08-12 · manual · #chores · today · every:week · ✓2026-08-05",
+    "rendered() emits `today` (not ★) after #type and before every:/✓done"
 )
 expect(
     TaskBlock.parse(focusedFullRendered, today: blockToday)!.focus, true,
@@ -350,8 +355,8 @@ let focusDoc = [
 ]
 let starredLines = TaskBlock.settingFocus(focusDoc, at: 0, focus: true, today: focusRef)!
 expect(
-    starredLines[1], "      @2026-08-20 · calendar · !high · #schoolwork · ★",
-    "settingFocus(true) appends ★ after the existing metadata fields"
+    starredLines[1], "      @2026-08-20 · calendar · !high · #schoolwork · today",
+    "settingFocus(true) appends the `today` token after the existing metadata fields"
 )
 expect(starredLines[2], focusDoc[2], "the note line is untouched by starring")
 let unstarredLines = TaskBlock.settingFocus(starredLines, at: 0, focus: false, today: focusRef)!
@@ -374,8 +379,8 @@ let focusedToggleDoc = [
 ]
 let focusedTicked = TaskBlock.toggling(focusedToggleDoc, at: 0, checked: true, today: focusRef)!
 expect(
-    focusedTicked[1], "      @2026-08-20 · manual · ★ · ✓2026-08-20",
-    "ticking a focused task keeps its ★ alongside the new ✓done"
+    focusedTicked[1], "      @2026-08-20 · manual · today · ✓2026-08-20",
+    "ticking a focused task keeps its placement `today` token alongside the new ✓done"
 )
 
 // MARK: - TaskBlock.toggling (checkbox write-back, A4)
@@ -1110,9 +1115,27 @@ expect(focusToggleOn.contains("aria-pressed=\"true\""), true, "a focused block's
 let focusToggleOff = DashboardTaskRenderer.renderFocusToggle(bare)
 expect(focusToggleOff.contains("aria-pressed=\"false\""), true, "an unfocused block's toggle reports aria-pressed=\"false\"")
 
-// The tidy render(...) chips never gain a raw ★ — the toggle above is the only star
-// element (Display ≠ storage, same as the @/#/! tokens above).
+// The ★ glyph is retired from the UI entirely (DECISIONS.md 2026-09-11): neither the tidy
+// chips nor the placement handle render a star — the handle is a neutral drag grip, and a
+// task's presence in Today is the only placement indicator. It stays the drag source.
 expect(DashboardTaskRenderer.render(focusedBlock, today: blockToday).contains("★"), false, "the tidy label/chip render carries no raw ★")
+expect(focusToggleOn.contains("★"), false, "the placement handle no longer renders the retired ★ glyph")
+expect(focusToggleOff.contains("★"), false, "an unfocused placement handle renders no ★ either")
+expect(focusToggleOn.contains("draggable=\"true\""), true, "the placement handle is the drag source for drag-to-Today")
+
+// MARK: - TokenMigration (★ → `today` one-time on-disk rename — DECISIONS.md 2026-09-11)
+
+// A document that still carries ★ is re-rendered with the `today` token; the file is
+// returned whole so the caller can write it back atomically.
+let dirtyVaultMd = "- [ ] Return books\n      @2026-08-15 · manual · ★\n"
+let migratedVaultMd = TokenMigration.migrate(dirtyVaultMd, today: blockToday)
+expect(migratedVaultMd != nil, true, "migrate rewrites a document that still contains ★")
+expect(migratedVaultMd?.contains("★") ?? true, false, "no ★ remains after migration")
+expect(migratedVaultMd?.contains("· today") ?? false, true, "the ★ became the `today` token")
+// Idempotent: re-running on the migrated output finds nothing to change (nil).
+expectNil(TokenMigration.migrate(migratedVaultMd ?? "", today: blockToday), "migrating already-clean output is a no-op (nil)")
+// A document with no ★ is never rewritten — a clean vault is left byte-for-byte.
+expectNil(TokenMigration.migrate("- [ ] Plain task\n      @2026-08-15 · manual\n", today: blockToday), "a document with no ★ returns nil")
 
 // MARK: - DashboardTaskRenderer.renderArchiveButton (archive — clear/archive action)
 

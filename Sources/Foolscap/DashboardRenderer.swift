@@ -16,9 +16,9 @@ enum DashboardRenderer {
     ) -> String {
         var html = "<div class=\"dashboard\">\n"
         html += renderBrief(dashboard.brief)
-        html += renderSection(title: "Today", tasks: dashboard.today, emptyText: "Nothing due today.", today: today, soonWithinDays: soonWithinDays)
-        html += renderSection(title: "This week", tasks: dashboard.thisWeek, emptyText: "Nothing else due this week.", today: today, soonWithinDays: soonWithinDays)
-        html += renderSection(title: "Long-term", tasks: dashboard.longTerm, emptyText: "No long-term goals yet.", today: today, soonWithinDays: soonWithinDays)
+        html += renderSection(title: "Today", sectionKey: "today", tasks: dashboard.today, emptyText: "Nothing due today.", today: today, soonWithinDays: soonWithinDays)
+        html += renderSection(title: "This week", sectionKey: "week", tasks: dashboard.thisWeek, emptyText: "Nothing else due this week.", today: today, soonWithinDays: soonWithinDays)
+        html += renderSection(title: "Long-term", sectionKey: "longterm", tasks: dashboard.longTerm, emptyText: "No long-term goals yet.", today: today, soonWithinDays: soonWithinDays)
         html += "</div>\n"
         return html
     }
@@ -49,19 +49,23 @@ enum DashboardRenderer {
         return "<section class=\"brief\">\n<h2>Brief \(stampHTML)</h2>\n\(body)</section>\n"
     }
 
+    /// `data-section` names the bucket ("today"/"week"/"longterm") so the drag-to-Today
+    /// drop handler (NoteWindow's injected JS) can tell which section a row was dropped on
+    /// without string-matching the visible heading (DECISIONS.md 2026-09-11). It's on the
+    /// empty branch too, so a row can be dragged into a Today that has nothing in it yet.
     private static func renderSection(
-        title: String, tasks: [DashboardTask], emptyText: String, today: CalendarDate, soonWithinDays: Int
+        title: String, sectionKey: String, tasks: [DashboardTask], emptyText: String, today: CalendarDate, soonWithinDays: Int
     ) -> String {
         guard !tasks.isEmpty else {
             return """
-            <section class="section">
+            <section class="section" data-section="\(sectionKey)">
             <h2>\(escape(title))</h2>
             <p class="empty">\(escape(emptyText))</p>
             </section>
 
             """
         }
-        var html = "<section class=\"section\">\n<h2>\(escape(title))</h2>\n<ul class=\"tasks\">\n"
+        var html = "<section class=\"section\" data-section=\"\(sectionKey)\">\n<h2>\(escape(title))</h2>\n<ul class=\"tasks\">\n"
         for task in tasks { html += renderTask(task, today: today, soonWithinDays: soonWithinDays) }
         html += "</ul>\n</section>\n"
         return html
@@ -89,7 +93,7 @@ enum DashboardRenderer {
         let archiveButton = DashboardTaskRenderer.renderArchiveButton(task.block)
         let doneClass = task.block.isDone ? " done" : ""
         return """
-        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)\(focusToggle)\(archiveButton)</li>
+        <li class="task\(doneClass)" data-file="\(escape(task.sourceFile))" data-line="\(task.line)">\(checkbox)\(tidy)\(archiveButton)\(focusToggle)</li>
 
         """
     }
