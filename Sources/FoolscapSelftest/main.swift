@@ -720,6 +720,42 @@ expect(
     "falls back to ~/Notes when neither env nor config set a vault"
 )
 
+// MARK: - Config.setTheme (live theme switching — DECISIONS.md 2026-09-11)
+//
+// `HTMLPage.availableThemeNames()` (the palette-file enumeration) lives in the app
+// target, not FoolscapCore, so it isn't reachable from this Core-only selftest —
+// skipped here per the ticket's own allowance; it's exercised by the `--dump-dashboard`
+// two-theme diff in the PR instead.
+
+do {
+    let path = tempConfigPath()
+    try "vault = \"~/Notes\"\n\n[dates]\nsoon_within_days = 5\n".write(to: path, atomically: true, encoding: .utf8)
+
+    try Config.setTheme("console", at: path)
+    let reloaded = Config.load(from: path)
+    expect(reloaded.theme, "console", "setTheme round-trips through Config.load")
+    expect(reloaded.vault, "~/Notes", "setTheme preserves an unrelated pre-existing key")
+    expect(reloaded.soonWithinDays, 5, "setTheme preserves an unrelated key in another section")
+
+    try Config.setTheme("card", at: path)
+    let rewritten = Config.load(from: path)
+    expect(rewritten.theme, "card", "setTheme overwrites an existing theme line in place")
+    expect(rewritten.vault, "~/Notes", "overwriting theme still preserves the unrelated key")
+
+    try? FileManager.default.removeItem(at: path)
+} catch {
+    failures.append("Config.setTheme round-trip threw: \(error)")
+}
+
+do {
+    let path = tempConfigPath() // never created — setTheme must create it from scratch
+    try Config.setTheme("frosted", at: path)
+    expect(Config.load(from: path).theme, "frosted", "setTheme creates a missing config file")
+    try? FileManager.default.removeItem(at: path)
+} catch {
+    failures.append("Config.setTheme on a missing file threw: \(error)")
+}
+
 // MARK: - MarkdownRenderer
 
 let overdueHTML = MarkdownRenderer.renderHTML(

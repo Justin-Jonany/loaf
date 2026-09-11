@@ -36,16 +36,44 @@ enum HTMLPage {
     /// the vault, so a `<link href>` relative to the `loadHTMLString` baseURL (the vault
     /// root) wouldn't resolve.
     private static func loadCSSFile(named name: String) -> String? {
-        var candidates: [URL] = []
-        if let resourceURL = Bundle.main.resourceURL {
-            candidates.append(resourceURL.appendingPathComponent("themes/\(name).css"))
-        }
-        let sourceDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        candidates.append(sourceDir.appendingPathComponent("../../Resources/themes/\(name).css").standardized)
-
-        for candidate in candidates where FileManager.default.fileExists(atPath: candidate.path) {
-            return try? String(contentsOf: candidate, encoding: .utf8)
+        for directory in themeDirectoryCandidates() {
+            let candidate = directory.appendingPathComponent("\(name).css")
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                return try? String(contentsOf: candidate, encoding: .utf8)
+            }
         }
         return nil
+    }
+
+    /// The selectable palette themes — every `Resources/themes/*.css` file except
+    /// `base.css` (structural, shared by all themes, not itself a choice) — for the
+    /// menu-bar theme picker (main.swift → `buildThemeMenu`). Enumerated rather than
+    /// hardcoded so a new palette file shows up in the menu on its own. Uses the same
+    /// bundle/dev-tree resource location `loadCSSFile` does, and stops at the first
+    /// directory that actually has theme files, matching `loadCSSFile`'s first-match
+    /// behavior.
+    static func availableThemeNames() -> [String] {
+        for directory in themeDirectoryCandidates() {
+            guard let entries = try? FileManager.default.contentsOfDirectory(
+                at: directory, includingPropertiesForKeys: nil
+            ) else { continue }
+            let names = entries
+                .filter { $0.pathExtension.lowercased() == "css" }
+                .map { $0.deletingPathExtension().lastPathComponent }
+                .filter { $0 != "base" }
+                .sorted()
+            if !names.isEmpty { return names }
+        }
+        return []
+    }
+
+    private static func themeDirectoryCandidates() -> [URL] {
+        var candidates: [URL] = []
+        if let resourceURL = Bundle.main.resourceURL {
+            candidates.append(resourceURL.appendingPathComponent("themes"))
+        }
+        let sourceDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        candidates.append(sourceDir.appendingPathComponent("../../Resources/themes").standardized)
+        return candidates
     }
 }
