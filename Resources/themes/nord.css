@@ -1,0 +1,17 @@
+/* nord — arctic, cool blue-grays. An opaque dark alternative to console. */
+
+:root {
+  --ink:        #D8DEE9;
+  --ink-dim:    #8F9AAB;
+  --rule:       rgba(216, 222, 233, 0.10);
+  --surface:    #2E3440;
+  --accent:     #88C0D0;
+  --due-soon:   #EBCB8B;
+  --due-soon-bg: rgba(235, 203, 139, 0.14);
+  --due-over:   #BF616A;
+  --due-over-bg: rgba(191, 97, 106, 0.16);
+  /* Dark-surface check glyph on the dim ink fill — same contrast logic as
+     console's --checkbox-mark, just aimed at nord's own ink/surface pair. */
+  --checkbox-mark: #2E3440;
+  --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
+}
