@@ -110,13 +110,23 @@ start_mode = "preview"
 ## See it live
 
 A fresh vault is empty, so to see the dashboard populated, point the app at the sample
-vault checked into the repo (a synthetic fixture — never your real notes):
+vault checked into the repo (a synthetic fixture — never your real notes).
+
+Build the app bundle and launch it against the fixture — this is the reliable way to get
+the actual menu-bar panel. (`swift run foolscap` builds only the bare executable and won't
+reliably surface as the menu-bar app; `build.sh` assembles a proper `Foolscap.app` with the
+`Info.plist` + bundled themes/templates.)
 
 ```bash
-FOOLSCAP_VAULT=routines/morning-brief/fixtures/decision-day/vault swift run foolscap
+./build.sh   # assembles dist/Foolscap.app
+FOOLSCAP_VAULT=routines/morning-brief/fixtures/decision-day/vault dist/Foolscap.app/Contents/MacOS/Foolscap
 ```
 
-Or render it to HTML without launching the panel:
+`FOOLSCAP_VAULT` is inherited from the shell when you launch the bundled binary directly.
+For everyday use against your own vault, `open dist/Foolscap.app` (or install it with
+`cp -R dist/Foolscap.app ~/Applications/`).
+
+Or render the dashboard straight to HTML without launching the panel at all:
 
 ```bash
 swift run foolscap --dump-dashboard \
