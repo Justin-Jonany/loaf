@@ -294,11 +294,9 @@ public struct TaskBlock: Equatable, Sendable {
     }
 
     /// The inverse of `archiving`: clears the archive stamp AND reopens the task
-    /// (`isDone`/`done` cleared — DECISIONS.md 2026-09-11, "restore reopens the task"),
-    /// since a restored-but-still-done block would land back in `tasks.md` invisible to
-    /// every dashboard bucket (`DashboardComposer.isEligible` only shows a done task when
-    /// `done == today`). Returns the block rendered for appending to `tasks.md` alongside
-    /// the archive shard's lines with that block removed.
+    /// (`isDone`/`done` cleared — DECISIONS.md 2026-09-11, "restore reopens the task").
+    /// Returns the block rendered for appending to `tasks.md` alongside the archive
+    /// shard's lines with that block removed.
     public static func restoring(
         _ lines: [String], at index: Int
     ) -> (restoredBlockText: String, remainingLines: [String])? {

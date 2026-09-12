@@ -523,9 +523,7 @@ expect(
 expectNil(TaskBlock.archiving(["# Heading"], at: 0), "archiving a non-checkbox line returns nil")
 
 // restoring is the inverse: clears archivedAt AND reopens the task (isDone/done cleared —
-// DECISIONS.md 2026-09-11, "restore reopens the task") so it doesn't land back in
-// tasks.md invisible to every dashboard bucket (DashboardComposer.isEligible only shows a
-// done task when done == today).
+// DECISIONS.md 2026-09-11, "restore reopens the task").
 let restoringDoc = [
     "- [x] Prep the client deck",
     "      @2026-08-20 · calendar · !high · #schoolwork · ✓2026-08-20 · archived:2026-08-20T14:58:00Z",
@@ -825,14 +823,15 @@ let dueSoonDash = DashboardComposer.compose(
 expect(dueSoonDash.thisWeek.count, 1, "task due in 3 days lands in This week")
 expect(dueSoonDash.today.count, 0, "task due in 3 days is not also in Today")
 
-// A checked/done task completed on a *different* day than `today` doesn't show — only
-// a completion matching `today` lingers (ROADMAP B6; see the dedicated section below).
+// A checked/done task completed on a *different* day than `today` still shows — the
+// completion date no longer affects visibility, only the @due bucketing does (DECISIONS.md
+// 2026-09-12; see the dedicated section below). Overdue + done still lands in Today.
 let doneTasks = "- [x] Already finished\n      @2026-08-11 · manual · ✓2026-08-11"
 let doneDash = DashboardComposer.compose(
     brief: "", tasksMarkdown: doneTasks, longtermMarkdown: "", today: dashToday
 )
-expect(doneDash.today.count, 0, "a done task doesn't land in Today")
-expect(doneDash.thisWeek.count, 0, "a done task doesn't land in This week")
+expect(doneDash.today.count, 1, "an overdue done task still lands in Today")
+expect(doneDash.thisWeek.count, 0, "a done task in Today does not also appear in This week")
 
 // A task with no @due can't be bucketed at all — flagged invalid, not defaulted.
 let noDueTasks = "- [ ] No due date\n      manual"
@@ -1292,7 +1291,7 @@ let unknownStatusText = "status: something-else\nreason: unrecognized status val
 let unknownStatusSignal = RoutineSignal.parse(unknownStatusText)
 expect(unknownStatusSignal?.status, .malformed, "an unrecognized status: value parses as .malformed")
 
-// MARK: - Dashboard (B6 — completed-today tasks linger until the 6am rollover)
+// MARK: - Dashboard (B6/DECISIONS.md 2026-09-12 — completed tasks stay visible until archived)
 
 // A task completed *today* keeps its due-based section instead of vanishing the
 // instant you tick it (DESIGN.md → "The panel"; DECISIONS.md 2026-09-09), rendered
@@ -1320,19 +1319,21 @@ expect(lingeringLabel.contains("class=\"label done\""), true, "a completed-today
 let openLabel = DashboardTaskRenderer.render(lingeringDash.today.last!.block, today: dashToday)
 expect(openLabel.contains("done"), false, "an open row carries no done class")
 
-// Completed *yesterday* does not linger — only a completion matching `today` qualifies.
+// Completed *yesterday* still shows — the completion date no longer gates visibility,
+// only the @due bucketing does (DECISIONS.md 2026-09-12).
 let yesterdayDoneTasks = "- [x] Completed yesterday\n      @2026-08-11 · manual · ✓2026-08-11"
 let yesterdayDoneDash = DashboardComposer.compose(
     brief: "", tasksMarkdown: yesterdayDoneTasks, longtermMarkdown: "", today: dashToday
 )
-expect(yesterdayDoneDash.today.count, 0, "a task completed yesterday does not show")
+expect(yesterdayDoneDash.today.count, 1, "a task completed yesterday still shows (overdue → Today)")
 
-// An undated `[x]` (hand-edited, no ✓done stamp) can't be tied to "today," so it never shows.
+// An undated `[x]` (hand-edited, no ✓done stamp) still shows too — done-ness is no longer
+// a reason to exclude a task; only a missing @due excludes it.
 let undatedDoneTasks = "- [x] Hand-ticked, no stamp\n      @2026-08-12 · manual"
 let undatedDoneDash = DashboardComposer.compose(
     brief: "", tasksMarkdown: undatedDoneTasks, longtermMarkdown: "", today: dashToday
 )
-expect(undatedDoneDash.today.count, 0, "an undated completed task does not show")
+expect(undatedDoneDash.today.count, 1, "an undated completed task still shows")
 
 // Un-ticking a lingering completion returns it to a normal open row.
 let reopenedLines = TaskBlock.toggling(
@@ -1360,33 +1361,35 @@ expect(lingeringLongtermDash.longTerm.count, 2, "Long-term also shows a complete
 expect(lingeringLongtermDash.longTerm.first?.block.text, "Ship v1", "the completed-today goal keeps its parse-order position")
 expect(lingeringLongtermDash.longTerm.last?.block.text, "Ship v2", "the open goal keeps its position after it")
 
-// Across the 6am rollover: a task completed "today" drops once `effectiveToday` advances
-// to the next day — no timer, no cleanup pass, since bucketing uses the same
-// rollover-aware "today" B5 introduced.
+// Across the 6am rollover: a task completed "today" now shows on BOTH sides of the
+// rollover — the completion date no longer ties to `effectiveToday` at all (DECISIONS.md
+// 2026-09-12, reversing the 2026-09-09 rollover fall-off). It stays put because it's
+// overdue relative to its own @due once the day advances, same as any other overdue task.
 let beforeRollover = CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 8, 12, 23, 59, timeZone: newYork))
 let afterRollover = CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 8, 13, 6, 0, timeZone: newYork))
 let rolloverTask = "- [x] Ticked late last night\n      @2026-08-12 · manual · ✓\(beforeRollover)"
 expect(
     DashboardComposer.compose(brief: "", tasksMarkdown: rolloverTask, longtermMarkdown: "", today: beforeRollover).today.count,
-    1, "still lingers before the 6am rollover"
+    1, "shows before the 6am rollover"
 )
 expect(
     DashboardComposer.compose(brief: "", tasksMarkdown: rolloverTask, longtermMarkdown: "", today: afterRollover).today.count,
-    0, "drops once effectiveToday advances past the rollover"
+    1, "still shows after effectiveToday advances past the rollover — only archiving removes it"
 )
 
-// Correct across a DST boundary: a task completed the day DST begins still lingers when
-// `effectiveToday` is that same day, and drops the day after.
+// Correct across a DST boundary too: a task completed the day DST begins keeps showing
+// the day after — no boundary-dependent drop, since completion date no longer drives
+// visibility at all.
 let beforeDST = CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 3, 7, 12, 0, timeZone: newYork))
 let afterDST = CalendarDate.effectiveToday(in: newYork, now: localDate(2026, 3, 8, 12, 0, timeZone: newYork))
 let dstTask = "- [x] Done just before DST\n      @\(beforeDST) · manual · ✓\(beforeDST)"
 expect(
     DashboardComposer.compose(brief: "", tasksMarkdown: dstTask, longtermMarkdown: "", today: beforeDST).today.count,
-    1, "lingers on the day it was completed, DST boundary notwithstanding"
+    1, "shows on the day it was completed, DST boundary notwithstanding"
 )
 expect(
     DashboardComposer.compose(brief: "", tasksMarkdown: dstTask, longtermMarkdown: "", today: afterDST).today.count,
-    0, "drops the day after, across the DST boundary"
+    1, "still shows the day after, across the DST boundary"
 )
 
 // MARK: - Accessible checkbox semantics (X2 — Accessibility pass)
