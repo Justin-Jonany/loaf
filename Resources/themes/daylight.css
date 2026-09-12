@@ -1,0 +1,17 @@
+/* daylight — clean, bright, always-light. A modern light mode, no paper texture. */
+
+:root {
+  --ink:        #1A1D21;
+  --ink-dim:    rgba(26, 29, 33, 0.55);
+  --rule:       rgba(26, 29, 33, 0.10);
+  --surface:    #FCFCFA;
+  --accent:     #2F6FEB;
+  --due-soon:   #B06A00;
+  --due-soon-bg: rgba(176, 106, 0, 0.12);
+  --due-over:   #C0392B;
+  --due-over-bg: rgba(192, 57, 43, 0.12);
+  /* Surface-colored check glyph on the dim ink fill — same contrast logic as
+     frosted/card's --checkbox-mark. */
+  --checkbox-mark: var(--surface);
+  --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
+}

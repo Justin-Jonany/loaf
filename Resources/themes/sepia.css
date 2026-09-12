@@ -1,0 +1,18 @@
+/* sepia — warm parchment reading mode, easy amber tones, sans the ruled lines and serif
+   of card. */
+
+:root {
+  --ink:        #4B3A2A;
+  --ink-dim:    rgba(75, 58, 42, 0.55);
+  --rule:       rgba(75, 58, 42, 0.13);
+  --surface:    #F4ECD8;
+  --accent:     #9C6B3F;
+  --due-soon:   #9C6B00;
+  --due-soon-bg: rgba(156, 107, 0, 0.13);
+  --due-over:   #A8412B;
+  --due-over-bg: rgba(168, 65, 43, 0.13);
+  /* Surface-colored check glyph on the dim ink fill — same contrast logic as
+     frosted/card's --checkbox-mark. */
+  --checkbox-mark: var(--surface);
+  --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
+}

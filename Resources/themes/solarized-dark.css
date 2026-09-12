@@ -1,0 +1,17 @@
+/* solarized-dark — Solarized, dark variant. Deep base03 ground. */
+
+:root {
+  --ink:        #93A1A1;
+  --ink-dim:    #657B83;
+  --rule:       rgba(147, 161, 161, 0.12);
+  --surface:    #002B36;
+  --accent:     #268BD2;
+  --due-soon:   #B58900;
+  --due-soon-bg: rgba(181, 137, 0, 0.15);
+  --due-over:   #DC322F;
+  --due-over-bg: rgba(220, 50, 47, 0.15);
+  /* Dark-surface check glyph on the dim ink fill — same contrast logic as
+     console's --checkbox-mark, just aimed at solarized-dark's own ink/surface pair. */
+  --checkbox-mark: #002B36;
+  --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
+}

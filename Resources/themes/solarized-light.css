@@ -1,0 +1,18 @@
+/* solarized-light — Ethan Schoonover's Solarized, light variant. Low-contrast, easy on
+   the eyes. */
+
+:root {
+  --ink:        #586E75;
+  --ink-dim:    #839496;
+  --rule:       rgba(88, 110, 117, 0.15);
+  --surface:    #FDF6E3;
+  --accent:     #268BD2;
+  --due-soon:   #CB4B16;
+  --due-soon-bg: rgba(203, 75, 22, 0.12);
+  --due-over:   #DC322F;
+  --due-over-bg: rgba(220, 50, 47, 0.12);
+  /* Surface-colored check glyph on the dim ink fill — same contrast logic as
+     frosted/card's --checkbox-mark. */
+  --checkbox-mark: var(--surface);
+  --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
+}
