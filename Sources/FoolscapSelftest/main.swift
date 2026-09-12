@@ -1086,13 +1086,13 @@ expect(tidyFull.contains("!"), false, "no raw ! in a fully-tagged task's render"
 expect(
     tidyFull,
     "<span class=\"label\">Prep the client deck</span><span class=\"due\" title=\"2026-08-20\">Aug 20</span>"
-        + "<span class=\"type\">schoolwork</span><span class=\"priority-dot high\" title=\"high priority\"></span>"
-        + "<span class=\"source-icon calendar\" title=\"calendar\">📅</span>",
-    "a fully-tagged task renders as sentence + due chip (human text, ISO title) + type tag + priority dot + source icon"
+        + "<span class=\"priority-dot high\" title=\"high priority\"></span>",
+    "a fully-tagged task renders as sentence + due chip (human text, ISO title) + priority dot"
+        + " — no type tag or source icon"
 )
 
-// A task with only @due (no priority/type/note) renders cleanly: the sentence, its due
-// chip, and the always-present source icon — no stray markup for the absent fields.
+// A task with only @due (no priority/type/note) renders cleanly: just the sentence and
+// its due chip — no stray markup for the absent fields.
 let tidyBare = DashboardTaskRenderer.render(bare, today: blockToday)
 expect(tidyBare.contains("@"), false, "no raw @ in a due-only task's render")
 expect(tidyBare.contains("#"), false, "no raw # in a due-only task's render")
@@ -1101,8 +1101,7 @@ expect(tidyBare.contains("type"), false, "no type tag when #type is absent")
 expect(tidyBare.contains("priority-dot"), false, "no priority dot when !priority is absent")
 expect(
     tidyBare,
-    "<span class=\"label\">Email the landlord</span><span class=\"due due-soon\" title=\"2026-08-12\">Today</span>"
-        + "<span class=\"source-icon manual\" title=\"manual\">✎</span>",
+    "<span class=\"label\">Email the landlord</span><span class=\"due due-soon\" title=\"2026-08-12\">Today</span>",
     "a due-only task renders cleanly with no stray markup for the absent fields — its due date"
         + " (today) carries the due-soon class"
 )
@@ -1297,8 +1296,10 @@ expect(unknownStatusSignal?.status, .malformed, "an unrecognized status: value p
 
 // A task completed *today* keeps its due-based section instead of vanishing the
 // instant you tick it (DESIGN.md → "The panel"; DECISIONS.md 2026-09-09), rendered
-// struck-through and sorted below the open items. Listed done-before-open in the raw
-// markdown so a passing order check proves an actual sort, not a lucky parse order.
+// struck-through in place — it keeps its parse-order position rather than sorting to
+// the bottom (DECISIONS.md 2026-09-11, reversing the earlier B6 "sorts to the bottom"
+// call). Listed done-before-open in the raw markdown so a passing order check proves
+// parse order is preserved, not coincidentally matching a sort.
 let lingeringTasks = """
 - [x] Completed today
       @2026-08-12 · manual · ✓2026-08-12
@@ -1310,13 +1311,13 @@ let lingeringDash = DashboardComposer.compose(
 )
 expect(lingeringDash.today.count, 2, "the completed-today task stays in Today alongside the open one")
 expect(
-    lingeringDash.today.map(\.block.text), ["Open task, due today", "Completed today"],
-    "open items sort above the completed-today item"
+    lingeringDash.today.map(\.block.text), ["Completed today", "Open task, due today"],
+    "tasks keep their parse-order position; completion does not reorder them"
 )
-expect(lingeringDash.today.last?.block.isDone, true, "the lingering task is still marked done")
-let lingeringLabel = DashboardTaskRenderer.render(lingeringDash.today.last!.block, today: dashToday)
+expect(lingeringDash.today.first?.block.isDone, true, "the lingering task is still marked done")
+let lingeringLabel = DashboardTaskRenderer.render(lingeringDash.today.first!.block, today: dashToday)
 expect(lingeringLabel.contains("class=\"label done\""), true, "a completed-today row renders struck-through (the done label class)")
-let openLabel = DashboardTaskRenderer.render(lingeringDash.today.first!.block, today: dashToday)
+let openLabel = DashboardTaskRenderer.render(lingeringDash.today.last!.block, today: dashToday)
 expect(openLabel.contains("done"), false, "an open row carries no done class")
 
 // Completed *yesterday* does not linger — only a completion matching `today` qualifies.
@@ -1344,8 +1345,8 @@ let reopenedDash = DashboardComposer.compose(
 expect(reopenedDash.today.count, 1, "un-ticking keeps the task visible")
 expect(reopenedDash.today.first?.block.isDone, false, "un-ticking returns it to an open row")
 
-// Long-term included: a completed-today goal in longterm.md also lingers, sorted below
-// the open ones — again listed done-first in the raw markdown to prove the sort.
+// Long-term included: a completed-today goal in longterm.md also lingers, in place —
+// again listed done-first in the raw markdown to prove parse order is kept, not sorted.
 let lingeringLongterm = """
 - [x] Ship v1
       @2026-08-12 · manual · ✓2026-08-12
@@ -1356,8 +1357,8 @@ let lingeringLongtermDash = DashboardComposer.compose(
     brief: "", tasksMarkdown: "", longtermMarkdown: lingeringLongterm, today: dashToday
 )
 expect(lingeringLongtermDash.longTerm.count, 2, "Long-term also shows a completed-today goal")
-expect(lingeringLongtermDash.longTerm.first?.block.text, "Ship v2", "the open goal sorts first")
-expect(lingeringLongtermDash.longTerm.last?.block.text, "Ship v1", "the completed-today goal sorts below it")
+expect(lingeringLongtermDash.longTerm.first?.block.text, "Ship v1", "the completed-today goal keeps its parse-order position")
+expect(lingeringLongtermDash.longTerm.last?.block.text, "Ship v2", "the open goal keeps its position after it")
 
 // Across the 6am rollover: a task completed "today" drops once `effectiveToday` advances
 // to the next day — no timer, no cleanup pass, since bucketing uses the same
@@ -1406,7 +1407,7 @@ expect(
 
 // The B6 "completed-today lingers" fixture already proves a done block; reuse it here so
 // aria-checked is asserted against a real done row, not a hand-built one.
-let doneCheckbox = DashboardTaskRenderer.renderCheckbox(lingeringDash.today.last!.block)
+let doneCheckbox = DashboardTaskRenderer.renderCheckbox(lingeringDash.today.first!.block)
 expect(doneCheckbox.contains("role=\"checkbox\""), true, "a done task's checkbox carries role=\"checkbox\"")
 expect(doneCheckbox.contains("aria-checked=\"true\""), true, "a done task's checkbox reports aria-checked=\"true\", matching isDone")
 expect(
@@ -1429,7 +1430,7 @@ expect(
 // No B6 regression: the wrapped row's tidy label keeps its `done` class alongside the
 // new accessible checkbox.
 expect(
-    DashboardTaskRenderer.render(lingeringDash.today.last!.block, today: dashToday).contains("class=\"label done\""),
+    DashboardTaskRenderer.render(lingeringDash.today.first!.block, today: dashToday).contains("class=\"label done\""),
     true, "a completed-today row's label still carries the done class (no B6 regression)"
 )
 

@@ -14,13 +14,3 @@
   --checkbox-mark: var(--ink);
   --font: ui-monospace, "SF Mono", Menlo, monospace;
 }
-
-/* No chip backgrounds by design (the whole theme is "show the file, not a rendering of
-   it") — overdue drops base's pill treatment and instead reads as a bare severity marker:
-   bold weight plus a leading "! ". */
-.due-over {
-  background: none;
-  box-shadow: none;
-  font-weight: 700;
-}
-.due-over::before { content: "! "; }

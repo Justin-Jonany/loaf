@@ -107,11 +107,14 @@ public enum DashboardComposer {
             }
         }
 
+        // Buckets are returned in parse order — a completed-today task (see `isEligible`
+        // below) keeps its position rather than sorting to the bottom on completion
+        // (DECISIONS.md 2026-09-11, reversing the earlier B6 "sorts to the bottom" call).
         return Dashboard(
             brief: brief,
-            today: sortedOpenFirst(todayBucket),
-            thisWeek: sortedOpenFirst(weekBucket),
-            longTerm: sortedOpenFirst(longTermBucket)
+            today: todayBucket,
+            thisWeek: weekBucket,
+            longTerm: longTermBucket
         )
     }
 
@@ -126,13 +129,6 @@ public enum DashboardComposer {
     /// hand-typed `- [x]`) can't be tied to any day, so it never qualifies.
     private static func isEligible(_ block: TaskBlock, today: CalendarDate) -> Bool {
         !block.isDone || block.done == today
-    }
-
-    /// Open items first, completed-today items below them (ROADMAP B6: "sorts to the
-    /// bottom of that section"). A stable sort, so ties on either side keep their parse
-    /// order.
-    private static func sortedOpenFirst(_ tasks: [DashboardTask]) -> [DashboardTask] {
-        tasks.sorted { !$0.block.isDone && $1.block.isDone }
     }
 
     /// Scans every checkbox block in `markdown`, tagging each with its 1-based source
