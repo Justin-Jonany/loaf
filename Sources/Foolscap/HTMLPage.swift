@@ -5,7 +5,7 @@ import Foundation
 /// produce a standalone HTML fixture for the B1 screenshot proof.
 enum HTMLPage {
     static func wrap(body: String, theme: String) -> String {
-        let css = loadThemeCSS(named: theme) ?? loadThemeCSS(named: "frosted") ?? ""
+        let css = themeCSS(named: theme)
         return """
         <!doctype html>
         <html>
@@ -18,6 +18,13 @@ enum HTMLPage {
         </body>
         </html>
         """
+    }
+
+    /// The resolved stylesheet for `theme` — the exact CSS `wrap` inlines into `<style>`,
+    /// with the same `frosted` fallback. Exposed so an in-place repaint (`NoteWindow.refresh`)
+    /// can swap the live `<style>` to match a menu-picked theme without a full reload.
+    static func themeCSS(named theme: String) -> String {
+        loadThemeCSS(named: theme) ?? loadThemeCSS(named: "frosted") ?? ""
     }
 
     /// Every theme is `base.css` (structural rules, shared by all three) plus its own

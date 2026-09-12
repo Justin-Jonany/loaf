@@ -315,6 +315,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// always snapping back to the dashboard.
     private enum PanelView { case dashboard, archive }
     private var currentView: PanelView = .dashboard
+    /// Whether the window has had at least one full `load`. A same-view repaint patches the
+    /// live document (`NoteWindow.refresh`), which needs a document to patch — so the very
+    /// first paint must be a full load even though `currentView` already reads `.dashboard`.
+    private var hasLoadedOnce = false
 
     /// The three known files the dashboard composes from — nothing else. Matched by
     /// filename against watcher events so an unrelated vault edit doesn't trigger a
@@ -432,6 +436,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// Buckets against `CalendarDate.effectiveToday()`, not `.today()` — the dashboard's
     /// "today" rolls over at 6am local, not midnight (DESIGN.md → "The daily loop").
     private func renderDashboard() {
+        // A same-view repaint (a checkbox/focus/archive write-back, a watcher refresh, or a
+        // live theme pick) patches the live document so the reader stays put with no flash;
+        // only a switch INTO the dashboard from the archive view does a full load and starts
+        // at the top. See NoteWindow.refresh vs .load.
+        let sameView = currentView == .dashboard && hasLoadedOnce
         currentView = .dashboard
         // Live theme switching (DECISIONS.md 2026-09-11): the theme is no longer read
         // once at launch — every repaint re-reads it so a menu-bar pick (or a hand edit)
@@ -440,7 +449,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let today = CalendarDate.effectiveToday()
         let dashboard = DashboardComposer.compose(vault: vault, today: today)
         let body = DashboardRenderer.renderBody(dashboard, today: today, soonWithinDays: config.soonWithinDays)
-        window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
+        if sameView {
+            window?.refresh(body: body, css: HTMLPage.themeCSS(named: config.theme))
+        } else {
+            window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
+        }
+        hasLoadedOnce = true
     }
 
     /// The minimal archive viewer (DECISIONS.md 2026-09-11): swaps the same webView to a
@@ -448,6 +462,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// window/config — see `currentView`'s doc comment. Multi-month navigation is
     /// deferred; this only ever reads this month's shard.
     private func renderArchiveView() {
+        let sameView = currentView == .archive && hasLoadedOnce
         currentView = .archive
         // See renderDashboard's matching re-read — live theme switching applies to
         // whichever view is actually being painted.
@@ -457,7 +472,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let shardMarkdown = (try? vault.read(archiveURL)) ?? ""
         let shardRelativePath = "archive/\(archiveURL.lastPathComponent)"
         let body = ArchiveRenderer.renderBody(shardMarkdown, shardFile: shardRelativePath, today: today)
-        window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
+        if sameView {
+            window?.refresh(body: body, css: HTMLPage.themeCSS(named: config.theme))
+        } else {
+            window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
+        }
+        hasLoadedOnce = true
     }
 
     /// Refreshes whichever view is actually on screen — used by repaint triggers that

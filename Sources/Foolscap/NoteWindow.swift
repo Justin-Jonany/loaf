@@ -53,10 +53,45 @@ final class NoteWindow: NSWindow {
         setFrameAutosaveName("FoolscapWindow")
     }
 
-    /// Loads rendered note HTML. `baseURL` should be the vault root so relative
-    /// `attachments/…` image references in the markdown resolve.
+    /// Loads rendered note HTML with a full navigation. `baseURL` should be the vault root
+    /// so relative `attachments/…` image references in the markdown resolve. Use this for
+    /// the first paint and for a view SWITCH (dashboard↔archive), which should start at the
+    /// top; a same-view repaint should go through `refresh` instead to hold scroll.
     func load(html: String, baseURL: URL) {
         webView.loadHTMLString(html, baseURL: baseURL)
+    }
+
+    /// Repaints the SAME view in place, without a navigation: swaps the theme `<style>` and
+    /// the body markup on the existing document and reapplies the scroll offset around the
+    /// swap. A full `loadHTMLString` reload tears the document down and repaints from the
+    /// top — a visible white flash plus a jump back to the first row on every checkbox
+    /// toggle. Patching the live document avoids both: same document, so the delegated
+    /// toggle/drag listeners (installed once on `document` by `installTaskToggleHandler`)
+    /// stay live, relative image URLs still resolve against the original `baseURL`, and the
+    /// reader stays put. Callers must have done an initial `load` first — there's no
+    /// document to patch otherwise.
+    func refresh(body: String, css: String) {
+        let script = """
+        (function () {
+            var y = window.scrollY;
+            var style = document.querySelector('style');
+            if (style) { style.textContent = \(Self.jsStringLiteral(css)); }
+            document.body.innerHTML = \(Self.jsStringLiteral(body));
+            window.scrollTo(0, y);
+        })();
+        """
+        webView.evaluateJavaScript(script, completionHandler: nil)
+    }
+
+    /// Encodes an arbitrary string as a JS string literal for embedding in an
+    /// `evaluateJavaScript` source. A JSON string is a valid JS string literal, and this
+    /// escapes the quotes, backslashes, and newlines that CSS/HTML are full of. (Serialized
+    /// in a one-element array because `JSONSerialization` won't emit a bare top-level
+    /// fragment; the brackets are then stripped.)
+    private static func jsStringLiteral(_ s: String) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: [s]),
+              let json = String(data: data, encoding: .utf8) else { return "\"\"" }
+        return String(json.dropFirst().dropLast())
     }
 
     /// Wires up checkbox, focus-toggle, and archive/restore write-back: registers
