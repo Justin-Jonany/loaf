@@ -4,6 +4,48 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-11 — The panel drops source icons and the `#type` tag; `#type` stays parsed
+
+**Decided:** `DashboardTaskRenderer` no longer emits a source-origin icon (📅 calendar, 💬
+chat, ✎ manual) or a `#type` category tag for a task row — the rendered fragment is now just
+the sentence, the due chip, and the priority dot. `TaskBlock`'s parsing and round-trip of
+`#type` (and of `source`) are untouched: the value is still read from and written back to
+`tasks.md`/`longterm.md`, just no longer displayed.
+
+**Why:** both were low-value chrome that cluttered a narrow panel without earning the space —
+the source is rarely worth knowing at a glance, and `#type` reads as noise next to the due
+chip and priority dot that actually drive triage. Keeping the storage format untouched means
+this is purely a display change, reversible without a migration.
+
+## 2026-09-11 — Overdue uses the shared due-chip convention, consistently across themes
+
+**Decided:** `.due-over` drops its `box-shadow: inset 2px 0 0 var(--due-over)` left
+edge-marker and now shares the exact chip shape `.due-soon` already uses — red text plus a
+tinted `--due-over-bg` background, no separate treatment. Console's own `.due-over` override
+(`background: none; box-shadow: none; font-weight: 700`) and its `.due-over::before { content:
+"! " }` marker are deleted outright, so console falls through to base.css's rule and picks up
+the same red-tinted chip (and its own `--due-over`/`--due-over-bg` tokens) as every other
+theme.
+
+**Why:** the edge-marker and console's bespoke "! " prefix were two more one-off severity
+treatments than the panel needed — overdue reads clearly enough as red text on a red-tinted
+pill, the same shape already used for "due soon," so every theme now agrees on one convention
+instead of each theme improvising its own.
+
+## 2026-09-11 — Completed tasks keep their position instead of sorting to the bottom
+
+**Decided:** `DashboardComposer.compose` now returns each bucket (Today/This week/Long-term)
+in parse order; a task checked off no longer moves within its section. This reverses the
+2026-09-09 "sorts to the bottom of that section" call (ROADMAP B6) — the `sortedOpenFirst`
+helper that implemented it is removed. A completed-today row still lingers until the 6am
+rollover (`isEligible`, unchanged) and still renders struck-through/dimmed; it simply doesn't
+jump to the end of the list to get there.
+
+**Why:** reordering a row the instant you check it works against the "glanceable daily
+surface" the panel is meant to be — a task jumping position mid-scan is more disruptive than
+useful, and parse order (which the human controls by how they write the file) is a perfectly
+good order to leave a row in.
+
 ## 2026-09-11 — Overdue severity, theme templating, and lifecycle sub-decisions
 
 **Context:** A review pass (four investigation lenses over the panel's visuals and the

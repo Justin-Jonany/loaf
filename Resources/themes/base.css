@@ -8,6 +8,14 @@
    --accent (headings; falls back to --ink so only console needs it), --due-soon/
    --due-soon-bg, --due-over/--due-over-bg, --checkbox-mark. */
 
+:root {
+  /* Shared line-box height a task row's secondary chips/controls center themselves on
+     (~body 13.5px×1.5), so every element lines up with the label's first text line
+     regardless of theme font — one shared number instead of per-element magic-number
+     margins. Structural, not a palette token; themes may override it. */
+  --row-line: 20px;
+}
+
 body {
   margin: 0;
   padding: 13px 15px;
@@ -41,14 +49,14 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
    set. `appearance: none` drops the platform control entirely; everything below is drawn
    by hand. Stays a real `<input type="checkbox">` (ARIA/role/aria-checked come from
    `DashboardTaskRenderer.renderCheckbox` and must not move) — only its paint changes.
-   `margin-top` centers the 14px box on the first line of 20px-ish body text (13.5px/1.5),
-   matching the row's `align-items: flex-start`. */
+   `margin-top` centers the 14px box on `--row-line`, matching the row's
+   `align-items: flex-start`. */
 .task input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   width: 14px;
   height: 14px;
-  margin: 3px 0 0;
+  margin-top: calc((var(--row-line) - 14px) / 2);
   flex-shrink: 0;
   border: 1.5px solid var(--ink-dim);
   border-radius: 4px;
@@ -82,25 +90,27 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   opacity: 0.5;
-  margin-top: 3px;
-  line-height: 14px;
+  height: var(--row-line);
+  display: inline-flex;
+  align-items: center;
 }
 .due-soon { color: var(--due-soon); background: var(--due-soon-bg, transparent); opacity: 1; }
-/* Overdue reads louder than soon (Part 2 — overdue urgency): bold weight plus a leading
-   edge-marker, on top of the same chip shape/color treatment as due-soon. This is scoped
-   to the `.due-over` class only — it must not touch the `--due-over` variable itself,
-   which `.priority-dot.high`/`.freshness.unknown` also key off. */
+/* Overdue shares due-soon's chip shape (red text + tinted background) rather than a
+   louder treatment of its own — same convention, red instead of amber, no edge-marker —
+   so the panel stays consistent across themes (console used to bolt on its own "! "
+   prefix; it now falls through to this). Scoped to the `.due-over` class only — it must
+   not touch the `--due-over` variable itself, which `.priority-dot.high`/
+   `.freshness.unknown` also key off. */
 .due-over {
   color: var(--due-over);
   background: var(--due-over-bg, transparent);
   opacity: 1;
   font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--due-over);
 }
 
 /* The composed dashboard (DESIGN.md → "The panel"): four fixed sections, no tree. Task
-   rows are tidied (ROADMAP B4): the sentence, a due chip (.due, above), a faint #type
-   tag, a priority dot, and a source icon — no raw @/#/! tokens ever reach the DOM. */
+   rows are tidied (ROADMAP B4): the sentence, a due chip (.due, above), and a priority
+   dot — no raw @/#/! tokens ever reach the DOM. */
 .dashboard { display: flex; flex-direction: column; gap: 16px; }
 .dashboard section { border-top: 0.5px solid var(--rule); padding-top: 10px; }
 .dashboard section:first-child { border-top: none; padding-top: 0; }
@@ -150,32 +160,17 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 .dashboard .brief ul { padding-left: 18px; margin: 0 0 6px; }
 .dashboard .brief li { margin: 2px 0; }
 
-.dashboard .task .type {
-  font-size: 10.5px;
-  color: var(--ink-dim);
-  opacity: 0.7;
-  white-space: nowrap;
-  margin-top: 3px;
-  line-height: 14px;
-}
 .dashboard .task .priority-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  margin-top: 7px;
+  margin-top: calc((var(--row-line) - 6px) / 2);
   flex-shrink: 0;
 }
 .dashboard .task .priority-dot.high { background: var(--due-over); }
 .dashboard .task .priority-dot.med  { background: var(--due-soon); }
 .dashboard .task .priority-dot.low  { background: var(--ink-dim); }
-.dashboard .task .source-icon {
-  font-size: 10.5px;
-  opacity: 0.45;
-  flex-shrink: 0;
-  margin-top: 3px;
-  line-height: 14px;
-}
 
 /* Today-placement handle (DECISIONS.md 2026-09-11 — sticky drag-to-Today, replacing the
    ★ focus flag). An unstyled <button> at the row's trailing edge (it's simply the last
@@ -191,9 +186,10 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   background: none;
   margin: 0;
   padding: 0;
-  margin-top: 3px;
+  height: var(--row-line);
+  display: inline-flex;
+  align-items: center;
   font-size: 10.5px;
-  line-height: 14px;
   color: var(--ink-dim);
   opacity: 0.45;
   cursor: grab;
@@ -216,7 +212,7 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
    beside it — no .on state. Now emitted on EVERY row (`DashboardRenderer.renderTask` no
    longer gates on isDone), so it stays permanently visible rather than hover-revealed —
    a row that only shows it on hover, while still on every row, would just move the
-   reveal-flicker from done-only rows to all of them. Muted like `.source-icon` beside it
+   reveal-flicker from done-only rows to all of them. Muted like `.focus-toggle` beside it
    (same opacity) so it reads as calm chrome, not a loud call-to-action. */
 .dashboard .task .archive-button {
   appearance: none;
@@ -224,9 +220,10 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   background: none;
   margin: 0;
   padding: 0;
+  height: var(--row-line);
+  display: inline-flex;
+  align-items: center;
   font-size: 10.5px;
-  line-height: 14px;
-  margin-top: 3px;
   color: var(--ink-dim);
   opacity: 0.45;
   cursor: pointer;
@@ -273,15 +270,13 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   border-color: var(--ink-dim);
 }
 
-/* Completed-today rows (ROADMAP B6): the task stays in its @due-based section, sorted
-   below the open items, until the 6am rollover drops it. `.task.done .label` (above)
-   already strikes through and dims the sentence; this dims the chips alongside it so
-   the whole row reads as finished. */
+/* Completed-today rows (ROADMAP B6): the task stays in its @due-based section, in place
+   (no longer sorted below the open items — DECISIONS.md 2026-09-11), until the 6am
+   rollover drops it. `.task.done .label` (above) already strikes through and dims the
+   sentence; this dims the chips alongside it so the whole row reads as finished. */
 .dashboard .task.done { opacity: 0.6; }
 .dashboard .task.done .due,
-.dashboard .task.done .type,
-.dashboard .task.done .priority-dot,
-.dashboard .task.done .source-icon { opacity: 0.5; }
+.dashboard .task.done .priority-dot { opacity: 0.5; }
 
 /* Reduce Transparency is handled in Swift by disabling vibrancy; this keeps the
    text readable against the resulting solid background. */

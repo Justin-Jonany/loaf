@@ -16,12 +16,19 @@
   --font: "Iowan Old Style", Palatino, Georgia, serif;
 }
 
-/* Ruled paper: a red margin line plus horizontal rules, drawn as layered gradients over
-   --surface. Left padding clears the margin line so text never sits on top of it. */
+/* Ruled paper: a red margin line, drawn as a gradient over --surface. Left padding clears
+   the margin line so text never sits on top of it. (No fixed-height horizontal-rule
+   layer here any more — see the per-row rules below.) */
 body {
   padding: 13px 16px 13px 34px;
   background:
     linear-gradient(90deg, transparent 25px, var(--margin) 25px, var(--margin) 26px, transparent 26px),
-    repeating-linear-gradient(180deg, transparent 0 25px, var(--rule) 25px 26px),
     var(--surface);
 }
+
+/* Horizontal rules drawn per content row, not as a fixed 26px background grid: a
+   background grid can't track the serif font's variable row heights, so its lines
+   drift off the text they're meant to underline. A border-bottom on each real row
+   always sits under that row's own text instead. */
+.task { border-bottom: 0.5px solid var(--rule); padding-bottom: 6px; }
+.dashboard .brief p { border-bottom: 0.5px solid var(--rule); padding-bottom: 6px; }
