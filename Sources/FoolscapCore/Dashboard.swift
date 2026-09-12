@@ -78,8 +78,10 @@ public enum DashboardComposer {
 
         for task in parseBlocks(tasksMarkdown, sourceFile: "tasks.md", today: today) {
             // A task with no @due can't be placed in any bucket (DESIGN.md → The panel).
-            // A task ticked today keeps its bucket too (ROADMAP B6) — see `isEligible`.
-            guard isEligible(task.block, today: today), let due = task.block.due else { continue }
+            // Done-ness is not a reason to exclude a task — a completed task stays in its
+            // @due bucket, struck-through, until the user archives it (DECISIONS.md
+            // 2026-09-12).
+            guard let due = task.block.due else { continue }
 
             if task.block.focus {
                 // A starred task is pulled into Today regardless of @due (B7 — Curated
@@ -97,7 +99,7 @@ public enum DashboardComposer {
 
         var longTermBucket: [DashboardTask] = []
         for task in parseBlocks(longtermMarkdown, sourceFile: "longterm.md", today: today) {
-            guard isEligible(task.block, today: today), task.block.due != nil else { continue }
+            guard task.block.due != nil else { continue }
             // Same star pull-forward as tasks.md: a focused long-term goal shows up in
             // Today rather than waiting in Long-term (B7 — Curated Today).
             if task.block.focus {
@@ -107,28 +109,15 @@ public enum DashboardComposer {
             }
         }
 
-        // Buckets are returned in parse order — a completed-today task (see `isEligible`
-        // below) keeps its position rather than sorting to the bottom on completion
-        // (DECISIONS.md 2026-09-11, reversing the earlier B6 "sorts to the bottom" call).
+        // Buckets are returned in parse order — a completed task keeps its position
+        // rather than sorting to the bottom on completion (DECISIONS.md 2026-09-11,
+        // reversing the earlier B6 "sorts to the bottom" call).
         return Dashboard(
             brief: brief,
             today: todayBucket,
             thisWeek: weekBucket,
             longTerm: longTermBucket
         )
-    }
-
-    /// Unchecked, or checked and completed **today** (ROADMAP B6). Ticking a box used to
-    /// drop the row the instant it was checked, because every bucket showed only
-    /// unchecked tasks — no "I did it" feedback, no in-panel trace of the day's progress.
-    /// A completed-today task now keeps its `@due`-based section until the 6am rollover
-    /// (DECISIONS.md 2026-09-09). `today` is always the same rollover-aware value the
-    /// caller buckets everything else against (`CalendarDate.effectiveToday`), so once it
-    /// advances, yesterday's completions stop matching `done == today` and fall off on
-    /// their own — no timer, no cleanup pass. A done task with no `✓done` stamp (a
-    /// hand-typed `- [x]`) can't be tied to any day, so it never qualifies.
-    private static func isEligible(_ block: TaskBlock, today: CalendarDate) -> Bool {
-        !block.isDone || block.done == today
     }
 
     /// Scans every checkbox block in `markdown`, tagging each with its 1-based source

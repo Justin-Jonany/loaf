@@ -43,20 +43,17 @@ The viewer stitches a fixed set of files into one scrolling dashboard with four 
 is *not* a folder browser: it reads three known files, nothing else.
 
 1. **Brief** — 2–5 sentences of prose Claude writes: what you got done yesterday and across
-   the week, and what's slipping. It's where *past* days' finished work is recapped; a task you
-   finish **today** also lingers struck-through in its own section (below) until the 6am
-   rollover, after which only the brief remembers it. Also carries the freshness stamp
-   ("built 7:58am").
-2. **Today** — every unchecked task with `@due` at or before today (spillover + due-tonight,
-   computed automatically from due dates), **plus any task you've _starred_ (`★`) for today**,
-   whatever its deadline. Nothing is stored as a literal "today list": the due-date part is
-   derived, and the starred part is a per-task flag you set from the panel (see Focus, below) —
-   a starred task keeps its real `@due` and simply surfaces here instead of its due-date bucket.
-   A task you complete today stays here struck-through, sorted below the open items, until the
-   6am rollover drops it.
-3. **This week** — unchecked tasks due within the week that aren't already shown in Today.
-   (Each task renders in exactly one section — most-urgent-or-starred bucket wins. That's the
-   dedup.)
+   the week, and what's slipping. It's where *past* days' finished work is recapped, but a
+   completed task isn't only there — it stays visible struck-through in its own section
+   (below) until you archive it. Also carries the freshness stamp ("built 7:58am").
+2. **Today** — every task with `@due` at or before today (spillover + due-tonight, computed
+   automatically from due dates), **plus any task you've _starred_ (`★`) for today**, whatever
+   its deadline. Nothing is stored as a literal "today list": the due-date part is derived, and
+   the starred part is a per-task flag you set from the panel (see Focus, below) — a starred
+   task keeps its real `@due` and simply surfaces here instead of its due-date bucket. A task
+   you complete stays here struck-through, in place, until you archive it.
+3. **This week** — tasks due within the week that aren't already shown in Today. (Each task
+   renders in exactly one section — most-urgent-or-starred bucket wins. That's the dedup.)
 4. **Long-term** — target-dated goals. Shared: you and Claude both add and edit here, but
    only *interactively* — see "Files in the vault" for the write-access rule that keeps this
    from becoming a dumping ground for far-dated calendar events.

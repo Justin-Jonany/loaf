@@ -4,6 +4,21 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-12 — Completed tasks stay visible until the user archives them
+
+**Decided:** completed tasks stay visible on the panel indefinitely — struck-through, in
+their `@due` bucket — and only the user's archive action removes a row from the panel. This
+reverses the 2026-09-09 decision (and its 6am-rollover fall-off) that a completed task
+lingered only until the next rollover.
+
+**Why:** the markdown files are the source of truth and the user, not the app, owns removal.
+A done task silently leaving the panel the next morning read as data loss ("a bunch of tasks
+are gone") even though the file kept it. Making the panel show everything in the file until
+the user archives it makes the panel a faithful mirror of `tasks.md` and puts removal
+entirely in the user's hands (archiving). Cost: completed rows accumulate on the panel over
+time (an old done overdue task sits struck-through in Today) until archived — accepted,
+archiving is the broom.
+
 ## 2026-09-11 — The panel drops source icons and the `#type` tag; `#type` stays parsed
 
 **Decided:** `DashboardTaskRenderer` no longer emits a source-origin icon (📅 calendar, 💬

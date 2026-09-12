@@ -155,6 +155,11 @@ Viewer UI. Depends on Epic A.
   - **Verify:** *pure logic* — green bucketing + rollover selftest — **plus** *rendering* — a
     Playwright screenshot of the canonical fixture vault (decision-day) via `--dump-dashboard`
     showing struck-through done rows.
+  - **Superseded (DECISIONS.md 2026-09-12):** the rollover-tied drop described above is gone.
+    A completed task now stays visible in its `@due` bucket, struck-through, regardless of
+    completion date — only the user's archive action removes it. Completion date and the 6am
+    rollover no longer affect a done task's visibility (rollover still governs due-date
+    bucketing itself).
 
 - [ ] **B7 — Curated Today: a `★` focus flag** · 1 PR · depends: A1, B1, B4, B6 · blocks: —
   - **Problem:** Today shows only tasks with `@due` ≤ today, so there's no way to say "I want to
