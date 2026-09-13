@@ -135,11 +135,23 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`fixtures/lookahead/`) asserting the 7-day window picks up a future event, doesn't
   duplicate a pre-seeded calendar task for an event already captured, and leaves an
   event beyond the window alone.
+- `routines/morning-brief/dry_run.sh`: two new scenarios/fixtures exercising
+  recurrence-based calendar tiering (DECISIONS.md 2026-09-13) — `recurrence-tiering`
+  (`fixtures/recurrence-tiering/`) asserts a recurring class and a recurring focus block
+  stay context-only while a one-off coffee chat and a one-off graded deliverable become
+  calendar tasks; `interview-day` (`fixtures/interview-day/`) asserts a bare one-off with
+  no description or attendees (a dentist appointment) still becomes a task alongside a
+  one-off interview, while a recurring lecture stays context.
 
 ### Changed
 - `routines/morning-brief` (SKILL.md, run.sh): the morning routine now reads a rolling
   7-day calendar window (today through today+7, inclusive) instead of today only, and
   de-dupes calendar-derived tasks across runs — a rescheduled event edits its existing
   task's `@due` instead of adding a duplicate. See DECISIONS.md 2026-09-12.
+- `routines/morning-brief/SKILL.md`: calendar tiering now keys on the event's own
+  `recurringEventId` (recurring series instance → never a task, context only; no
+  `recurringEventId` → a one-off, added as a `calendar` task) instead of inferring
+  task-worthiness from whether the event's description reads like it has an action item.
+  See DECISIONS.md 2026-09-13.
 
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.

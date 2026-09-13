@@ -1,0 +1,9 @@
+{
+  "_comment": "Fixture for dry_run.sh (recurrence-tiering scenario). Pinned to FOOLSCAP_TODAY=2026-09-14. Recurring events carry recurringEventId (=> context, never a task); one-offs don't (=> task). See SKILL.md -> 'Reading the calendar' and the Calendar tiering block.",
+  "events": [
+    {"id": "cs486-20260914", "summary": "CS 486 - Intro Artificial Intelligence (Lecture)", "start": "2026-09-14T08:30:00-04:00", "end": "2026-09-14T09:50:00-04:00", "description": "Instructor: Kate Larson.", "recurringEventId": "rec-cs486"},
+    {"id": "focus-20260914", "summary": "Focus Session", "start": "2026-09-14T12:45:00-04:00", "end": "2026-09-14T14:30:00-04:00", "description": "", "recurringEventId": "rec-focus"},
+    {"id": "coffee-priya", "summary": "Coffee chat with Priya", "start": "2026-09-14T15:00:00-04:00", "end": "2026-09-14T15:30:00-04:00", "description": "", "attendees": [{"email": "priya@example.com", "responseStatus": "accepted"}]},
+    {"id": "stat443-case1", "summary": "STAT 443 Case Study #1 due", "start": "2026-09-14T16:00:00-04:00", "end": "2026-09-14T16:30:00-04:00", "description": "Submit by end of class; graded."}
+  ]
+}

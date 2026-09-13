@@ -13,14 +13,16 @@
       "summary": "Family video call",
       "start": "2026-08-23T15:30:00-07:00",
       "end": "2026-08-23T16:30:00-07:00",
-      "description": "Weekly call — Mom asked to confirm this one specifically."
+      "description": "Weekly call — Mom asked to confirm this one specifically.",
+      "recurringEventId": "rec-family-call"
     },
     {
       "id": "evt-morning-run",
       "summary": "Morning run",
       "start": "2026-08-23T08:00:00-07:00",
       "end": "2026-08-23T08:45:00-07:00",
-      "description": ""
+      "description": "",
+      "recurringEventId": "rec-morning-run"
     }
   ]
 }

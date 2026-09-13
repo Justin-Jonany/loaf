@@ -207,6 +207,9 @@ Depends only on A's *format*, so it runs parallel to Epic B.
     Reads a rolling 7-day calendar window (today through today+7), not just today, and
     de-dupes calendar-derived tasks across runs so the same upcoming event doesn't get
     added twice as it stays in view morning after morning (DECISIONS.md 2026-09-12).
+    Calendar tiering (task vs. context) is keyed on the event's own `recurringEventId`,
+    not on whether its description reads like it has an action item (DECISIONS.md
+    2026-09-13).
   - **Tests:** a dry-run against a fixture calendar + vault produces tasks A1 can parse; a clear
     day produces no interruption; a forced failure leaves the failure signal, not a stale brief;
     a fixture with a far-`@due` calendar event (e.g. an event two months out) produces a

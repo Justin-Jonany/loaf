@@ -6,7 +6,8 @@
       "summary": "Weekly sync",
       "start": "2026-08-23T10:00:00-07:00",
       "end": "2026-08-23T10:30:00-07:00",
-      "description": "Standing recurring sync, no prep needed."
+      "description": "Standing recurring sync, no prep needed.",
+      "recurringEventId": "rec-weekly-sync"
     }
   ]
 }
