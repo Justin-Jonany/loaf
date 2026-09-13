@@ -1,0 +1,33 @@
+{
+  "_comment": "Fixture for routines/morning-brief/dry_run.sh (lookahead scenario). Pinned to FOOLSCAP_TODAY=2026-09-14. Exercises the 7-day window + cross-run de-dup. See routines/morning-brief/SKILL.md -> 'Reading the calendar'.",
+  "events": [
+    {
+      "id": "evt-standup",
+      "summary": "Team standup",
+      "start": "2026-09-15T09:30:00-07:00",
+      "end": "2026-09-15T09:45:00-07:00",
+      "description": "Daily standup, recurring. No prep."
+    },
+    {
+      "id": "evt-design-review",
+      "summary": "Design review — finalize specs",
+      "start": "2026-09-16T14:00:00-07:00",
+      "end": "2026-09-16T15:00:00-07:00",
+      "description": "Come with the revised component specs; we sign off this session."
+    },
+    {
+      "id": "evt-vendor-call",
+      "summary": "Vendor contract call",
+      "start": "2026-09-17T11:00:00-07:00",
+      "end": "2026-09-17T11:30:00-07:00",
+      "description": "Decide on renewal terms; have the pricing comparison ready."
+    },
+    {
+      "id": "evt-board-meeting",
+      "summary": "Board meeting — annual review",
+      "start": "2026-09-24T09:00:00-07:00",
+      "end": "2026-09-24T10:30:00-07:00",
+      "description": "Present the annual numbers to the board."
+    }
+  ]
+}

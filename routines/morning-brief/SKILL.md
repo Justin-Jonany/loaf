@@ -45,12 +45,17 @@ below — this routine and that file must never disagree. In short:
 
 Two modes, and the wrapper tells you which one you're in:
 
-- **Live:** call the Google Calendar MCP tools (list/search events) for today's date.
+- **Live:** call the Google Calendar MCP tools (list/search events) for a rolling window
+  from today through today+7, inclusive (DECISIONS.md 2026-09-12) — not just today.
 - **Dry run / fixture:** the wrapper gives you an absolute path to a JSON file shaped
   like `{"events": [{"summary", "start", "end", "description"}, ...]}`. Read it with the
   Read tool. **Do not call any Google Calendar tool in this mode even if one is offered**
   — the fixture *is* the calendar for this run, and calling the real one would defeat the
-  test.
+  test. The same today-through-today+7 window applies here too: the fixture is the whole
+  feed, so filter its events down to that window yourself, by each event's `start` date.
+
+An event dated beyond today+7 is left alone this run — a later run's window will reach it
+as today rolls forward.
 
 ## Reading recent notes
 
@@ -90,7 +95,8 @@ A task is a checkbox with its metadata on an indented line beneath it:
   Don't invent a task unless the action item is reasonably obvious (e.g. an event titled
   "Client mtg — deck review" whose description asks you to "bring the pricing slide"
   clearly implies prep work; a plain "Weekly sync" with no description doesn't imply
-  anything).
+  anything). Due-date the task with the event's own date, ISO `YYYY-MM-DD` — not `@today`,
+  not the day before, the date the event actually falls on (DECISIONS.md 2026-09-12).
 - **Minor but worth mentioning** (a one-off with no real follow-up, a heads-up worth a
   sentence) — **brief prose only**, no task.
 
@@ -104,6 +110,19 @@ completed task (`✓done`) simply stays in `tasks.md` until the user clears it b
 which moves it to a permanent archive; that's not something this routine does. You also
 never set Today-placement — that's now a sticky drag gesture the user drives from the
 panel, not a token this routine writes.
+
+**Don't double-add across days.** With a 7-day lookahead, the same upcoming event shows up
+in several mornings' windows in a row (DECISIONS.md 2026-09-12). Before adding a
+calendar-derived task, check `tasks.md` for one you already added for that same event —
+match on the event itself (its title/subject and date), not on exact wording, since you're
+the one who phrased the sentence and won't phrase it identically twice. Found one already?
+Leave it, add nothing.
+
+If an event you already captured has since moved to a new date, that's the one calendar
+case where you edit an existing task's `@due` rather than adding a second one — update the
+`@due` to the new date and cite the reschedule under "What changed." If an event you
+already captured has been cancelled, you still can't remove the task (add-only); leave it
+and note the cancellation in `brief.md` so the user can clear it by hand.
 
 ## Writing `tasks.md`
 

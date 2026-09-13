@@ -3,24 +3,31 @@
 #
 # Runs the real SKILL.md prompt through a real `claude -p` invocation (via run.sh)
 # against a fixture vault + fixture calendar checked into
-# routines/morning-brief/fixtures/, instead of the live Google Calendar. Four scenarios:
+# routines/morning-brief/fixtures/, instead of the live Google Calendar. Five scenarios:
 #
 #   decision-day           overlapping calendar events -> expects a decision signal
 #   clear-day               an uneventful day -> expects NO interruption
+#   lookahead                a 7-day-out event, a same-day-window event, and one beyond
+#                            the window -> expects the window bound + cross-run de-dup
+#                            (DECISIONS.md 2026-09-12)
 #   failure-bad-calendar    an unparseable calendar fixture -> expects the routine to
 #                            self-report failure and leave brief.md untouched
 #   failure-forced           FOOLSCAP_FORCE_FAILURE=1, no Claude call at all -> exercises
 #                            run.sh's own shell-level backstop (a throwaway vault, not a
 #                            checked-in fixture)
 #
-# For decision-day/clear-day/failure-bad-calendar the fixture vault IS the git-tracked
-# directory under fixtures/ — the run mutates it in place so `git diff` shows a real
-# before/after, exactly what ROADMAP.md's Verify line asks for. This script prints that
-# diff and then reverts the fixture (`git checkout --`) so the tracked "before" state is
-# available for the next run; capture the printed diff before it scrolls away, or re-run
-# with the CAPTURE_DIR var below to also save copies to disk.
+# decision-day and clear-day pin FOOLSCAP_TODAY=2026-08-23 (matching their fixture
+# events' date) so the 7-day window lands on them the same way it always did before the
+# window existed; lookahead pins FOOLSCAP_TODAY=2026-09-14 to exercise the window itself.
 #
-# Usage: ./dry_run.sh <decision-day|clear-day|failure-bad-calendar|failure-forced|all>
+# For decision-day/clear-day/lookahead/failure-bad-calendar the fixture vault IS the
+# git-tracked directory under fixtures/ — the run mutates it in place so `git diff` shows
+# a real before/after, exactly what ROADMAP.md's Verify line asks for. This script prints
+# that diff and then reverts the fixture (`git checkout --`) so the tracked "before" state
+# is available for the next run; capture the printed diff before it scrolls away, or
+# re-run with the CAPTURE_DIR var below to also save copies to disk.
+#
+# Usage: ./dry_run.sh <decision-day|clear-day|lookahead|failure-bad-calendar|failure-forced|all>
 
 set -uo pipefail
 
@@ -63,7 +70,7 @@ show_diff_and_revert() {
 scenario_decision_day() {
   local vault="$FIXTURES/decision-day/vault"
   hr; echo "SCENARIO: decision-day (expect: a decision signal, no interruption suppressed)"; hr
-  "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/decision-day/calendar.json"
+  FOOLSCAP_TODAY=2026-08-23 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/decision-day/calendar.json"
   local exit_code=$?
   echo "run.sh exit: $exit_code"
   check_tasks "$vault"; local check_exit=$?
@@ -79,7 +86,7 @@ scenario_decision_day() {
 scenario_clear_day() {
   local vault="$FIXTURES/clear-day/vault"
   hr; echo "SCENARIO: clear-day (expect: NO interruption)"; hr
-  "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/clear-day/calendar.json"
+  FOOLSCAP_TODAY=2026-08-23 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/clear-day/calendar.json"
   local exit_code=$?
   echo "run.sh exit: $exit_code"
   check_tasks "$vault"; local check_exit=$?
@@ -88,6 +95,46 @@ scenario_clear_day() {
   else
     echo "PASS: no signal file — a clear day stayed silent"
   fi
+  show_diff_and_revert "$vault"
+  return 0
+}
+
+scenario_lookahead() {
+  local vault="$FIXTURES/lookahead/vault"
+  hr; echo "SCENARIO: lookahead (expect: 7-day window + cross-run de-dup)"; hr
+  FOOLSCAP_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/lookahead/calendar.json"
+  local exit_code=$?
+  echo "run.sh exit: $exit_code"
+  check_tasks "$vault"; local check_exit=$?
+
+  local vendor_count board_count
+  if grep -q '@2026-09-16' "$vault/tasks.md" && grep -A1 '@2026-09-16' "$vault/tasks.md" | grep -q 'calendar'; then
+    echo "PASS: a calendar task for the Design review (@2026-09-16) was added — the 7-day window reached a future event"
+  else
+    echo "FAIL: expected a new calendar task dated @2026-09-16 (Design review), found none"
+  fi
+
+  vendor_count="$(grep -c '@2026-09-17' "$vault/tasks.md" | tr -d ' ')"
+  if [[ "$vendor_count" -eq 1 ]]; then
+    echo "PASS: exactly one task references @2026-09-17 — the pre-seeded vendor-call task was not duplicated"
+  else
+    echo "FAIL: expected exactly 1 task line with @2026-09-17, found $vendor_count"
+  fi
+
+  board_count="$(grep -c '@2026-09-24' "$vault/tasks.md" | tr -d ' ')"
+  if [[ "$board_count" -eq 0 ]]; then
+    echo "PASS: no task references @2026-09-24 — the board meeting (10 days out) stayed outside the window"
+  else
+    echo "FAIL: expected no task with @2026-09-24, found $board_count"
+  fi
+
+  if [[ -f "$vault/.routine-signal.md" ]]; then
+    echo "NOTE: .routine-signal.md was written on this run — not asserted pass/fail, but a clean lookahead day is expected to be silent:"
+    cat "$vault/.routine-signal.md"
+  else
+    echo "NOTE: no .routine-signal.md written — consistent with a clean lookahead day staying silent"
+  fi
+
   show_diff_and_revert "$vault"
   return 0
 }
@@ -132,16 +179,18 @@ scenario_failure_forced() {
 case "${1:-}" in
   decision-day) scenario_decision_day ;;
   clear-day) scenario_clear_day ;;
+  lookahead) scenario_lookahead ;;
   failure-bad-calendar) scenario_failure_bad_calendar ;;
   failure-forced) scenario_failure_forced ;;
   all)
     scenario_decision_day
     scenario_clear_day
+    scenario_lookahead
     scenario_failure_bad_calendar
     scenario_failure_forced
     ;;
   *)
-    echo "usage: $0 <decision-day|clear-day|failure-bad-calendar|failure-forced|all>" >&2
+    echo "usage: $0 <decision-day|clear-day|lookahead|failure-bad-calendar|failure-forced|all>" >&2
     exit 2
     ;;
 esac

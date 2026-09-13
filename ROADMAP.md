@@ -204,6 +204,9 @@ Depends only on A's *format*, so it runs parallel to Epic B.
     session the user is driving), never the unattended routine (see DECISIONS.md 2026-09-09).
     This is a write-access rule, not a classification heuristic: a far-dated calendar event
     stays in `tasks.md` rather than getting promoted to Long-term on its due-date distance.
+    Reads a rolling 7-day calendar window (today through today+7), not just today, and
+    de-dupes calendar-derived tasks across runs so the same upcoming event doesn't get
+    added twice as it stays in view morning after morning (DECISIONS.md 2026-09-12).
   - **Tests:** a dry-run against a fixture calendar + vault produces tasks A1 can parse; a clear
     day produces no interruption; a forced failure leaves the failure signal, not a stale brief;
     a fixture with a far-`@due` calendar event (e.g. an event two months out) produces a
