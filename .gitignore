@@ -4,6 +4,8 @@
 dist/
 Loaf.app/
 .DS_Store
+.claude/
+.Rhistory
 
 # Real config/secrets should live in ~/.config/loaf/, never in-repo.
 # These are ignored defensively in case one ever ends up here by accident.

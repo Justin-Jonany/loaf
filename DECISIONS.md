@@ -4,6 +4,17 @@ A running log of the decisions that shaped Loaf — newest first. Each entry rec
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-13 — Repo goes public (supersedes 2026-08-15 "private GitHub")
+
+**Decided:** the repository is now public. The rest of the 2026-08-15 workflow stands — no
+direct commits to `main`, each slice on a feature branch behind a reviewed PR — only the
+visibility changes.
+
+**Why:** it's stable enough to show, and being public is the point of putting it on a résumé.
+Public also unlocks GitHub's branch protection, which free private repos don't get (the reason
+the local `.githooks/` guards exist), so the server-side guard the old entry lacked is now
+available if wanted.
+
 ## 2026-09-13 — Calendar tiering keys on recurrence (`recurringEventId`), not on whether an event has an action item
 
 **Decided:** the morning-brief routine's calendar tiering (`routines/morning-brief/SKILL.md`
@@ -24,7 +35,7 @@ into one instance per occurrence, so classes, standing syncs, and focus blocks a
 while one-off meetings, interviews, and deliverables don't. The old rule ("does this look
 like it has a real action item") asked the routine to *infer* recurrence and importance from
 a description, which is exactly backwards when the calendar already states recurrence as a
-fact — a plain "Coffee chat with Hunter" with no description used to read as "minor, no real
+fact — a plain "Coffee chat with a friend" with no description used to read as "minor, no real
 follow-up" and get skipped, when it's actually a one-off meeting worth a task regardless of
 what its description says. Keying on `recurringEventId` removes that inference entirely: no
 wider read window is needed, and a bare one-off (no description, no attendees) still gets
@@ -585,6 +596,9 @@ implement `terminate:`), greying it out.
 feature branch and opens a draft PR the user reviews and merges.
 
 **Why:** The user drives review/merge and wants `main` kept clean.
+
+**Superseded** (visibility only) by 2026-09-13 "Repo goes public" — the PR-per-slice and
+clean-`main` rules still hold.
 
 ## 2026-08-15 — Markdown rendering: depend on swift-markdown
 
