@@ -4,6 +4,43 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-13 — Calendar tiering keys on recurrence (`recurringEventId`), not on whether an event has an action item
+
+**Decided:** the morning-brief routine's calendar tiering (`routines/morning-brief/SKILL.md`
+→ "Calendar tiering") now decides task-vs-context by whether the event carries a
+`recurringEventId`, not by whether it appears to have an action item. An event that is one
+instance of a recurring series (a class, a standing sync, a focus/study block) is **never**
+a task, however action-item-shaped its description reads — it's surfaced as brief context
+only. An event with **no** `recurringEventId` — a seminar, a 1:1/coffee chat, an interview,
+an appointment, a graded deliverable — is added as a **task**, `source: calendar`, dated
+with the event's own date; a description now only *enriches* that task's note, it no longer
+decides whether a task gets created at all. A one-off is downgraded to prose-only in the
+rare case it's clearly a personal non-obligation with no counterparty and nothing to do (a
+lunch block, a nap); the routine still adds when unsure.
+
+**Why:** verified against the user's live Google Calendar feed — every event belonging to a
+recurring series is tagged with `recurringEventId` by `list_events`, and a series is expanded
+into one instance per occurrence, so classes, standing syncs, and focus blocks all carry it
+while one-off meetings, interviews, and deliverables don't. The old rule ("does this look
+like it has a real action item") asked the routine to *infer* recurrence and importance from
+a description, which is exactly backwards when the calendar already states recurrence as a
+fact — a plain "Coffee chat with Hunter" with no description used to read as "minor, no real
+follow-up" and get skipped, when it's actually a one-off meeting worth a task regardless of
+what its description says. Keying on `recurringEventId` removes that inference entirely: no
+wider read window is needed, and a bare one-off (no description, no attendees) still gets
+picked up correctly rather than accidentally downgraded to prose for lacking descriptive
+detail.
+
+**Known gap, accepted for v1:** `recurringEventId` is set by the calendar's own recurrence
+feature. A "recurring" commitment entered as several separate manual events (no shared
+series) carries no `recurringEventId` and looks like a one-off under this rule — it becomes
+a task each time it appears. Acceptable for now: it costs a few extra (accurate, just
+redundant) tasks rather than silently hiding a real one-off as context.
+
+**References:** builds on the 2026-09-12 "7-day lookahead + dedup" decision below — the
+window and dedup behavior are unchanged; only the task-vs-context call within that window
+changes.
+
 ## 2026-09-12 — Morning routine looks 7 days ahead and de-dupes calendar tasks across runs
 
 **Decided:** the morning-brief routine (`routines/morning-brief/SKILL.md`) no longer reads

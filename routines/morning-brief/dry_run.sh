@@ -10,6 +10,15 @@
 #   lookahead                a 7-day-out event, a same-day-window event, and one beyond
 #                            the window -> expects the window bound + cross-run de-dup
 #                            (DECISIONS.md 2026-09-12)
+#   recurrence-tiering       a recurring class + a recurring focus block alongside a
+#                            one-off coffee chat and a one-off graded deliverable ->
+#                            expects the recurring pair to stay context (never tasks) and
+#                            the one-offs to become calendar tasks (DECISIONS.md 2026-09-13)
+#   interview-day            a recurring class alongside a one-off interview and a bare
+#                            one-off appointment with no description/attendees -> expects
+#                            both one-offs to become calendar tasks (proving recurrence,
+#                            not "has an action item," decides the tier) and the class to
+#                            stay context
 #   failure-bad-calendar    an unparseable calendar fixture -> expects the routine to
 #                            self-report failure and leave brief.md untouched
 #   failure-forced           FOOLSCAP_FORCE_FAILURE=1, no Claude call at all -> exercises
@@ -18,7 +27,8 @@
 #
 # decision-day and clear-day pin FOOLSCAP_TODAY=2026-08-23 (matching their fixture
 # events' date) so the 7-day window lands on them the same way it always did before the
-# window existed; lookahead pins FOOLSCAP_TODAY=2026-09-14 to exercise the window itself.
+# window existed; lookahead, recurrence-tiering, and interview-day pin
+# FOOLSCAP_TODAY=2026-09-14 to exercise the window / tiering on that date.
 #
 # For decision-day/clear-day/lookahead/failure-bad-calendar the fixture vault IS the
 # git-tracked directory under fixtures/ — the run mutates it in place so `git diff` shows
@@ -27,7 +37,7 @@
 # is available for the next run; capture the printed diff before it scrolls away, or
 # re-run with the CAPTURE_DIR var below to also save copies to disk.
 #
-# Usage: ./dry_run.sh <decision-day|clear-day|lookahead|failure-bad-calendar|failure-forced|all>
+# Usage: ./dry_run.sh <decision-day|clear-day|lookahead|recurrence-tiering|interview-day|failure-bad-calendar|failure-forced|all>
 
 set -uo pipefail
 
@@ -139,6 +149,84 @@ scenario_lookahead() {
   return 0
 }
 
+scenario_recurrence_tiering() {
+  local vault="$FIXTURES/recurrence-tiering/vault"
+  hr; echo "SCENARIO: recurrence-tiering (expect: recurring class + focus block stay context; one-offs become tasks)"; hr
+  FOOLSCAP_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/recurrence-tiering/calendar.json"
+  local exit_code=$?
+  echo "run.sh exit: $exit_code"
+  check_tasks "$vault"; local check_exit=$?
+
+  local calendar_count
+  calendar_count="$(grep -cE '·[[:space:]]*calendar' "$vault/tasks.md" | tr -d ' ')"
+  if [[ "$calendar_count" -eq 2 ]]; then
+    echo "PASS: exactly 2 calendar-source tasks — the coffee chat and the case study, not the recurring pair"
+  else
+    echo "FAIL: expected exactly 2 calendar-source task lines, found $calendar_count"
+  fi
+
+  if grep -qi 'CS 486' "$vault/tasks.md" || grep -qi 'Focus Session' "$vault/tasks.md"; then
+    echo "FAIL: a recurring block (CS 486 or Focus Session) was added as a task — recurrence should keep it context-only"
+  else
+    echo "PASS: no task references the recurring CS 486 lecture or Focus Session"
+  fi
+
+  if grep -q '@2026-09-14' "$vault/tasks.md"; then
+    echo "PASS: a calendar task dated @2026-09-14 exists"
+  else
+    echo "FAIL: expected a calendar task dated @2026-09-14, found none"
+  fi
+
+  if [[ -f "$vault/.routine-signal.md" ]]; then
+    echo "NOTE: .routine-signal.md was written on this run"
+    cat "$vault/.routine-signal.md"
+  else
+    echo "NOTE: no .routine-signal.md written"
+  fi
+
+  show_diff_and_revert "$vault"
+  return 0
+}
+
+scenario_interview_day() {
+  local vault="$FIXTURES/interview-day/vault"
+  hr; echo "SCENARIO: interview-day (expect: a bare one-off with no description/attendees still becomes a task)"; hr
+  FOOLSCAP_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/interview-day/calendar.json"
+  local exit_code=$?
+  echo "run.sh exit: $exit_code"
+  check_tasks "$vault"; local check_exit=$?
+
+  local calendar_count
+  calendar_count="$(grep -cE '·[[:space:]]*calendar' "$vault/tasks.md" | tr -d ' ')"
+  if [[ "$calendar_count" -eq 2 ]]; then
+    echo "PASS: exactly 2 calendar-source tasks — the interview and the dentist appointment"
+  else
+    echo "FAIL: expected exactly 2 calendar-source task lines, found $calendar_count"
+  fi
+
+  if grep -qi 'ENGL 378' "$vault/tasks.md"; then
+    echo "FAIL: the recurring ENGL 378 lecture was added as a task — recurrence should keep it context-only"
+  else
+    echo "PASS: no task references the recurring ENGL 378 lecture"
+  fi
+
+  if grep -iq 'dentist' "$vault/tasks.md"; then
+    echo "PASS: a task exists for the bare Dentist appointment — a one-off with no description/attendees still became a task"
+  else
+    echo "FAIL: expected a task for the Dentist appointment, found none"
+  fi
+
+  if [[ -f "$vault/.routine-signal.md" ]]; then
+    echo "NOTE: .routine-signal.md was written on this run"
+    cat "$vault/.routine-signal.md"
+  else
+    echo "NOTE: no .routine-signal.md written"
+  fi
+
+  show_diff_and_revert "$vault"
+  return 0
+}
+
 scenario_failure_bad_calendar() {
   local vault="$FIXTURES/failure-bad-calendar/vault"
   hr; echo "SCENARIO: failure-bad-calendar (expect: failure signal, brief.md untouched)"; hr
@@ -180,17 +268,21 @@ case "${1:-}" in
   decision-day) scenario_decision_day ;;
   clear-day) scenario_clear_day ;;
   lookahead) scenario_lookahead ;;
+  recurrence-tiering) scenario_recurrence_tiering ;;
+  interview-day) scenario_interview_day ;;
   failure-bad-calendar) scenario_failure_bad_calendar ;;
   failure-forced) scenario_failure_forced ;;
   all)
     scenario_decision_day
     scenario_clear_day
     scenario_lookahead
+    scenario_recurrence_tiering
+    scenario_interview_day
     scenario_failure_bad_calendar
     scenario_failure_forced
     ;;
   *)
-    echo "usage: $0 <decision-day|clear-day|lookahead|failure-bad-calendar|failure-forced|all>" >&2
+    echo "usage: $0 <decision-day|clear-day|lookahead|recurrence-tiering|interview-day|failure-bad-calendar|failure-forced|all>" >&2
     exit 2
     ;;
 esac

@@ -1,0 +1,8 @@
+{
+  "_comment": "Fixture for dry_run.sh (interview-day scenario). Pinned to FOOLSCAP_TODAY=2026-09-14. Proves a bare one-off (no description/attendees) still becomes a task, while a recurring class stays context.",
+  "events": [
+    {"id": "engl378-20260914", "summary": "ENGL 378 - Prof Comm (Lecture)", "start": "2026-09-14T10:00:00-04:00", "end": "2026-09-14T11:20:00-04:00", "description": "Instructor: Mark Spielmacher.", "recurringEventId": "rec-engl378"},
+    {"id": "interview-acme", "summary": "Interview — SWE Intern at Acme", "start": "2026-09-14T13:00:00-04:00", "end": "2026-09-14T14:00:00-04:00", "description": "", "attendees": [{"email": "recruiter@acme.com", "responseStatus": "accepted"}]},
+    {"id": "dentist-appt", "summary": "Dentist appointment", "start": "2026-09-14T16:30:00-04:00", "end": "2026-09-14T17:00:00-04:00", "description": ""}
+  ]
+}

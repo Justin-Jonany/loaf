@@ -46,13 +46,20 @@ below — this routine and that file must never disagree. In short:
 Two modes, and the wrapper tells you which one you're in:
 
 - **Live:** call the Google Calendar MCP tools (list/search events) for a rolling window
-  from today through today+7, inclusive (DECISIONS.md 2026-09-12) — not just today.
+  from today through today+7, inclusive (DECISIONS.md 2026-09-12) — not just today. Each
+  event's `recurringEventId` field (present ⇒ it's one instance of a recurring series) is
+  how you tell a standing block from a one-off — see "Calendar tiering" below; don't infer
+  recurrence from repetition. The live feed expands a recurring series into one instance
+  per occurrence, so the same class or standing block appears many times across the
+  window — expected, treat every instance as context, never a task.
 - **Dry run / fixture:** the wrapper gives you an absolute path to a JSON file shaped
   like `{"events": [{"summary", "start", "end", "description"}, ...]}`. Read it with the
   Read tool. **Do not call any Google Calendar tool in this mode even if one is offered**
   — the fixture *is* the calendar for this run, and calling the real one would defeat the
   test. The same today-through-today+7 window applies here too: the fixture is the whole
   feed, so filter its events down to that window yourself, by each event's `start` date.
+  Fixture events carry a `recurringEventId` on the ones meant to be recurring — the same
+  recurring-vs-one-off rule applies, keyed on that field.
 
 An event dated beyond today+7 is left alone this run — a later run's window will reach it
 as today rolls forward.
@@ -85,23 +92,27 @@ A task is a checkbox with its metadata on an indented line beneath it:
 | `✓done` | — | You never add this — that's the checkbox-click write path (A4), not this routine. |
 | note | no | A further-indented line of free prose, only if it adds real context. |
 
-**Calendar tiering:** not every event is a binary invent-a-task-or-not call. Three tiers:
+**Calendar tiering:** keyed on the calendar's own recurrence metadata, not on whether an
+event has an action item (DECISIONS.md 2026-09-13) — recurrence tells you a standing block
+from a one-off directly, no inference needed:
 
-- **Routine/recurring blocks** (a class, a standing weekly sync, a recurring gym slot) —
-  **never** a task, however far out it repeats. Surface it as brief context only, if it's
-  worth mentioning at all (e.g. "your usual 10am lecture").
-- **An important event with a real action item** — a **task**, `source: calendar`. You
-  must be able to point back to the specific event — you'll cite it in the change-log.
-  Don't invent a task unless the action item is reasonably obvious (e.g. an event titled
-  "Client mtg — deck review" whose description asks you to "bring the pricing slide"
-  clearly implies prep work; a plain "Weekly sync" with no description doesn't imply
-  anything). Due-date the task with the event's own date, ISO `YYYY-MM-DD` — not `@today`,
+- **Recurring block** — the event carries a `recurringEventId` (it's one instance of a
+  recurring series): a class, a standing sync, a focus/study block. **Never a task**,
+  regardless of description. Surface it as brief context only if it's worth mentioning at
+  all (e.g. "your usual 10am lecture"). A series is expanded into many instances across
+  the 7-day window — you'll see the same block repeatedly; collapse them, they're never
+  tasks.
+- **One-off event** — **no** `recurringEventId`: a seminar, a 1:1/coffee chat, an
+  interview, an appointment, a graded deliverable, a test. **Add it as a task**,
+  `source: calendar`, due-dated with the event's own date, ISO `YYYY-MM-DD` — not `@today`,
   not the day before, the date the event actually falls on (DECISIONS.md 2026-09-12).
-- **Minor but worth mentioning** (a one-off with no real follow-up, a heads-up worth a
-  sentence) — **brief prose only**, no task.
-
-When a tier call is close, prefer the lighter one — under-adding is safe, inventing noise
-isn't.
+  Phrase the task from the event, keeping its distinguishing noun (e.g. "Coffee chat with
+  Hunter", "Catch-up with Thema (jonny@thema.ai)", "Interview — SWE intern at Acme",
+  "Dentist appointment", "Submit REC 101 Case #1"). A one-off with attendees is a meeting
+  worth jotting down even with no description — a description only *enriches* the task
+  note, it does not decide task-vs-not; recurrence does. Only downgrade a one-off to brief
+  prose (no task) if it's clearly a personal non-obligation with no counterparty and
+  nothing to do (a lunch block, a nap) — when unsure, add the task.
 
 **Add-only.** This routine may only **add** calendar-derived tasks to `tasks.md` and
 write `brief.md` + its change-log. It must **never** remove, prune, or relocate a task —
