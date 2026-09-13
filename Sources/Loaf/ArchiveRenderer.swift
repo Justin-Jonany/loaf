@@ -1,5 +1,5 @@
 import Foundation
-import FoolscapCore
+import LoafCore
 
 /// The minimal archive viewer (DECISIONS.md 2026-09-11 — keep it low-risk: there is no
 /// second-window precedent in this codebase, so this reuses the single `NoteWindow`'s

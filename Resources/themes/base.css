@@ -235,7 +235,7 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   opacity: 1;
 }
 
-/* Archive viewer (minimal — current month only; ArchiveRenderer, Sources/Foolscap). It
+/* Archive viewer (minimal — current month only; ArchiveRenderer, Sources/Loaf). It
    reuses the dashboard's own .section/.task chrome above; these two rules are its only
    additions — the back-navigation control and the restore action (styled bolder, as an
    outlined pill, than the archive button above — it's the one action on an archived row

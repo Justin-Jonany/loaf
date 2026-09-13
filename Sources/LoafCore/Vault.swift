@@ -9,7 +9,7 @@ import Foundation
 public final class Vault {
     public let root: URL
 
-    private let registryQueue = DispatchQueue(label: "dev.jonany.foolscap.vault.registry")
+    private let registryQueue = DispatchQueue(label: "dev.jonany.loaf.vault.registry")
     private var selfWrites: [String: (mtime: Date, size: Int)] = [:]
 
     public init(root: URL) {
@@ -23,12 +23,12 @@ public final class Vault {
 
     // MARK: - Root resolution
 
-    /// `$FOOLSCAP_VAULT` → config `vault` → `~/Notes`. Tilde is expanded in all three.
+    /// `$LOAF_VAULT` → config `vault` → `~/Notes`. Tilde is expanded in all three.
     public static func resolveRoot(
         config: Config,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> URL {
-        if let envPath = environment["FOOLSCAP_VAULT"], !envPath.isEmpty {
+        if let envPath = environment["LOAF_VAULT"], !envPath.isEmpty {
             return expand(envPath)
         }
         if let configPath = config.vault, !configPath.isEmpty {
@@ -63,7 +63,7 @@ public final class Vault {
 
     /// Locates the vault-side `templates/CLAUDE.md` contract, either from the app bundle's
     /// `Resources/templates` (packaged app, via `build.sh`) or, in dev, relative to the repo
-    /// this source file lives in (`swift run`/`swift run foolscap-selftest` from the repo root).
+    /// this source file lives in (`swift run`/`swift run loaf-selftest` from the repo root).
     private static func loadBundledTemplate() throws -> String {
         var candidates: [URL] = []
         if let resourceURL = Bundle.main.resourceURL {

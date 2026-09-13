@@ -50,7 +50,7 @@ final class NoteWindow: NSWindow {
         ])
         contentView = effectView
 
-        setFrameAutosaveName("FoolscapWindow")
+        setFrameAutosaveName("LoafWindow")
     }
 
     /// Loads rendered note HTML with a full navigation. `baseURL` should be the vault root

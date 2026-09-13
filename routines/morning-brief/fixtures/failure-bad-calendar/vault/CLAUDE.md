@@ -1,4 +1,4 @@
-# This is a Foolscap vault
+# This is a Loaf vault
 
 This vault feeds a daily briefing panel. A small macOS window composes a dashboard from three
 files here; it has no calendar/email access and no Claude of its own. **You** are the scheduled

@@ -1,16 +1,16 @@
 ---
-name: foolscap-morning-brief
+name: loaf-morning-brief
 description: >
   The scheduled morning run that reads the calendar and the vault, and writes brief.md
-  and tasks.md for the Foolscap daily-briefing panel. Invoked headlessly by
+  and tasks.md for the Loaf daily-briefing panel. Invoked headlessly by
   routines/morning-brief/run.sh (production) or dry_run.sh (fixtures) — not meant to be
   read as a chat opener. See DESIGN.md -> "The daily loop" and "Trust" for the product
   contract this implements.
 ---
 
-# Foolscap — the morning brief routine
+# Loaf — the morning brief routine
 
-You are the "brains" half of Foolscap (see DESIGN.md -> "The two halves"). The app itself
+You are the "brains" half of Loaf (see DESIGN.md -> "The two halves"). The app itself
 is a dumb viewer with no calendar, no email, and no Claude of its own — it only composes
 `brief.md`, `tasks.md`, and `longterm.md` from the vault folder and repaints when they
 change. Whatever you write here **is** the dashboard for today. There's no human in this
@@ -200,7 +200,7 @@ decisions — handle those silently and move on.
 
 **Settled** (DECISIONS.md 2026-08-23, resolved 2026-09-09 — ticket D2): `.routine-signal.md`
 is the final location for this signal, not a marker line in `brief.md`. The app-side
-consumer is `RoutineSignal.parse`/`SignalNudge.decide` in `Sources/FoolscapCore/RoutineSignal.swift`,
+consumer is `RoutineSignal.parse`/`SignalNudge.decide` in `Sources/LoafCore/RoutineSignal.swift`,
 which read exactly the shape below (`status`/`at`/`reason`/`questions`).
 
 Write `.routine-signal.md` at the vault root (a dotfile — matches the format

@@ -3,7 +3,7 @@
 # non-interactive `claude -p` run against a real vault.
 #
 # Scheduling (ROADMAP.md -> C1): run this from launchd at ~6am local time via
-# com.foolscap.morning-brief.plist in this directory (`launchctl bootstrap` it once —
+# com.loaf.morning-brief.plist in this directory (`launchctl bootstrap` it once —
 # see the comment at the top of that file for the exact command). launchd's
 # StartCalendarInterval jobs are NOT dropped when the Mac is asleep at the scheduled
 # time — launchd runs a missed one as soon as the system is next awake, which is the
@@ -17,12 +17,12 @@
 #   ./run.sh --vault DIR                         # override the vault path
 #   ./run.sh --calendar-fixture FILE             # dry run: read FILE instead of the
 #                                                 # live Google Calendar MCP tools
-#   FOOLSCAP_FORCE_FAILURE=1 ./run.sh            # skip Claude entirely, exercise only
+#   LOAF_FORCE_FAILURE=1 ./run.sh                # skip Claude entirely, exercise only
 #                                                 # the shell-level failure-signal path
 #                                                 # (see routines/morning-brief/dry_run.sh)
 #
-# Vault resolution mirrors Sources/FoolscapCore/Vault.swift's `resolveRoot`:
-# $FOOLSCAP_VAULT -> config.toml's `vault =` -> ~/Notes. --vault overrides all of that.
+# Vault resolution mirrors Sources/LoafCore/Vault.swift's `resolveRoot`:
+# $LOAF_VAULT -> config.toml's `vault =` -> ~/Notes. --vault overrides all of that.
 
 set -uo pipefail
 
@@ -33,7 +33,7 @@ set -uo pipefail
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 ROUTINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_PATH="${FOOLSCAP_CONFIG:-$HOME/.config/foolscap/config.toml}"
+CONFIG_PATH="${LOAF_CONFIG:-$HOME/.config/loaf/config.toml}"
 
 VAULT=""
 CALENDAR_FIXTURE=""
@@ -54,8 +54,8 @@ expand_tilde() {
 }
 
 if [[ -z "$VAULT" ]]; then
-  if [[ -n "${FOOLSCAP_VAULT:-}" ]]; then
-    VAULT="$(expand_tilde "$FOOLSCAP_VAULT")"
+  if [[ -n "${LOAF_VAULT:-}" ]]; then
+    VAULT="$(expand_tilde "$LOAF_VAULT")"
   elif [[ -f "$CONFIG_PATH" ]]; then
     CONFIGURED="$(grep -E '^[[:space:]]*vault[[:space:]]*=' "$CONFIG_PATH" | head -1 | sed -E 's/^[[:space:]]*vault[[:space:]]*=[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/')"
     if [[ -n "$CONFIGURED" ]]; then VAULT="$(expand_tilde "$CONFIGURED")"; fi
@@ -65,7 +65,7 @@ VAULT="${VAULT:-$HOME/Notes}"
 
 # why: overridable so dry_run.sh fixtures can pin a deterministic "today" for the 7-day
 # lookahead window; production leaves this unset and gets the real date.
-TODAY="${FOOLSCAP_TODAY:-$(date +%F)}"
+TODAY="${LOAF_TODAY:-$(date +%F)}"
 # ISO 8601 with a colon in the UTC offset (macOS `date %z` omits it) — see SKILL.md ->
 # "Writing brief.md" for the exact format D1 (ROADMAP.md) is expected to parse.
 BUILD_TIME="$(date +%FT%T%z | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
@@ -88,9 +88,9 @@ EOF
 # no budget) — see ROADMAP.md -> C1 Tests: "a forced failure leaves the failure signal,
 # not a stale brief." No Claude invocation happens; this exercises exactly the same
 # signal-writing code the real crash-recovery path below uses.
-if [[ "${FOOLSCAP_FORCE_FAILURE:-}" == "1" ]]; then
-  echo "run.sh: FOOLSCAP_FORCE_FAILURE=1 — skipping the Claude invocation entirely"
-  write_failure_signal "forced failure (FOOLSCAP_FORCE_FAILURE=1) — simulates the routine being unable to run at all"
+if [[ "${LOAF_FORCE_FAILURE:-}" == "1" ]]; then
+  echo "run.sh: LOAF_FORCE_FAILURE=1 — skipping the Claude invocation entirely"
+  write_failure_signal "forced failure (LOAF_FORCE_FAILURE=1) — simulates the routine being unable to run at all"
   echo "run.sh: wrote failure signal to $SIGNAL_FILE"
   exit 1
 fi
@@ -153,7 +153,7 @@ if [[ -f "$BRIEF_FILE" ]]; then
   cp "$BRIEF_FILE" "$BRIEF_BACKUP"
 fi
 
-LOG_DIR="${FOOLSCAP_ROUTINE_LOG_DIR:-$HOME/Library/Logs/Foolscap/morning-brief}"
+LOG_DIR="${LOAF_ROUTINE_LOG_DIR:-$HOME/Library/Logs/Loaf/morning-brief}"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/$(date +%Y-%m-%dT%H%M%S).log"
 

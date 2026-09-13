@@ -21,14 +21,14 @@
 #                            stay context
 #   failure-bad-calendar    an unparseable calendar fixture -> expects the routine to
 #                            self-report failure and leave brief.md untouched
-#   failure-forced           FOOLSCAP_FORCE_FAILURE=1, no Claude call at all -> exercises
+#   failure-forced           LOAF_FORCE_FAILURE=1, no Claude call at all -> exercises
 #                            run.sh's own shell-level backstop (a throwaway vault, not a
 #                            checked-in fixture)
 #
-# decision-day and clear-day pin FOOLSCAP_TODAY=2026-08-23 (matching their fixture
+# decision-day and clear-day pin LOAF_TODAY=2026-08-23 (matching their fixture
 # events' date) so the 7-day window lands on them the same way it always did before the
 # window existed; lookahead, recurrence-tiering, and interview-day pin
-# FOOLSCAP_TODAY=2026-09-14 to exercise the window / tiering on that date.
+# LOAF_TODAY=2026-09-14 to exercise the window / tiering on that date.
 #
 # For decision-day/clear-day/lookahead/failure-bad-calendar the fixture vault IS the
 # git-tracked directory under fixtures/ — the run mutates it in place so `git diff` shows
@@ -50,11 +50,11 @@ hr() { printf '%.0s=' {1..78}; echo; }
 check_tasks() {
   local vault="$1"
   hr
-  echo "### foolscap-routine-check (feeds tasks.md through TaskBlock — A1's parser)"
-  ( cd "$REPO_ROOT" && swift run --quiet foolscap-routine-check "$vault/tasks.md" )
+  echo "### loaf-routine-check (feeds tasks.md through TaskBlock — A1's parser)"
+  ( cd "$REPO_ROOT" && swift run --quiet loaf-routine-check "$vault/tasks.md" )
   local status=$?
   if [[ -f "$vault/longterm.md" ]]; then
-    ( cd "$REPO_ROOT" && swift run --quiet foolscap-routine-check "$vault/longterm.md" )
+    ( cd "$REPO_ROOT" && swift run --quiet loaf-routine-check "$vault/longterm.md" )
   fi
   return $status
 }
@@ -80,7 +80,7 @@ show_diff_and_revert() {
 scenario_decision_day() {
   local vault="$FIXTURES/decision-day/vault"
   hr; echo "SCENARIO: decision-day (expect: a decision signal, no interruption suppressed)"; hr
-  FOOLSCAP_TODAY=2026-08-23 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/decision-day/calendar.json"
+  LOAF_TODAY=2026-08-23 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/decision-day/calendar.json"
   local exit_code=$?
   echo "run.sh exit: $exit_code"
   check_tasks "$vault"; local check_exit=$?
@@ -96,7 +96,7 @@ scenario_decision_day() {
 scenario_clear_day() {
   local vault="$FIXTURES/clear-day/vault"
   hr; echo "SCENARIO: clear-day (expect: NO interruption)"; hr
-  FOOLSCAP_TODAY=2026-08-23 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/clear-day/calendar.json"
+  LOAF_TODAY=2026-08-23 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/clear-day/calendar.json"
   local exit_code=$?
   echo "run.sh exit: $exit_code"
   check_tasks "$vault"; local check_exit=$?
@@ -112,7 +112,7 @@ scenario_clear_day() {
 scenario_lookahead() {
   local vault="$FIXTURES/lookahead/vault"
   hr; echo "SCENARIO: lookahead (expect: 7-day window + cross-run de-dup)"; hr
-  FOOLSCAP_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/lookahead/calendar.json"
+  LOAF_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/lookahead/calendar.json"
   local exit_code=$?
   echo "run.sh exit: $exit_code"
   check_tasks "$vault"; local check_exit=$?
@@ -152,7 +152,7 @@ scenario_lookahead() {
 scenario_recurrence_tiering() {
   local vault="$FIXTURES/recurrence-tiering/vault"
   hr; echo "SCENARIO: recurrence-tiering (expect: recurring class + focus block stay context; one-offs become tasks)"; hr
-  FOOLSCAP_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/recurrence-tiering/calendar.json"
+  LOAF_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/recurrence-tiering/calendar.json"
   local exit_code=$?
   echo "run.sh exit: $exit_code"
   check_tasks "$vault"; local check_exit=$?
@@ -191,7 +191,7 @@ scenario_recurrence_tiering() {
 scenario_interview_day() {
   local vault="$FIXTURES/interview-day/vault"
   hr; echo "SCENARIO: interview-day (expect: a bare one-off with no description/attendees still becomes a task)"; hr
-  FOOLSCAP_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/interview-day/calendar.json"
+  LOAF_TODAY=2026-09-14 "$ROUTINE_DIR/run.sh" --vault "$vault" --calendar-fixture "$FIXTURES/interview-day/calendar.json"
   local exit_code=$?
   echo "run.sh exit: $exit_code"
   check_tasks "$vault"; local check_exit=$?
@@ -250,11 +250,11 @@ scenario_failure_bad_calendar() {
 }
 
 scenario_failure_forced() {
-  hr; echo "SCENARIO: failure-forced (FOOLSCAP_FORCE_FAILURE=1, no Claude call)"; hr
+  hr; echo "SCENARIO: failure-forced (LOAF_FORCE_FAILURE=1, no Claude call)"; hr
   local tmp
   tmp="$(mktemp -d)"
   printf '<!-- built: 2026-08-22T06:00:00-07:00 -->\n# Brief\nYesterday'"'"'s brief, untouched by this scenario.\n' > "$tmp/brief.md"
-  FOOLSCAP_FORCE_FAILURE=1 "$ROUTINE_DIR/run.sh" --vault "$tmp"
+  LOAF_FORCE_FAILURE=1 "$ROUTINE_DIR/run.sh" --vault "$tmp"
   local exit_code=$?
   echo "run.sh exit: $exit_code"
   cat "$tmp/brief.md"

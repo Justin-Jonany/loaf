@@ -1,6 +1,6 @@
 import Foundation
 
-/// The documented subset of `~/.config/foolscap/config.toml`.
+/// The documented subset of `~/.config/loaf/config.toml`.
 ///
 /// A small hand-rolled reader over the flat `key = value` / `[section]` shape used by
 /// `config.example.toml` — not a general TOML parser. Every key is optional; a missing
@@ -33,7 +33,7 @@ public struct Config: Sendable, Equatable {
 
     public static var defaultPath: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/foolscap/config.toml")
+            .appendingPathComponent(".config/loaf/config.toml")
     }
 
     /// Loads `path`, if it exists. A missing file is not an error — it just means defaults.
@@ -139,7 +139,7 @@ public struct Config: Sendable, Equatable {
 
     /// Temp file + `rename(2)`, mirroring `Vault.writeAtomically`'s pattern so a reader
     /// never observes a half-written config file. Not routed through `Vault` itself: the
-    /// config file lives outside the vault (`~/.config/foolscap/`), so none of `Vault`'s
+    /// config file lives outside the vault (`~/.config/loaf/`), so none of `Vault`'s
     /// self-write tracking applies here.
     private static func writeAtomically(_ content: String, to path: URL) throws {
         let directory = path.deletingLastPathComponent()

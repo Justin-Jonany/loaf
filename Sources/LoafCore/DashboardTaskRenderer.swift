@@ -5,8 +5,8 @@ import Foundation
 /// the DOM (DESIGN.md → Tasks: "Display ≠ storage"). The caller (the app's
 /// `DashboardRenderer`, B1) wraps this fragment in the
 /// `<li>` that carries the write-back `data-file`/`data-line` attributes; this piece owns
-/// the part that actually hides the storage tokens, so it lives in `FoolscapCore` where
-/// `FoolscapSelftest` can assert against it directly — the same split `MarkdownRenderer`
+/// the part that actually hides the storage tokens, so it lives in `LoafCore` where
+/// `LoafSelftest` can assert against it directly — the same split `MarkdownRenderer`
 /// already uses for the single-note task view.
 public enum DashboardTaskRenderer {
     public static func render(
@@ -67,9 +67,9 @@ public enum DashboardTaskRenderer {
     /// announced by VoiceOver as just "checkbox" with no indication of *which* task or
     /// whether it's already ticked — hence explicit `role="checkbox"`, `aria-checked`
     /// mirroring `isDone`, and `aria-label` carrying the task sentence as its accessible
-    /// name. Kept in `FoolscapCore` (rather than the app's `DashboardRenderer`, which wraps
+    /// name. Kept in `LoafCore` (rather than the app's `DashboardRenderer`, which wraps
     /// this in the `<li>` that carries the write-back `data-file`/`data-line` attributes)
-    /// so `FoolscapSelftest` can assert the ARIA contract directly, the same split B4 set up
+    /// so `LoafSelftest` can assert the ARIA contract directly, the same split B4 set up
     /// for the tidy label/chip rendering above. `disabled` is for the archive viewer
     /// (`ArchiveRenderer`), which reuses this same checkbox purely as a was-it-done
     /// indicator on a row that has no write-back for it — undisabled, the box would still
@@ -95,9 +95,9 @@ public enum DashboardTaskRenderer {
     /// beside it. Keeps the exact ARIA contract it always had (`aria-pressed` mirroring
     /// `block.focus`, an `aria-label` naming both the action and the task) so a
     /// keyboard/VoiceOver user can still toggle Today-placement by click/Enter without a
-    /// mouse drag (ROADMAP X2). Kept in `FoolscapCore` (rather than the app's
+    /// mouse drag (ROADMAP X2). Kept in `LoafCore` (rather than the app's
     /// `DashboardRenderer`, which wraps this in the `<li>` that carries the write-back
-    /// `data-file`/`data-line` attributes) so `FoolscapSelftest` can assert the ARIA
+    /// `data-file`/`data-line` attributes) so `LoafSelftest` can assert the ARIA
     /// contract directly.
     public static func renderFocusToggle(_ block: TaskBlock) -> String {
         let pressed = block.focus ? "true" : "false"

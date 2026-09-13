@@ -1,8 +1,8 @@
 import Foundation
-import FoolscapCore
+import LoafCore
 
 // A standalone linter, not part of the app. Feeds a tasks.md (or longterm.md) file
-// through the real `TaskBlock` parser from `Sources/FoolscapCore/TaskBlock.swift` and
+// through the real `TaskBlock` parser from `Sources/LoafCore/TaskBlock.swift` and
 // reports every block found, flagging any that's missing the required `@due` token.
 //
 // This is what `routines/morning-brief/dry_run.sh` runs against the morning routine's
@@ -10,14 +10,14 @@ import FoolscapCore
 // takes no dependency on the routine itself — it only knows the metadata-below format,
 // same as the parser it's driving.
 //
-//     swift run foolscap-routine-check <path/to/tasks.md> [more paths...]
+//     swift run loaf-routine-check <path/to/tasks.md> [more paths...]
 //
 // Exits 0 if every checkbox block parses and carries a valid @due; exits 1 (with a
 // listing of the offending blocks) otherwise.
 
 let paths = CommandLine.arguments.dropFirst()
 guard !paths.isEmpty else {
-    print("usage: foolscap-routine-check <path/to/tasks.md> [more paths...]")
+    print("usage: loaf-routine-check <path/to/tasks.md> [more paths...]")
     exit(2)
 }
 

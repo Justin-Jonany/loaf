@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "Foolscap",
+    name: "Loaf",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "foolscap", targets: ["Foolscap"]),
-        .executable(name: "foolscap-selftest", targets: ["FoolscapSelftest"]),
-        .executable(name: "foolscap-routine-check", targets: ["FoolscapRoutineCheck"]),
-        .library(name: "FoolscapCore", targets: ["FoolscapCore"]),
+        .executable(name: "loaf", targets: ["Loaf"]),
+        .executable(name: "loaf-selftest", targets: ["LoafSelftest"]),
+        .executable(name: "loaf-routine-check", targets: ["LoafRoutineCheck"]),
+        .library(name: "LoafCore", targets: ["LoafCore"]),
     ],
     dependencies: [
         // Renders vault markdown to HTML. SPM-native, builds with plain `swift build`
@@ -17,18 +17,18 @@ let package = Package(
     ],
     targets: [
         // No AppKit here — see CONTRIBUTING.md. This is what the self-test covers.
-        .target(name: "FoolscapCore", dependencies: [
+        .target(name: "LoafCore", dependencies: [
             .product(name: "Markdown", package: "swift-markdown"),
         ]),
-        .executableTarget(name: "Foolscap", dependencies: ["FoolscapCore"]),
+        .executableTarget(name: "Loaf", dependencies: ["LoafCore"]),
         // Not a .testTarget: XCTest and swift-testing both ship only with Xcode,
         // so a test target would make Xcode a hard requirement for contributors.
-        .executableTarget(name: "FoolscapSelftest", dependencies: ["FoolscapCore"]),
+        .executableTarget(name: "LoafSelftest", dependencies: ["LoafCore"]),
         // A tiny standalone linter, not part of the app: feeds a tasks.md file through the
         // real TaskBlock parser and reports any block missing @due. Used by
         // routines/morning-brief/dry_run.sh to prove the routine's output round-trips
         // through A1's parser (ROADMAP.md -> Epic C -> C1), and usable by hand against a
         // real vault too.
-        .executableTarget(name: "FoolscapRoutineCheck", dependencies: ["FoolscapCore"]),
+        .executableTarget(name: "LoafRoutineCheck", dependencies: ["LoafCore"]),
     ]
 )

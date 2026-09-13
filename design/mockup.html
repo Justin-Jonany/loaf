@@ -1,4 +1,4 @@
-<title>Foolscap — Design</title>
+<title>Loaf — Design</title>
 
 <style>
   :root {
@@ -413,7 +413,7 @@
 
   <header class="masthead">
     <div class="eyebrow">Design · v0.1 · 12 Aug 2026</div>
-    <h1>Foolscap</h1>
+    <h1>Loaf</h1>
     <p class="lede">
       A note widget that floats on your macOS desktop, backed by plain markdown in a folder you
       own. Dates are text. Themes are CSS. <em>The storage format is designed so a coding agent
@@ -507,7 +507,7 @@
     <div class="specimen">
       <div class="desktop">
         <div class="menubar">
-          <span>&#63743;&nbsp;&nbsp;Foolscap</span>
+          <span>&#63743;&nbsp;&nbsp;Loaf</span>
           <span class="mb-right"><span>100%</span><span>Wed 09:14</span></span>
         </div>
         <div class="widget w-frost">
@@ -565,7 +565,7 @@
     <div class="specimen">
       <div class="desktop">
         <div class="menubar">
-          <span>&#63743;&nbsp;&nbsp;Foolscap</span>
+          <span>&#63743;&nbsp;&nbsp;Loaf</span>
           <span class="mb-right"><span>100%</span><span>Wed 09:14</span></span>
         </div>
         <div class="widget w-card">
@@ -606,7 +606,7 @@
     <div class="specimen">
       <div class="desktop">
         <div class="menubar">
-          <span>&#63743;&nbsp;&nbsp;Foolscap</span>
+          <span>&#63743;&nbsp;&nbsp;Loaf</span>
           <span class="mb-right"><span>100%</span><span>Wed 09:14</span></span>
         </div>
         <div class="widget w-console">
@@ -679,12 +679,12 @@
   <section>
     <h2>Shipping it</h2>
     <div class="split">
-      <pre class="tree"><b>foolscap/</b>
-├── <b>Sources/FoolscapCore/</b>  <i># no UI — testable</i>
+      <pre class="tree"><b>loaf/</b>
+├── <b>Sources/LoafCore/</b>  <i># no UI — testable</i>
 │   ├── <i>Vault.swift</i>
 │   ├── <i>TaskLine.swift</i>     <i># due: / every:</i>
 │   └── <i>Recurrence.swift</i>
-├── <b>Sources/Foolscap/</b>      <i># NSPanel, WKWebView</i>
+├── <b>Sources/Loaf/</b>      <i># NSPanel, WKWebView</i>
 ├── <b>Tests/</b>
 ├── <b>Resources/themes/</b>      <i># *.css</i>
 ├── <b>templates/CLAUDE.md</b>
@@ -699,7 +699,7 @@
         </p>
         <p>
           <strong>Nothing hardcoded.</strong> Vault path, theme, and start mode come from
-          <code>~/.config/foolscap/config.toml</code>, overridable by <code>$FOOLSCAP_VAULT</code>.
+          <code>~/.config/loaf/config.toml</code>, overridable by <code>$LOAF_VAULT</code>.
           User themes drop into the same config directory and appear in the menu.
         </p>
         <p>
@@ -715,9 +715,8 @@
   <footer class="close">
     <h2>Open questions</h2>
     <p>
-      <strong>The name.</strong> <em>Foolscap</em> is a sheet of writing paper — it fits, and it's
-      almost certainly unclaimed. It's a placeholder in exactly one place, so say the word and it
-      changes.
+      <strong>The name.</strong> <em>Loaf</em> is almost certainly unclaimed. It's a placeholder
+      in exactly one place, so say the word and it changes.
     </p>
     <p>
       <strong>Preview or source on open?</strong> Preview reads better if an agent writes most of
