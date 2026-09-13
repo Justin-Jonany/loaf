@@ -65,7 +65,7 @@ Reused as-is or nearly so — see [DECISIONS.md](DECISIONS.md):
 
 ### Epic A — Task parser (the metadata-below format)
 
-`FoolscapCore`, pure logic, no AppKit. The contract every downstream feature reads, so it
+`LoafCore`, pure logic, no AppKit. The contract every downstream feature reads, so it
 lands first.
 
 - [ ] **A1 — Metadata-below parser** · 1 PR · depends: — · blocks: A4, all of B, C's format
@@ -267,11 +267,11 @@ App-side. Needs the dashboard (B) and the run's signals (C).
 - [ ] **E1 — Config file + env override** · 1 PR · depends: —
   - **Problem:** The vault path and options need to be configurable, and the shipped example
     still lists keys the briefing model dropped (in-app editing).
-  - **Solution:** Read `~/.config/foolscap/config.toml` (every key optional); `$FOOLSCAP_VAULT`
+  - **Solution:** Read `~/.config/loaf/config.toml` (every key optional); `$LOAF_VAULT`
     overrides the vault path; ship `config.example.toml` fully commented with the dead
     in-app-editing keys removed.
   - **Tests:** absent config → defaults; partial config → only those keys override;
-    `$FOOLSCAP_VAULT` wins over the config file path.
+    `$LOAF_VAULT` wins over the config file path.
   - **Verify:** *pure logic* — paste the green config-precedence tests.
 
 ### Cross-cutting
@@ -349,9 +349,9 @@ and **B5**.
 Owned by ticket **X2**.
 
 ### Architecture fitness
-`scripts/check-core-boundary.sh` fails CI if `Sources/FoolscapCore/` imports
-AppKit/Cocoa/UIKit/SwiftUI/WebKit. Remaining gaps: a check that `FoolscapCore` has no
-dependency on `Sources/Foolscap/` (true by convention only), and the VoiceOver gap above.
+`scripts/check-core-boundary.sh` fails CI if `Sources/LoafCore/` imports
+AppKit/Cocoa/UIKit/SwiftUI/WebKit. Remaining gaps: a check that `LoafCore` has no
+dependency on `Sources/Loaf/` (true by convention only), and the VoiceOver gap above.
 
 ### Large vaults / staleness
 Less pressing now — the panel composes only three files, so full re-parse per event is cheap.
@@ -402,7 +402,7 @@ Written down so it stays decided:
 
 ## Open decisions
 
-- [ ] **Name.** `foolscap` is a placeholder; it appears in `Info.plist`, `Package.swift`,
+- [ ] **Name.** `loaf` is a placeholder; it appears in `Info.plist`, `Package.swift`,
       `build.sh`, and the config path.
 - [ ] **Gatekeeper** — document the workaround, or pay to notarize.
 - [x] **Where the run's "needs a decision" / failure signal lives** — *settled 2026-09-09:*

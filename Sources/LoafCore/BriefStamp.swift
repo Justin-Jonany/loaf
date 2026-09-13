@@ -6,7 +6,7 @@ import Foundation
 ///
 /// Acting on a stale plan without knowing is the failure mode this guards against
 /// (ROADMAP.md → D1), so a missing or malformed stamp must read as a clear "unknown," never
-/// a fabricated time. Parsing and display formatting live here, in `FoolscapCore`, so both
+/// a fabricated time. Parsing and display formatting live here, in `LoafCore`, so both
 /// are unit-testable without a `WKWebView` — the app layer (`DashboardRenderer`) only calls
 /// `parse` and `displayString`.
 public enum BriefStamp: Equatable, Sendable {
@@ -56,7 +56,7 @@ public enum BriefStamp: Equatable, Sendable {
     /// but not this helper's business) survives untouched. Lives alongside
     /// `stripStampLine` for the same reason: both are brief.md-text normalization steps
     /// `DashboardRenderer` runs before handing the body to `MarkdownRenderer`, kept here so
-    /// `FoolscapSelftest` can assert them directly without a `WKWebView`.
+    /// `LoafSelftest` can assert them directly without a `WKWebView`.
     public static func stripLeadingBriefHeading(from markdown: String) -> String {
         let lines = markdown.split(separator: "\n", omittingEmptySubsequences: false)
         guard let firstLine = lines.first else { return markdown }

@@ -1,4 +1,4 @@
-# Foolscap
+# Loaf
 
 A note widget that floats on your macOS desktop, backed by plain markdown in a folder
 you own — **with a storage format designed so a coding agent can edit your notes using
@@ -21,7 +21,7 @@ add a task, tick one off, restructure a page, or drop in a diagram. The widget w
 the folder and repaints. There is nothing to integrate — the integration is that both
 sides agree to use markdown.
 
-Foolscap is two halves joined only by the vault folder (see [DESIGN.md](DESIGN.md) →
+Loaf is two halves joined only by the vault folder (see [DESIGN.md](DESIGN.md) →
 "The two halves"): a scheduled **brains** run writes the files, and the **viewer** app
 watches and repaints. The app has no API keys and makes no network calls of its own.
 
@@ -55,7 +55,7 @@ vault renders gracefully empty until the morning routine (or you) writes them.
 
 > **Naming collision.** The vault root is `Notes` (capital N) while `notes/` (lowercase)
 > is just a loose subfolder inside it — easy to confuse. This ties into the open **Name**
-> decision (ROADMAP.md → Open decisions); `foolscap` and these names are placeholders.
+> decision (ROADMAP.md → Open decisions); `loaf` and these names are placeholders.
 
 ## Dates
 
@@ -91,13 +91,13 @@ The panel renders in a `WKWebView`, so a theme is one CSS file.
 | `card` | Opaque paper, ruled lines, slight tilt | An object on your desk |
 | `console` | Near-opaque dark, monospaced | Another pane of your editor |
 
-Drop any `*.css` into `~/.config/foolscap/themes/` and it appears in the menu.
+Drop any `*.css` into `~/.config/loaf/themes/` and it appears in the menu.
 See [design/mockup.html](design/mockup.html) for all three rendered against three wallpapers.
 
 ## Configuration
 
 Everything is optional. Copy [`config.example.toml`](config.example.toml) to
-`~/.config/foolscap/config.toml` and change what you care about.
+`~/.config/loaf/config.toml` and change what you care about.
 
 ```toml
 vault      = "~/Notes"
@@ -105,7 +105,7 @@ theme      = "frosted"
 start_mode = "preview"
 ```
 
-`$FOOLSCAP_VAULT` overrides the vault path at launch.
+`$LOAF_VAULT` overrides the vault path at launch.
 
 ## See it live
 
@@ -113,24 +113,24 @@ A fresh vault is empty, so to see the dashboard populated, point the app at the 
 vault checked into the repo (a synthetic fixture — never your real notes).
 
 Build the app bundle and launch it against the fixture — this is the reliable way to get
-the actual menu-bar panel. (`swift run foolscap` builds only the bare executable and won't
-reliably surface as the menu-bar app; `build.sh` assembles a proper `Foolscap.app` with the
+the actual menu-bar panel. (`swift run loaf` builds only the bare executable and won't
+reliably surface as the menu-bar app; `build.sh` assembles a proper `Loaf.app` with the
 `Info.plist` + bundled themes/templates.)
 
 ```bash
-./build.sh   # assembles dist/Foolscap.app
-FOOLSCAP_VAULT=routines/morning-brief/fixtures/decision-day/vault dist/Foolscap.app/Contents/MacOS/Foolscap
+./build.sh   # assembles dist/Loaf.app
+LOAF_VAULT=routines/morning-brief/fixtures/decision-day/vault dist/Loaf.app/Contents/MacOS/Loaf
 ```
 
-`FOOLSCAP_VAULT` is inherited from the shell when you launch the bundled binary directly.
-For everyday use against your own vault, `open dist/Foolscap.app` (or install it with
-`cp -R dist/Foolscap.app ~/Applications/`).
+`LOAF_VAULT` is inherited from the shell when you launch the bundled binary directly.
+For everyday use against your own vault, `open dist/Loaf.app` (or install it with
+`cp -R dist/Loaf.app ~/Applications/`).
 
 Or render the dashboard straight to HTML without launching the panel at all:
 
 ```bash
-swift run foolscap --dump-dashboard \
-  routines/morning-brief/fixtures/decision-day/vault /tmp/foolscap-dash.html
+swift run loaf --dump-dashboard \
+  routines/morning-brief/fixtures/decision-day/vault /tmp/loaf-dash.html
 ```
 
 That fixture uses fixed August 2026 dates, so on today's clock its tasks read as
@@ -149,7 +149,7 @@ routines/morning-brief/dry_run.sh all  # fixtures only — the test harness, no 
 ```
 
 - **Schedule** it daily at ~6am via launchd using
-  `routines/morning-brief/com.foolscap.morning-brief.plist` — the install steps
+  `routines/morning-brief/com.loaf.morning-brief.plist` — the install steps
   (`launchctl bootstrap`) are in that file's header comment. It's a
   `StartCalendarInterval` job, so a run missed while the Mac was asleep catches up on
   wake, with no extra code.
@@ -164,13 +164,13 @@ routines/morning-brief/dry_run.sh all  # fixtures only — the test harness, no 
 Requires macOS 14+ and a working Swift toolchain.
 
 ```bash
-git clone https://github.com/Justin-Jonany/foolscap
-cd foolscap
+git clone https://github.com/Justin-Jonany/loaf
+cd loaf
 ./build.sh
-cp -R dist/Foolscap.app ~/Applications/
+cp -R dist/Loaf.app ~/Applications/
 ```
 
-Foolscap is an ordinary app: it shows in the Dock and Cmd+Tab, plus a menu-bar item for
+Loaf is an ordinary app: it shows in the Dock and Cmd+Tab, plus a menu-bar item for
 quick show/hide.
 
 ### Troubleshooting
@@ -187,20 +187,20 @@ sudo xcode-select --install
 If it persists, install Xcode from the App Store and run
 `sudo xcode-select -s /Applications/Xcode.app`.
 
-**"Foolscap is damaged and can't be opened"** — Gatekeeper on an unsigned build:
+**"Loaf is damaged and can't be opened"** — Gatekeeper on an unsigned build:
 
 ```bash
-xattr -d com.apple.quarantine ~/Applications/Foolscap.app
+xattr -d com.apple.quarantine ~/Applications/Loaf.app
 ```
 
 ## Repository layout
 
 ```
-Sources/FoolscapCore/         Vault, TaskBlock (metadata-below parser), Dashboard
+Sources/LoafCore/             Vault, TaskBlock (metadata-below parser), Dashboard
                               (four-section composer), dates, recurrence — no AppKit
-Sources/Foolscap/             NSWindow, WKWebView, menu bar, dashboard render, config
-Sources/FoolscapSelftest/     The logic suite — a plain executable, no Xcode needed
-Sources/FoolscapRoutineCheck/ CLI that feeds a vault file through the parser (the routine's dry run uses it)
+Sources/Loaf/                 NSWindow, WKWebView, menu bar, dashboard render, config
+Sources/LoafSelftest/         The logic suite — a plain executable, no Xcode needed
+Sources/LoafRoutineCheck/     CLI that feeds a vault file through the parser (the routine's dry run uses it)
 Resources/themes/             frosted.css, card.css, console.css
 templates/CLAUDE.md           Written into a new vault on first run
 routines/morning-brief/       The scheduled "brains" run: SKILL.md, run.sh, dry_run.sh,
@@ -208,12 +208,12 @@ routines/morning-brief/       The scheduled "brains" run: SKILL.md, run.sh, dry_
 design/mockup.html            The design, rendered
 ```
 
-`FoolscapCore` deliberately imports no AppKit, so all parsing and date logic is
+`LoafCore` deliberately imports no AppKit, so all parsing and date logic is
 testable without a GUI session (`scripts/check-core-boundary.sh` enforces the boundary):
 
 ```bash
-swift run foolscap-selftest                          # exits non-zero on failure
-swift run foolscap --dump-dashboard <vault> out.html # render the dashboard headlessly
+swift run loaf-selftest                          # exits non-zero on failure
+swift run loaf --dump-dashboard <vault> out.html # render the dashboard headlessly
 ```
 
 This is a plain executable rather than a `.testTarget` on purpose: XCTest and

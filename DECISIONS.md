@@ -1,6 +1,6 @@
 # Decisions
 
-A running log of the decisions that shaped Foolscap — newest first. Each entry records what
+A running log of the decisions that shaped Loaf — newest first. Each entry records what
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
@@ -268,7 +268,7 @@ explicit instruction.**
   kept alongside drag for the X2 accessibility contract.
 
 - **Operational:** the checkout was moved out of the TCC-protected `~/Desktop` to
-  `~/Projects/foolscap`, and both paths in `com.foolscap.morning-brief.plist` (ProgramArgs
+  `~/Projects/loaf`, and both paths in `com.loaf.morning-brief.plist` (ProgramArgs
   + WorkingDirectory) were repointed and the launchd agent reloaded (last exit 126 → 0).
   Rule of thumb recorded: never keep the checkout under `~/Desktop`/`~/Documents`/
   `~/Downloads` (launchd/TCC can't reach it), and always `rm -rf .build` after moving a
@@ -375,7 +375,7 @@ in `tasks.md`; it isn't promoted to Long-term just because its due date is dista
 **Why:** The bucketing worry that prompted this ("a calendar event two months out shouldn't
 land in Long-term") turned out not to be a `DashboardComposer` bug — Long-term is already its
 own file, not a due-distance bucket computed from `tasks.md` (`Dashboard.swift`; confirmed by
-the `FoolscapSelftest` case asserting `longterm.md` entries land in Long-term "regardless of
+the `LoafSelftest` case asserting `longterm.md` entries land in Long-term "regardless of
 how far out `@due` is"). The actual gap was `routines/morning-brief/SKILL.md`, which gave the
 *unattended* routine permission to add to `longterm.md` on its own judgment ("only add an
 entry here if a calendar event or note clearly implies a new target-dated goal") — a vague
@@ -416,7 +416,7 @@ nudging the user.
 **Also decided:** the failure nudge is made "louder" than the ordinary decision nudge via
 `UNNotificationInterruptionLevel.timeSensitive` (can pierce Focus filtering that would hold
 back a `.active` notification) plus `UNNotificationSound.defaultCritical`, not via the
-`critical-alerts` entitlement — Foolscap is an unsigned, direct-distribution app (ROADMAP.md
+`critical-alerts` entitlement — Loaf is an unsigned, direct-distribution app (ROADMAP.md
 → Hazards → Distribution) that can't carry that entitlement, so `.defaultCritical` degrades
 gracefully to a louder default sound rather than a true critical alert.
 
@@ -439,7 +439,7 @@ and is still blocked on an open decision (where the signal lives); a write confl
 enough that a synchronous dialog at the moment it happens is preferable to inventing a second,
 throwaway notification path ahead of D2. If D2 lands a general notification mechanism first,
 X1's alert can be swapped for it without changing the guard logic itself — `ConflictDecision`
-and `ConflictGuard` (`FoolscapCore`) know nothing about how the caller informs the user.
+and `ConflictGuard` (`LoafCore`) know nothing about how the caller informs the user.
 
 **Status:** shipped. Not a reversal of anything; extends the hazard already logged in
 ROADMAP.md → Hazards → "Write conflicts on shared files."
@@ -486,9 +486,9 @@ which now reads `.routine-signal.md`.
 
 **Status:** settled — the sidecar is the signal location; D2 consumes it.
 
-## 2026-08-18 — Product direction: Foolscap is a daily-briefing panel
+## 2026-08-18 — Product direction: Loaf is a daily-briefing panel
 
-**Decided:** Foolscap is a **daily briefing panel**, not a generic markdown note widget. Each
+**Decided:** Loaf is a **daily briefing panel**, not a generic markdown note widget. Each
 morning Claude reads the user's calendar and recent notes and writes them a plan; the panel
 displays it and the user ticks it off. The full shape lives in [DESIGN.md](DESIGN.md); the
 load-bearing choices:
@@ -523,7 +523,7 @@ of the existing v0.1 primitives be pointed at a purpose instead of reinvented.
 local database (the markdown files are the store; add a rebuildable cache only if a huge vault
 demands it); reading **email** (deferred — calendar-only for now); time/effort estimates.
 
-**Supersedes:** the ROADMAP framing that treated Foolscap as a general markdown note widget
+**Supersedes:** the ROADMAP framing that treated Loaf as a general markdown note widget
 whose reason-to-exist was a v0.2 "Today view." The Today view is now core. In-panel text
 editing — floated as a possibility in the 2026-08-16 revert entry below — is explicitly *not*
 the direction: editing goes through Claude or an external editor, so the debounced-write /
@@ -589,7 +589,7 @@ feature branch and opens a draft PR the user reviews and merges.
 ## 2026-08-15 — Markdown rendering: depend on swift-markdown
 
 **Decided:** Use `swift-markdown` (pinned 0.8.0) to parse CommonMark+GFM to an AST, rendered to
-HTML in `FoolscapCore`; task-list items are re-parsed through `TaskLine` so `due:`/`done:`/
+HTML in `LoafCore`; task-list items are re-parsed through `TaskLine` so `due:`/`done:`/
 `every:` semantics survive.
 
 **Why:** Correct markdown without hand-rolling a parser; it still builds with plain
@@ -604,7 +604,7 @@ TOML library.
 
 ## 2026-08-15 — Architecture: hexagonal core boundary, enforced
 
-**Decided:** `FoolscapCore` imports no UI frameworks (AppKit/Cocoa/UIKit/SwiftUI/WebKit);
+**Decided:** `LoafCore` imports no UI frameworks (AppKit/Cocoa/UIKit/SwiftUI/WebKit);
 `scripts/check-core-boundary.sh` fails CI if it does.
 
 **Why:** Keep the domain logic GUI-free and self-testable, and stop the boundary from rotting
@@ -612,6 +612,6 @@ silently.
 
 ---
 
-**Still open** (tracked in [ROADMAP.md](ROADMAP.md) → Open decisions): the app name (`foolscap`
+**Still open** (tracked in [ROADMAP.md](ROADMAP.md) → Open decisions): the app name (`loaf`
 is a placeholder), Gatekeeper/notarization vs. documenting the workaround, and preview-vs-source
 on open.

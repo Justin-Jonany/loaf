@@ -1,9 +1,9 @@
 import Foundation
-import FoolscapCore
+import LoafCore
 
 // XCTest and swift-testing both ship only with Xcode, so `swift test` is unavailable
-// on a Command Line Tools install. FoolscapCore is pure logic with no fixtures or
-// mocks, so a plain executable is enough: `swift run foolscap-selftest`, non-zero
+// on a Command Line Tools install. LoafCore is pure logic with no fixtures or
+// mocks, so a plain executable is enough: `swift run loaf-selftest`, non-zero
 // exit on failure. One suite, runnable by every contributor and by CI.
 
 var failures: [String] = []
@@ -565,7 +565,7 @@ func tempVaultDir() -> URL {
     // so an unresolved URL here would never string-compare equal to the paths FileManager
     // hands back from directory enumeration later.
     FileManager.default.temporaryDirectory
-        .appendingPathComponent("foolscap-selftest-\(UUID().uuidString)")
+        .appendingPathComponent("loaf-selftest-\(UUID().uuidString)")
         .resolvingSymlinksInPath()
 }
 
@@ -577,7 +577,7 @@ do {
     let claudePath = dir.appendingPathComponent("CLAUDE.md")
     expect(FileManager.default.fileExists(atPath: claudePath.path), true, "bootstrap creates CLAUDE.md")
     let seeded = (try? String(contentsOf: claudePath, encoding: .utf8)) ?? ""
-    expect(seeded.contains("Foolscap vault"), true, "bootstrapped CLAUDE.md carries the vault contract")
+    expect(seeded.contains("Loaf vault"), true, "bootstrapped CLAUDE.md carries the vault contract")
 
     // A second bootstrap must not clobber a CLAUDE.md the user has since edited.
     try vault.writeAtomically("edited by user", to: claudePath)
@@ -670,7 +670,7 @@ do {
 
 func tempConfigPath() -> URL {
     FileManager.default.temporaryDirectory
-        .appendingPathComponent("foolscap-selftest-config-\(UUID().uuidString).toml")
+        .appendingPathComponent("loaf-selftest-config-\(UUID().uuidString).toml")
 }
 
 let missingConfig = Config.load(from: tempConfigPath())
@@ -694,23 +694,23 @@ do {
     failures.append("Config partial-load threw: \(error)")
 }
 
-let configWithVault = Config(vault: "/tmp/foolscap-selftest-config-vault")
+let configWithVault = Config(vault: "/tmp/loaf-selftest-config-vault")
 let defaultVaultPath = ("~/Notes" as NSString).expandingTildeInPath
 
 expect(
     Vault.resolveRoot(config: configWithVault, environment: [:]).path,
-    "/tmp/foolscap-selftest-config-vault",
-    "config vault path is used when $FOOLSCAP_VAULT is unset"
+    "/tmp/loaf-selftest-config-vault",
+    "config vault path is used when $LOAF_VAULT is unset"
 )
 expect(
-    Vault.resolveRoot(config: configWithVault, environment: ["FOOLSCAP_VAULT": "/tmp/foolscap-selftest-env-vault"]).path,
-    "/tmp/foolscap-selftest-env-vault",
-    "$FOOLSCAP_VAULT overrides the config vault path"
+    Vault.resolveRoot(config: configWithVault, environment: ["LOAF_VAULT": "/tmp/loaf-selftest-env-vault"]).path,
+    "/tmp/loaf-selftest-env-vault",
+    "$LOAF_VAULT overrides the config vault path"
 )
 expect(
-    Vault.resolveRoot(config: configWithVault, environment: ["FOOLSCAP_VAULT": ""]).path,
-    "/tmp/foolscap-selftest-config-vault",
-    "an empty $FOOLSCAP_VAULT does not override"
+    Vault.resolveRoot(config: configWithVault, environment: ["LOAF_VAULT": ""]).path,
+    "/tmp/loaf-selftest-config-vault",
+    "an empty $LOAF_VAULT does not override"
 )
 expect(
     Vault.resolveRoot(config: Config(), environment: [:]).path,
@@ -721,7 +721,7 @@ expect(
 // MARK: - Config.setTheme (live theme switching — DECISIONS.md 2026-09-11)
 //
 // `HTMLPage.availableThemeNames()` (the palette-file enumeration) lives in the app
-// target, not FoolscapCore, so it isn't reachable from this Core-only selftest —
+// target, not LoafCore, so it isn't reachable from this Core-only selftest —
 // skipped here per the ticket's own allowance; it's exercised by the `--dump-dashboard`
 // two-theme diff in the PR instead.
 
@@ -1549,11 +1549,11 @@ expect(
     "only a *leading* \"Brief\" heading is stripped — one later in the body survives"
 )
 
-// `DashboardRenderer.renderBrief` (Sources/Foolscap) composes exactly these FoolscapCore
+// `DashboardRenderer.renderBrief` (Sources/Loaf) composes exactly these LoafCore
 // primitives — parse the stamp, strip the stamp line, strip a redundant leading "Brief"
 // heading, then hand the rest to `MarkdownRenderer` — before wrapping the result in its
 // own "<h2>Brief ...</h2>" section title. The selftest target deliberately carries no
-// AppKit dependency (see Package.swift) so it can't import `Foolscap` and call
+// AppKit dependency (see Package.swift) so it can't import `Loaf` and call
 // `renderBrief` directly; reconstructing its exact pipeline here proves the same thing —
 // an old brief.md that still opens with its own "# Brief" heading no longer stacks a
 // second "Brief" title under the panel's own one, and the prose still renders.

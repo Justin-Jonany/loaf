@@ -15,7 +15,7 @@ public final class VaultWatcher {
 
     public init(
         vault: Vault,
-        queue: DispatchQueue = DispatchQueue(label: "dev.jonany.foolscap.vaultwatcher"),
+        queue: DispatchQueue = DispatchQueue(label: "dev.jonany.loaf.vaultwatcher"),
         onChange: @escaping ChangeHandler
     ) {
         self.vault = vault

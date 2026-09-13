@@ -5,10 +5,10 @@ import Markdown
 ///
 /// Most nodes get a direct, structural HTML translation. GFM task-list items are the one
 /// special case: swift-markdown's AST only knows a list item is checked or unchecked, not
-/// the `due:`/`done:`/`every:` fields Foolscap attaches to a task line. So for a task item
+/// the `due:`/`done:`/`every:` fields Loaf attaches to a task line. So for a task item
 /// we go back to the item's *source* line (via its parsed `range`) and re-parse it with
 /// `TaskLine`, which is what actually knows the date semantics — this is why the renderer
-/// lives in `FoolscapCore` next to `TaskLine` rather than being a dumb converter.
+/// lives in `LoafCore` next to `TaskLine` rather than being a dumb converter.
 public enum MarkdownRenderer {
     public static func renderHTML(
         from markdown: String,

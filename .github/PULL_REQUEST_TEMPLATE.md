@@ -20,7 +20,7 @@ Ticket IDs and their Problem/Solution/Tests live in ROADMAP.md.
 <!--
 REQUIRED — no PR merges without proof it works. Attach clear, human-readable evidence,
 matched to the ticket type. A green claim in prose is not evidence; paste/attach the real thing.
-  - pure logic (parser, bucketing, date math) → paste the green `swift run foolscap-selftest`
+  - pure logic (parser, bucketing, date math) → paste the green `swift run loaf-selftest`
     output (there is NO `swift test` here) + `bash scripts/check-core-boundary.sh` = OK
   - rendering (panel layout, chips, stamps)   → a screenshot (Playwright on the composed
     HTML/WKWebView surface, or the real app)

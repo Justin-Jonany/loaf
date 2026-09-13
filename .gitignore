@@ -2,10 +2,10 @@
 .swiftpm/
 *.xcodeproj
 dist/
-Foolscap.app/
+Loaf.app/
 .DS_Store
 
-# Real config/secrets should live in ~/.config/foolscap/, never in-repo.
+# Real config/secrets should live in ~/.config/loaf/, never in-repo.
 # These are ignored defensively in case one ever ends up here by accident.
 config.toml
 .env

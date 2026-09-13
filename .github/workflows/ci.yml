@@ -20,7 +20,7 @@ jobs:
         run: gitleaks detect --source . --redact --verbose
 
   test:
-    # FoolscapCore is UI-free, so the logic suite runs without a GUI session
+    # LoafCore is UI-free, so the logic suite runs without a GUI session
     # and without Xcode.
     runs-on: macos-15
     steps:
@@ -34,16 +34,16 @@ jobs:
       - name: Self-test
         # Not `swift test`: XCTest ships only with Xcode, so the suite is a plain
         # executable that any Command Line Tools install can run.
-        run: swift run foolscap-selftest
+        run: swift run loaf-selftest
 
   app:
     needs: test
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble Foolscap.app
+      - name: Assemble Loaf.app
         run: ./build.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: Foolscap-app-unsigned
-          path: dist/Foolscap.app
+          name: Loaf-app-unsigned
+          path: dist/Loaf.app

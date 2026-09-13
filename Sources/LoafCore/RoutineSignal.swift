@@ -106,7 +106,7 @@ public struct RoutineSignal: Equatable, Sendable {
 }
 
 /// The nudge the app should fire for a given signal — the pure decision the app-side
-/// notification wiring (`Sources/Foolscap`) reads and acts on. Kept separate from
+/// notification wiring (`Sources/Loaf`) reads and acts on. Kept separate from
 /// `RoutineSignal` itself so the mapping ("what does a `failed` status *mean* for the
 /// user") stays a one-line, independently testable rule.
 public enum SignalNudge: Equatable, Sendable {

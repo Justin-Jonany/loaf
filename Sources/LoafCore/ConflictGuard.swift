@@ -8,9 +8,9 @@ import Foundation
 ///
 /// `ConflictDecision.decide` is the pure rule, with no file I/O — fully unit-testable.
 /// `ConflictGuard.hasExternalChange` is the one bit of I/O the rule needs (comparing
-/// against disk), kept here rather than in `Sources/Foolscap` because it composes
+/// against disk), kept here rather than in `Sources/Loaf` because it composes
 /// directly with `Vault`'s self-write registry. Everything below is Foundation-only, no
-/// AppKit/WebKit — `Sources/Foolscap` wires the actual conflict-copy write and user
+/// AppKit/WebKit — `Sources/Loaf` wires the actual conflict-copy write and user
 /// notice on top of it.
 public enum ConflictDecision: Equatable, Sendable {
     /// Disk hasn't changed since we read it — safe to write the app's change straight
@@ -92,7 +92,7 @@ public enum ConflictCopy {
         return fileURL.deletingLastPathComponent().appendingPathComponent(name)
     }
 
-    /// Sortable and colon-free, so the sidecar name survives every volume format Foolscap
+    /// Sortable and colon-free, so the sidecar name survives every volume format Loaf
     /// might land on.
     private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()

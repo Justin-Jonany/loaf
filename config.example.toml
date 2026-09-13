@@ -1,7 +1,7 @@
-# Copy to ~/.config/foolscap/config.toml
+# Copy to ~/.config/loaf/config.toml
 # Every key here is optional and shows its default; delete any line to accept it.
 
-# Where your notes live. Tilde is expanded. Override at runtime with $FOOLSCAP_VAULT,
+# Where your notes live. Tilde is expanded. Override at runtime with $LOAF_VAULT,
 # which always wins over this.
 vault = "~/Notes"
 

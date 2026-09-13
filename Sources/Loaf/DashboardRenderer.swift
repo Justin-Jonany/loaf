@@ -1,14 +1,14 @@
 import Foundation
-import FoolscapCore
+import LoafCore
 
-/// Turns an already-bucketed `Dashboard` (FoolscapCore's pure `DashboardComposer`) into
+/// Turns an already-bucketed `Dashboard` (LoafCore's pure `DashboardComposer`) into
 /// the HTML the WKWebView loads. Composition into HTML is deliberately kept out of
-/// FoolscapCore (ROADMAP B1) — this file is the app/renderer layer, plain Foundation, no
+/// LoafCore (ROADMAP B1) — this file is the app/renderer layer, plain Foundation, no
 /// AppKit.
 ///
 /// Each task row's tidy content (sentence + due chip + type tag + priority dot + source
 /// icon, no raw `@`/`#`/`!` tokens — DESIGN.md → Tasks, ROADMAP B4) is rendered by
-/// `FoolscapCore.DashboardTaskRenderer`; this file only wraps that fragment in the `<li>`
+/// `LoafCore.DashboardTaskRenderer`; this file only wraps that fragment in the `<li>`
 /// that carries the write-back `data-file`/`data-line` attributes and the checkbox.
 enum DashboardRenderer {
     static func renderBody(
@@ -27,7 +27,7 @@ enum DashboardRenderer {
     /// note, so basic formatting (paragraphs, emphasis) survives.
     ///
     /// The first line may carry the morning routine's build-time stamp (ROADMAP D1;
-    /// DESIGN.md → Trust → "Freshness") — parsed by `FoolscapCore.BriefStamp` and shown
+    /// DESIGN.md → Trust → "Freshness") — parsed by `LoafCore.BriefStamp` and shown
     /// next to the heading, then stripped before the rest renders as prose so the raw
     /// `<!-- built: ... -->` comment never shows up as text.
     private static func renderBrief(_ brief: String) -> String {
@@ -39,7 +39,7 @@ enum DashboardRenderer {
         // build-time stamp comment (above), then strip a redundant leading `# Brief`
         // heading an older brief.md might still carry — the panel already draws its own
         // "Brief" title next to the stamp, so left in place it would render as a second,
-        // stacked "Brief" heading. Both live in `FoolscapCore.BriefStamp` so they're
+        // stacked "Brief" heading. Both live in `LoafCore.BriefStamp` so they're
         // unit-testable without a `WKWebView`.
         let stripped = BriefStamp.stripStampLine(from: brief).trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmed = BriefStamp.stripLeadingBriefHeading(from: stripped)

@@ -2,7 +2,7 @@ import Foundation
 
 /// A date with no time and no time zone.
 ///
-/// Foolscap never stores an instant for a due date. Round-tripping a due date through
+/// Loaf never stores an instant for a due date. Round-tripping a due date through
 /// `Date` reintroduces a timestamp, and a later time-zone change then silently shifts
 /// the day — the most common bug in todo apps. A task due the 19th is due the 19th in
 /// Melbourne and in Reykjavík.

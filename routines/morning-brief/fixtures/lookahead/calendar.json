@@ -1,5 +1,5 @@
 {
-  "_comment": "Fixture for routines/morning-brief/dry_run.sh (lookahead scenario). Pinned to FOOLSCAP_TODAY=2026-09-14. Exercises the 7-day window + cross-run de-dup. See routines/morning-brief/SKILL.md -> 'Reading the calendar'.",
+  "_comment": "Fixture for routines/morning-brief/dry_run.sh (lookahead scenario). Pinned to LOAF_TODAY=2026-09-14. Exercises the 7-day window + cross-run de-dup. See routines/morning-brief/SKILL.md -> 'Reading the calendar'.",
   "events": [
     {
       "id": "evt-standup",

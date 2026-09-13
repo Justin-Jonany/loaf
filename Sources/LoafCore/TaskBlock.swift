@@ -275,7 +275,7 @@ public struct TaskBlock: Equatable, Sendable {
     /// (for appending to the month's archive shard) alongside the source document with
     /// that block's lines removed. Mirrors `toggling`/`settingFocus`'s parse-at-line,
     /// re-render, stale-click-returns-`nil` shape exactly — the caller (`archiveTask` in
-    /// `Sources/Foolscap/main.swift`) is the one that decides the write ORDER (shard
+    /// `Sources/Loaf/main.swift`) is the one that decides the write ORDER (shard
     /// first, then this removal), since that's a two-file concern this pure function
     /// doesn't touch. Deliberately leaves `isDone`/`done` exactly as found — archiving is
     /// available on any task now, not only a done one, and the archived record's whole
@@ -332,7 +332,7 @@ public struct TaskBlock: Equatable, Sendable {
 
 /// ISO-8601-with-offset parsing/formatting for the `archived:` stamp — an instant, not a
 /// `CalendarDate`, so it mirrors `BriefStamp`'s own `ISO8601DateFormatter` +
-/// `.withInternetDateTime` pattern (`Sources/FoolscapCore/BriefStamp.swift`) rather than
+/// `.withInternetDateTime` pattern (`Sources/LoafCore/BriefStamp.swift`) rather than
 /// `DateToken` below, which only ever resolves to a `CalendarDate`.
 private enum ArchiveStamp {
     private static let formatter: ISO8601DateFormatter = {

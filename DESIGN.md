@@ -1,6 +1,6 @@
 # Design
 
-What Foolscap *is*, structurally — the app's shape and mental model. ROADMAP says what's
+What Loaf *is*, structurally — the app's shape and mental model. ROADMAP says what's
 next and in what order; DECISIONS logs why things changed; this says what the thing is.
 
 Settled 2026-08-18. Where a detail is a reasonable default rather than a hard commitment it's
@@ -22,7 +22,7 @@ right now.
 
 ## The two halves
 
-Foolscap is split in two, and the split is the whole architecture:
+Loaf is split in two, and the split is the whole architecture:
 
 | | The **viewer** (this Swift app) | The **brains** (a scheduled Claude run) |
 |---|---|---|
@@ -182,6 +182,6 @@ Stated so they stay decided:
   surface; it's deferred, not designed-in.
 - **No time/effort estimates.** Tried in planning, dropped as noise unless load-bearing.
 - **No in-panel authoring workflow.** You *can* edit any file in any editor and the panel
-  repaints, but Foolscap isn't where you sit and type. Claude fills it; you tick it; the
+  repaints, but Loaf isn't where you sit and type. Claude fills it; you tick it; the
   long-term list you grow by talking to Claude or editing the file.
 - **One device at a time.** Multi-Mac sync of the vault is out of scope.

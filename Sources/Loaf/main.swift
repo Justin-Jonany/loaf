@@ -1,7 +1,7 @@
 import AppKit
 import WebKit
 import UserNotifications
-import FoolscapCore
+import LoafCore
 
 // The `--dump-dashboard <vault> <output.html>` entry point renders the composed
 // dashboard for `vault` to a standalone HTML file and exits — no GUI, no NSApplication
@@ -28,7 +28,7 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--dump-dashboard"),
         try html.write(toFile: outputPath, atomically: true, encoding: .utf8)
         exit(0)
     } catch {
-        FileHandle.standardError.write("Foolscap: couldn't write dashboard HTML: \(error)\n".data(using: .utf8)!)
+        FileHandle.standardError.write("Loaf: couldn't write dashboard HTML: \(error)\n".data(using: .utf8)!)
         exit(1)
     }
 }
@@ -36,7 +36,7 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--dump-dashboard"),
 /// The body of `--demo-conflict-guard`, factored out so it reads top-to-bottom as the demo
 /// script it is. Seeds a vault, simulates the morning run rewriting `tasks.md` while the
 /// app has an in-flight checkbox toggle based on the version it originally read, runs the
-/// real X1 guard logic (`ConflictGuard`/`ConflictDecision` from `FoolscapCore`), and prints
+/// real X1 guard logic (`ConflictGuard`/`ConflictDecision` from `LoafCore`), and prints
 /// + leaves the resulting BEFORE/AFTER files under `dir` for inspection.
 func runConflictGuardDemo(in dir: URL) throws {
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -107,7 +107,7 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-conflict-guard")
         try runConflictGuardDemo(in: demoDir)
         exit(0)
     } catch {
-        FileHandle.standardError.write("Foolscap: conflict-guard demo failed: \(error)\n".data(using: .utf8)!)
+        FileHandle.standardError.write("Loaf: conflict-guard demo failed: \(error)\n".data(using: .utf8)!)
         exit(1)
     }
 }
@@ -222,7 +222,7 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-archive"),
         try runArchiveDemo(in: demoDir)
         exit(0)
     } catch {
-        FileHandle.standardError.write("Foolscap: archive demo failed: \(error)\n".data(using: .utf8)!)
+        FileHandle.standardError.write("Loaf: archive demo failed: \(error)\n".data(using: .utf8)!)
         exit(1)
     }
 }
@@ -232,10 +232,10 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-archive"),
 /// filter still catches changes to it while `Vault.notePaths()` skips it as a note.
 let routineSignalFileName = ".routine-signal.md"
 
-let routineDecisionTitle = "Foolscap needs a decision"
+let routineDecisionTitle = "Loaf needs a decision"
 /// Distinct from the decision title — a broken/failed run must read as louder, not as an
 /// ordinary nudge (DESIGN.md → Trust: "Failure is loud").
-let routineFailureTitle = "⚠️ Foolscap run failed"
+let routineFailureTitle = "⚠️ Loaf run failed"
 
 /// The notification body for a decision nudge: the one-line reason, plus each question as
 /// its own bullet. The actual back-and-forth happens in a Claude Code chat, not the panel
@@ -247,7 +247,7 @@ func routineDecisionBody(reason: String, questions: [String]) -> String {
 
 /// The body of `--demo-signal`, factored out so it reads top-to-bottom as the demo script
 /// it is. Reads `.routine-signal.md` from `vaultPath` (if present at all) through the real
-/// `RoutineSignal.parse`/`SignalNudge.decide` logic from `FoolscapCore` and prints which
+/// `RoutineSignal.parse`/`SignalNudge.decide` logic from `LoafCore` and prints which
 /// nudge it would fire — title/body — without touching `UNUserNotificationCenter` or
 /// AppKit. This is D2's non-GUI proof path (mirrors `--demo-conflict-guard` above): the
 /// sandbox has no display to capture a real notification banner in.
@@ -290,7 +290,7 @@ if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-signal"),
         try runSignalDemo(vaultPath: demoVaultPath)
         exit(0)
     } catch {
-        FileHandle.standardError.write("Foolscap: signal demo failed: \(error)\n".data(using: .utf8)!)
+        FileHandle.standardError.write("Loaf: signal demo failed: \(error)\n".data(using: .utf8)!)
         exit(1)
     }
 }
@@ -331,7 +331,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         do {
             try vault.bootstrapIfEmpty()
         } catch {
-            NSLog("Foolscap: couldn't bootstrap vault at \(vault.root.path): \(error)")
+            NSLog("Loaf: couldn't bootstrap vault at \(vault.root.path): \(error)")
         }
         migrateFocusToken()
 
@@ -363,7 +363,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         menu.addItem(themeItem)
         menu.addItem(NSMenuItem(title: "Open Vault in Finder", action: #selector(openVaultInFinder), keyEquivalent: "o"))
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Foolscap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit Loaf", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         // Quit's target stays nil so terminate: routes down the responder chain to NSApp, which implements it.
         menu.items.forEach { item in
             item.target = (item.action == #selector(NSApplication.terminate(_:))) ? nil : self
@@ -397,7 +397,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         do {
             try Config.setTheme(name)
         } catch {
-            NSLog("Foolscap: couldn't write theme \"\(name)\" to the config file: \(error)")
+            NSLog("Loaf: couldn't write theme \"\(name)\" to the config file: \(error)")
             return
         }
         config.theme = name
@@ -600,7 +600,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
 
         if !saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot) {
-            NSLog("Foolscap: checkbox toggle for \(file) line \(line) did not land — see the write/conflict log above")
+            NSLog("Loaf: checkbox toggle for \(file) line \(line) did not land — see the write/conflict log above")
         }
         // Whether the write went through, got saved as a conflict copy, or (in principle)
         // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.
@@ -630,7 +630,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
 
         if !saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot) {
-            NSLog("Foolscap: focus toggle for \(file) line \(line) did not land — see the write/conflict log above")
+            NSLog("Loaf: focus toggle for \(file) line \(line) did not land — see the write/conflict log above")
         }
         // Whether the write went through, got saved as a conflict copy, or (in principle)
         // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.
@@ -660,7 +660,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             do {
                 try vault.writeAtomically(migrated, to: url)
             } catch {
-                NSLog("Foolscap: couldn't migrate the ★→today token in \(url.lastPathComponent): \(error) — the file is unchanged and still parses (both spellings are accepted)")
+                NSLog("Loaf: couldn't migrate the ★→today token in \(url.lastPathComponent): \(error) — the file is unchanged and still parses (both spellings are accepted)")
             }
         }
     }
@@ -697,13 +697,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let archiveSnapshot = FileSnapshot.current(at: archiveURL) ?? FileSnapshot(mtime: .distantPast, size: -1)
 
         guard saveSharedFile(updatedShard, to: archiveURL, readSnapshot: archiveSnapshot) else {
-            NSLog("Foolscap: couldn't append the archived task to \(archiveURL.lastPathComponent) — leaving \(file) untouched so nothing is lost")
+            NSLog("Loaf: couldn't append the archived task to \(archiveURL.lastPathComponent) — leaving \(file) untouched so nothing is lost")
             renderDashboard()
             return
         }
 
         if !saveSharedFile(remainingLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot) {
-            NSLog("Foolscap: the block landed in \(archiveURL.lastPathComponent) but the strip from \(file) did not — it's now duplicated on disk (recoverable), not lost")
+            NSLog("Loaf: the block landed in \(archiveURL.lastPathComponent) but the strip from \(file) did not — it's now duplicated on disk (recoverable), not lost")
         }
         renderDashboard()
     }
@@ -734,13 +734,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let tasksSnapshot = FileSnapshot.current(at: tasksURL) ?? FileSnapshot(mtime: .distantPast, size: -1)
 
         guard saveSharedFile(updatedTasks, to: tasksURL, readSnapshot: tasksSnapshot) else {
-            NSLog("Foolscap: couldn't append the restored task to tasks.md — leaving \(archiveFile) untouched so nothing is lost")
+            NSLog("Loaf: couldn't append the restored task to tasks.md — leaving \(archiveFile) untouched so nothing is lost")
             renderArchiveView()
             return
         }
 
         if !saveSharedFile(remainingLines.joined(separator: "\n"), to: archiveURL, readSnapshot: readSnapshot) {
-            NSLog("Foolscap: the block landed in tasks.md but the strip from \(archiveFile) did not — it's now duplicated on disk (recoverable), not lost")
+            NSLog("Loaf: the block landed in tasks.md but the strip from \(archiveFile) did not — it's now duplicated on disk (recoverable), not lost")
         }
         renderArchiveView()
     }
@@ -774,7 +774,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 try vault.writeAtomically(dirtyContent, to: url)
                 return true
             } catch {
-                NSLog("Foolscap: couldn't write \(url.path): \(error)")
+                NSLog("Loaf: couldn't write \(url.path): \(error)")
                 return false
             }
         case .conflictKeepDiskSaveCopy:
@@ -785,12 +785,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             do {
                 try vault.writeAtomically(dirtyContent, to: conflictURL)
                 NSLog(
-                    "Foolscap: write conflict on \(url.lastPathComponent) — kept the on-disk "
+                    "Loaf: write conflict on \(url.lastPathComponent) — kept the on-disk "
                         + "version, saved your change to \(conflictURL.lastPathComponent)"
                 )
                 presentConflictNotice(originalFile: url.lastPathComponent, conflictFile: conflictURL.lastPathComponent)
             } catch {
-                NSLog("Foolscap: couldn't save conflict copy for \(url.path): \(error)")
+                NSLog("Loaf: couldn't save conflict copy for \(url.path): \(error)")
             }
             return false
         case .reloadClean:
@@ -851,7 +851,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private func requestNotificationAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, error in
             if let error {
-                NSLog("Foolscap: notification authorization request failed: \(error)")
+                NSLog("Loaf: notification authorization request failed: \(error)")
             }
         }
     }
@@ -859,9 +859,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// Reads `.routine-signal.md` fresh from disk and posts the nudge it maps to (or
     /// nothing, on a clear day) — called once at launch and again whenever the watcher
     /// reports the signal file changed. All the actual decision logic
-    /// (`RoutineSignal.parse` / `SignalNudge.decide`) lives in `FoolscapCore`, pure and
+    /// (`RoutineSignal.parse` / `SignalNudge.decide`) lives in `LoafCore`, pure and
     /// unit-tested; this is just the AppKit-side wiring DESIGN.md's boundary keeps out of
-    /// `FoolscapCore`.
+    /// `LoafCore`.
     private func checkRoutineSignal() {
         let signalURL = vault.root.appendingPathComponent(routineSignalFileName)
         // An unreadable-but-present file (permissions, non-UTF8 content, ...) collapses to
@@ -909,7 +909,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request) { error in
             if let error {
-                NSLog("Foolscap: couldn't post notification \"\(title)\": \(error)")
+                NSLog("Loaf: couldn't post notification \"\(title)\": \(error)")
             }
         }
     }
