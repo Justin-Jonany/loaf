@@ -26,6 +26,12 @@
 
 set -uo pipefail
 
+# launchd runs this job with a minimal PATH (/usr/bin:/bin:/usr/sbin:/sbin) that omits
+# Homebrew and ~/.local/bin, so `claude` isn't found and the run dies with exit 127.
+# Prepend the usual install locations so the routine works under launchd, not just in
+# an interactive shell.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 ROUTINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_PATH="${FOOLSCAP_CONFIG:-$HOME/.config/foolscap/config.toml}"
 
