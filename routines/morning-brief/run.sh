@@ -57,7 +57,9 @@ if [[ -z "$VAULT" ]]; then
 fi
 VAULT="${VAULT:-$HOME/Notes}"
 
-TODAY="$(date +%F)"
+# why: overridable so dry_run.sh fixtures can pin a deterministic "today" for the 7-day
+# lookahead window; production leaves this unset and gets the real date.
+TODAY="${FOOLSCAP_TODAY:-$(date +%F)}"
 # ISO 8601 with a colon in the UTC offset (macOS `date %z` omits it) — see SKILL.md ->
 # "Writing brief.md" for the exact format D1 (ROADMAP.md) is expected to parse.
 BUILD_TIME="$(date +%FT%T%z | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"

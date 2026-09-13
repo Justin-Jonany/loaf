@@ -131,5 +131,15 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   line before the rest renders as prose; `frosted.css` gains a `.freshness` rule (tinted
   with the existing `--due-over` color when unknown, so a stale/unknown brief reads as a
   warning). Self-test suite grown to 244 checks.
+- `routines/morning-brief/dry_run.sh`: a new `lookahead` scenario/fixture
+  (`fixtures/lookahead/`) asserting the 7-day window picks up a future event, doesn't
+  duplicate a pre-seeded calendar task for an event already captured, and leaves an
+  event beyond the window alone.
+
+### Changed
+- `routines/morning-brief` (SKILL.md, run.sh): the morning routine now reads a rolling
+  7-day calendar window (today through today+7, inclusive) instead of today only, and
+  de-dupes calendar-derived tasks across runs — a rescheduled event edits its existing
+  task's `@due` instead of adding a duplicate. See DECISIONS.md 2026-09-12.
 
 Nothing is released yet. See [ROADMAP.md](ROADMAP.md) for what v0.1 requires.

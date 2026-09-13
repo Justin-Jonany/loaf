@@ -4,6 +4,33 @@ A running log of the decisions that shaped Foolscap — newest first. Each entry
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-12 — Morning routine looks 7 days ahead and de-dupes calendar tasks across runs
+
+**Decided:** the morning-brief routine (`routines/morning-brief/SKILL.md`) no longer reads
+the calendar for today's date only — it reads a rolling window from today through today+7,
+inclusive, in both the live path and the dry-run/fixture path (the fixture is filtered to
+the same window by each event's `start` date). A future calendar-derived task is due-dated
+with the event's own date, ISO `YYYY-MM-DD`, not `@today` and not the day before. Because
+the same event can now surface across several mornings' windows, the routine checks
+`tasks.md` before adding — matching on the event (title + date), not exact wording — and
+adds nothing if it already captured that event. If a captured event has been rescheduled,
+the routine edits that task's existing `@due` to the new date instead of adding a second
+one (the one calendar case where it changes an existing `@due`) and cites the reschedule in
+`brief.md`'s "What changed." A cancelled event can't be removed (still add-only) — the
+routine leaves the task and notes the cancellation in `brief.md` so the user can clear it
+by hand.
+
+**Why:** today-only gave zero advance visibility — an event three days out never became a
+task until the morning it happened, which is exactly the gap DECISIONS.md 2026-09-09
+(ticket C1) flagged when it noted a far-dated calendar event "isn't promoted to Long-term
+... it stays in `tasks.md`" and (per `SKILL.md`) "surfaces in This-week as it nears" — that
+only works if something actually looks far enough ahead to put it there. The cost of
+looking ahead is that add-only means a task, once written, can't be retracted by the
+routine if the event turns out to be routine-classified wrong or gets cancelled later; a
+7-day window (rather than, say, 30) keeps the lookahead inside the range where events are
+mostly settled, and rescheduling edits the existing task rather than piling up duplicates
+as the same event drifts across a few mornings' windows.
+
 ## 2026-09-12 — Completed tasks stay visible until the user archives them
 
 **Decided:** completed tasks stay visible on the panel indefinitely — struck-through, in
