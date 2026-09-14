@@ -4,6 +4,25 @@ A running log of the decisions that shaped Loaf — newest first. Each entry rec
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-14 — Today is drag-reorderable; This week/Long-term are not
+
+**Decided:** dragging a row within the dashboard's Today section reorders it by physically
+moving the task's block (checkbox line + metadata line + optional note line) within its
+source file, verbatim — the drag handle is the same `.focus-toggle` element the
+drag-to-Today gesture already uses, distinguished by whether the drag started AND ended in
+Today (`fromSection === 'today'` on both ends, not `payload.focused` — a task can sit in
+Today from an overdue/due-today `@due` with no `today` token at all). This week and
+Long-term stay sorted by due date and are not reorderable. Because Today composes
+tasks.md-members before longterm.md-members, a drag that would interleave the two files has
+no representable on-disk order — such a drop (or a drop onto empty Today space, or onto the
+row's own position) is a safe no-op, never a write.
+
+**Why:** reordering only means something where the user actually curates order by hand;
+This week/Long-term are already meaningfully ordered by due date, so adding drag-reorder
+there would just let a drag silently fight that ordering on the next render. Moving the
+block's raw lines rather than re-rendering it (unlike the checkbox/focus toggles) keeps a
+reorder from ever reformatting a task the user didn't touch.
+
 ## 2026-09-13 — Repo goes public (supersedes 2026-08-15 "private GitHub")
 
 **Decided:** the repository is now public. The rest of the 2026-08-15 workflow stands — no

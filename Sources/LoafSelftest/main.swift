@@ -540,6 +540,87 @@ expect(restoredParsed.priority, .high, "restoring leaves other metadata (priorit
 // A stale click on the archive shard — the line no longer starts a checkbox — is dropped.
 expectNil(TaskBlock.restoring(["# Heading"], at: 0), "restoring a non-checkbox line returns nil")
 
+// MARK: - TaskBlock.moving (Today reorder write-back)
+
+let reorderDoc = [
+    "- [ ] Email the landlord",
+    "      @today · manual",
+    "- [ ] Prep the client deck",
+    "      @2026-08-20 · calendar",
+    "- [ ] Read chapter 4",
+    "      @fri · manual",
+]
+
+// Moving a later block before an earlier one reorders correctly.
+let movedLater = TaskBlock.moving(reorderDoc, blockAt: 4, toBefore: 0)!
+expect(
+    movedLater,
+    [
+        "- [ ] Read chapter 4",
+        "      @fri · manual",
+        "- [ ] Email the landlord",
+        "      @today · manual",
+        "- [ ] Prep the client deck",
+        "      @2026-08-20 · calendar",
+    ],
+    "moving the last block before the first puts it at the front, verbatim"
+)
+expect(TaskBlock.parse(movedLater, at: 0)!.block.text, "Read chapter 4", "the moved block now parses first")
+expect(TaskBlock.parse(movedLater, at: 2)!.block.text, "Email the landlord", "the rest of the document shifts down intact")
+
+// Moving an earlier block before a later one exercises the index-adjustment path (the
+// target index must be reinterpreted once the source range is removed ahead of it).
+let movedEarlier = TaskBlock.moving(reorderDoc, blockAt: 0, toBefore: 4)!
+expect(
+    movedEarlier,
+    [
+        "- [ ] Prep the client deck",
+        "      @2026-08-20 · calendar",
+        "- [ ] Email the landlord",
+        "      @today · manual",
+        "- [ ] Read chapter 4",
+        "      @fri · manual",
+    ],
+    "moving the first block before the last places it immediately ahead of the target"
+)
+
+// A block with a note line moves all three of its lines together, and content is
+// preserved verbatim — no re-rendering, unlike toggling/settingFocus.
+let notedReorderDoc = [
+    "- [ ] Prep the client deck",
+    "      @2026-08-20 · calendar · !high · #schoolwork",
+    "      Focus on the pricing slide — they pushed back last time.",
+    "- [ ] Email the landlord",
+    "      @today · manual",
+]
+let movedNoted = TaskBlock.moving(notedReorderDoc, blockAt: 0, toBefore: notedReorderDoc.count)!
+expect(
+    movedNoted,
+    [
+        "- [ ] Email the landlord",
+        "      @today · manual",
+        "- [ ] Prep the client deck",
+        "      @2026-08-20 · calendar · !high · #schoolwork",
+        "      Focus on the pricing slide — they pushed back last time.",
+    ],
+    "toBefore == lines.count moves the block to the very end, note line and all"
+)
+expect(movedNoted[4], notedReorderDoc[2], "the note line travels with its block, byte-for-byte unchanged")
+
+// A stale drag — the source line no longer starts a checkbox — is dropped.
+expectNil(
+    TaskBlock.moving(["just prose", "- [ ] Task", "      @today · manual"], blockAt: 0, toBefore: 1),
+    "moving from a non-checkbox source line returns nil"
+)
+
+// Dropping a block on itself (the target falls inside the source block's own range) is a
+// no-op, not an error.
+expectNil(TaskBlock.moving(reorderDoc, blockAt: 0, toBefore: 0), "dropping a block on its own checkbox line returns nil")
+
+// A target that isn't a checkbox-line start (and isn't lines.count) is rejected.
+expectNil(TaskBlock.moving(reorderDoc, blockAt: 0, toBefore: 3), "a target mid-block (not a checkbox start) returns nil")
+expectNil(TaskBlock.moving(reorderDoc, blockAt: 0, toBefore: 99), "a target past the end of the document returns nil")
+
 // MARK: - Archive (archive shard pathing)
 
 let archiveTestVaultDir = tempVaultDir()
@@ -885,6 +966,74 @@ do {
 } catch {
     failures.append("Dashboard vault compose threw: \(error)")
 }
+
+// This week isn't curated (unlike Today), so it sorts earliest-due-first regardless of
+// the order tasks appear in tasks.md.
+let outOfOrderWeekTasks = [
+    "- [ ] Five days out",
+    "      @2026-08-17 · manual",
+    "- [ ] Two days out",
+    "      @2026-08-14 · manual",
+    "- [ ] Four days out",
+    "      @2026-08-16 · manual",
+].joined(separator: "\n")
+let outOfOrderWeekDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: outOfOrderWeekTasks, longtermMarkdown: "", today: dashToday
+)
+expect(
+    outOfOrderWeekDash.thisWeek.map { $0.block.text }, ["Two days out", "Four days out", "Five days out"],
+    "This week sorts earliest-due-first, not parse order"
+)
+
+// Long-term sorts the same way, earliest-due-first.
+let outOfOrderLongtermTasks = [
+    "- [ ] Later",
+    "      @2027-03-01 · manual",
+    "- [ ] Sooner",
+    "      @2026-09-01 · manual",
+    "- [ ] Middle",
+    "      @2026-12-01 · manual",
+].joined(separator: "\n")
+let outOfOrderLongtermDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: "", longtermMarkdown: outOfOrderLongtermTasks, today: dashToday
+)
+expect(
+    outOfOrderLongtermDash.longTerm.map { $0.block.text }, ["Sooner", "Middle", "Later"],
+    "Long-term sorts earliest-due-first, not parse order"
+)
+
+// Same-day ties keep their source order — the sort is stable, not just ascending.
+let tiedWeekTasks = [
+    "- [ ] First same-day",
+    "      @2026-08-15 · manual",
+    "- [ ] Second same-day",
+    "      @2026-08-15 · manual",
+].joined(separator: "\n")
+let tiedWeekDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: tiedWeekTasks, longtermMarkdown: "", today: dashToday
+)
+expect(
+    tiedWeekDash.thisWeek.map { $0.block.text }, ["First same-day", "Second same-day"],
+    "same-due-date This week tasks keep their source order"
+)
+
+// Today is manually reorderable (B7), so it must never be resorted by due date — parse
+// order survives even when it disagrees with due-date order.
+let unsortedTodayTasks = [
+    "- [ ] Alpha",
+    "      @2026-08-10 · manual",
+    "- [ ] Bravo",
+    "      @today · manual",
+    "- [ ] Charlie",
+    "      @2026-08-11 · manual",
+].joined(separator: "\n")
+let unsortedTodayDash = DashboardComposer.compose(
+    brief: "", tasksMarkdown: unsortedTodayTasks, longtermMarkdown: "", today: dashToday
+)
+expect(
+    unsortedTodayDash.today.map { $0.block.text }, ["Alpha", "Bravo", "Charlie"],
+    "Today keeps parse order, not due-date order"
+)
 
 // MARK: - Dashboard (B7 — Curated Today: ★ pulls a task into Today)
 

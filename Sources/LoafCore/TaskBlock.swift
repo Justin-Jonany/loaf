@@ -269,6 +269,39 @@ public struct TaskBlock: Equatable, Sendable {
         return result
     }
 
+    /// Moves the block starting at `lines[sourceIndex]` so it sits immediately before the
+    /// block starting at `lines[targetIndex]` — or, when `targetIndex == lines.count`, to
+    /// the very end of the document. The write-back for Today's drag-to-reorder
+    /// (DECISIONS.md 2026-09-14). Unlike `toggling`/`settingFocus`, the block's lines move
+    /// VERBATIM — this is a physical reorder, not an edit, so it must never re-render or
+    /// canonicalize the block's formatting. Returns `nil` when `sourceIndex` isn't a
+    /// checkbox line, when `targetIndex` isn't a checkbox-line start (and isn't
+    /// `lines.count`), or when `targetIndex` falls inside the source block's own range — a
+    /// drop on itself is a no-op, not an error — so a caller can tell a stale or no-op drag
+    /// from a real move and drop it rather than write something corrupt.
+    public static func moving(
+        _ lines: [String], blockAt sourceIndex: Int, toBefore targetIndex: Int, today: CalendarDate = .today()
+    ) -> [String]? {
+        guard let (_, consumed) = parse(lines, at: sourceIndex, today: today) else { return nil }
+        let sourceRange = sourceIndex..<(sourceIndex + consumed)
+
+        guard targetIndex == lines.count
+            || (targetIndex >= 0 && targetIndex < lines.count && parseCheckboxLine(lines[targetIndex]) != nil)
+        else { return nil }
+        guard !sourceRange.contains(targetIndex) else { return nil }
+
+        let block = Array(lines[sourceRange])
+        var result = lines
+        result.removeSubrange(sourceRange)
+        // The target index was computed against the document BEFORE the source range was
+        // removed; once it's removed, everything from `sourceIndex` on shifts back by
+        // `consumed` lines, so a target that was after the source needs the same
+        // adjustment to still name the right insertion point.
+        let insertionIndex = targetIndex > sourceIndex ? targetIndex - consumed : targetIndex
+        result.insert(contentsOf: block, at: insertionIndex)
+        return result
+    }
+
     // MARK: - Permanent archive write-back (DECISIONS.md 2026-09-11)
 
     /// Applies the archive stamp to the block at `lines[index]` and returns it rendered

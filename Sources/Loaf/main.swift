@@ -555,6 +555,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                   let focus = (body["focus"] as? NSNumber)?.boolValue
             else { return }
             setFocus(file: file, atLine: line, focus: focus)
+        case "reorderTask":
+            guard let body = message.body as? [String: Any],
+                  let file = body["file"] as? String,
+                  let line = (body["line"] as? NSNumber)?.intValue,
+                  let beforeLine = (body["beforeLine"] as? NSNumber)?.intValue
+            else { return }
+            reorderTask(file: file, fromLine: line, beforeLine: beforeLine)
         case "archiveTask":
             guard let body = message.body as? [String: Any],
                   let file = body["file"] as? String,
@@ -631,6 +638,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
         if !saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot) {
             NSLog("Loaf: focus toggle for \(file) line \(line) did not land — see the write/conflict log above")
+        }
+        // Whether the write went through, got saved as a conflict copy, or (in principle)
+        // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.
+        renderDashboard()
+    }
+
+    /// The write-back for Today's drag-to-reorder (DECISIONS.md 2026-09-14), mirroring
+    /// `toggleTask`/`setFocus` exactly: re-reads the note fresh from disk, validates that
+    /// `fromLine` still starts a task block, and either applies the move or drops a
+    /// stale/no-op drag and re-renders. `beforeLine <= 0` means "move to the end of the
+    /// file" (the DOM has no row to name there), translated to `lines.count` for
+    /// `TaskBlock.moving`. Writes through `TaskBlock.moving`, which moves the block's lines
+    /// verbatim — a reorder must never reformat the task.
+    private func reorderTask(file: String, fromLine: Int, beforeLine: Int) {
+        guard Self.dashboardFiles.contains(file) else { return }
+        let noteURL = vault.root.appendingPathComponent(file)
+        guard let markdown = try? vault.read(noteURL) else { return }
+        // Snapshot the file as we found it — the version the move below is based on —
+        // so the X1 guard can tell whether the morning run (or anything else) rewrote it
+        // out from under this drag before the write below lands.
+        guard let readSnapshot = FileSnapshot.current(at: noteURL) else { return }
+        let lines = markdown.components(separatedBy: "\n")
+        let target = beforeLine <= 0 ? lines.count : beforeLine - 1
+
+        guard fromLine >= 1, fromLine <= lines.count,
+              let updatedLines = TaskBlock.moving(lines, blockAt: fromLine - 1, toBefore: target)
+        else {
+            renderDashboard()
+            return
+        }
+
+        if !saveSharedFile(updatedLines.joined(separator: "\n"), to: noteURL, readSnapshot: readSnapshot) {
+            NSLog("Loaf: reorder for \(file) line \(fromLine) did not land — see the write/conflict log above")
         }
         // Whether the write went through, got saved as a conflict copy, or (in principle)
         // reloaded clean, re-render so the panel reflects whatever is now the truth on disk.

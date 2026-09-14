@@ -109,15 +109,34 @@ public enum DashboardComposer {
             }
         }
 
-        // Buckets are returned in parse order — a completed task keeps its position
-        // rather than sorting to the bottom on completion (DECISIONS.md 2026-09-11,
-        // reversing the earlier B6 "sorts to the bottom" call).
+        // Today stays in parse order — a completed task keeps its position rather than
+        // sorting to the bottom on completion (DECISIONS.md 2026-09-11, reversing the
+        // earlier B6 "sorts to the bottom" call), and it's the one bucket the user
+        // reorders by hand (B7 — Curated Today), so nothing here may reshuffle it.
+        // This week and Long-term aren't curated, so they sort earliest-due-first for a
+        // glanceable date order; `sortedByDue` is stable so same-day ties still fall back
+        // to parse order.
         return Dashboard(
             brief: brief,
             today: todayBucket,
-            thisWeek: weekBucket,
-            longTerm: longTermBucket
+            thisWeek: sortedByDue(weekBucket),
+            longTerm: sortedByDue(longTermBucket)
         )
+    }
+
+    /// Sorts by `due` ascending, earliest first. Every task here is guaranteed a non-nil
+    /// `due` by the caller's guard, so the force-unwrap can't trap. `Array.sorted` isn't
+    /// guaranteed stable, so ties are broken explicitly by original (parse) index to keep
+    /// same-day tasks in source order.
+    private static func sortedByDue(_ tasks: [DashboardTask]) -> [DashboardTask] {
+        tasks.enumerated()
+            .sorted { lhs, rhs in
+                let lhsDue = lhs.element.block.due!
+                let rhsDue = rhs.element.block.due!
+                if lhsDue != rhsDue { return lhsDue < rhsDue }
+                return lhs.offset < rhs.offset
+            }
+            .map { $0.element }
     }
 
     /// Scans every checkbox block in `markdown`, tagging each with its 1-based source
