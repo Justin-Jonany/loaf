@@ -142,8 +142,28 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   calendar tasks; `interview-day` (`fixtures/interview-day/`) asserts a bare one-off with
   no description or attendees (a dentist appointment) still becomes a task alongside a
   one-off interview, while a recurring lecture stays context.
+- Five new opaque theme palettes (`daylight`, `nord`, `sepia`, `solarized-light`,
+  `solarized-dark`) under `Resources/themes/`: `:root` token sets layered on the shared
+  `base.css`, alongside the existing `frosted`/`console`/`card` themes.
+- Live theme switching: a "Theme" menu-bar submenu (`main.swift`'s `buildThemeMenu`,
+  populated from every palette file under `Resources/themes/`) writes the pick to the
+  config and repaints immediately; the theme is re-read from config on every repaint, not
+  just at launch (DECISIONS.md 2026-09-11).
+- `TaskBlock`: a `today` placement token (parsed alongside the legacy `★`) pulls a task
+  into the dashboard's Today section regardless of its `@due`; `TaskBlock.settingFocus`
+  toggles it from the panel via a sticky drag gesture. The morning routine never sets it
+  (DESIGN.md → Focus, DECISIONS.md 2026-09-11).
+- Permanent task archive (`LoafCore/Archive.swift`, `Sources/Loaf/ArchiveRenderer.swift`):
+  clearing a task moves it to a monthly-sharded `archive/YYYY-MM.md` (stamped
+  `archived:<instant>`) instead of deleting it, with a Restore control that reopens it;
+  `TaskBlock.archiving`/`restoring` implement the move and its inverse.
+- `skills/loaf-notes/`: a user-invocable Claude Code skill that adds/edits tasks and
+  long-term goals in the vault from any directory in plain language — it resolves the
+  vault location and writes the metadata-below task format so edits parse correctly,
+  editing `tasks.md`/`longterm.md` while leaving the Claude-owned `brief.md` alone.
 
 ### Changed
+- Project renamed Foolscap → Loaf across the repo.
 - `routines/morning-brief` (SKILL.md, run.sh): the morning routine now reads a rolling
   7-day calendar window (today through today+7, inclusive) instead of today only, and
   de-dupes calendar-derived tasks across runs — a rescheduled event edits its existing

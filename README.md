@@ -1,8 +1,10 @@
 # Loaf
 
-A note widget that floats on your macOS desktop, backed by plain markdown in a folder
-you own — **with a storage format designed so a coding agent can edit your notes using
-ordinary file tools.** No API, no plugin, no sync service.
+An **agent-native** daily-briefing app for macOS — a small panel that floats on your
+desktop, backed by plain markdown in a folder you own. No API, no plugin, no sync
+service: **the storage format is the interface, so any coding agent can read and write
+your notes with ordinary file tools.** A scheduled Claude run fills it in each morning,
+and a companion skill (`loaf-notes`, below) lets you jot to it in plain language.
 
 > **Status: pre-release.** It builds and launches, composes the four-section dashboard
 > from a vault (`brief.md` / `tasks.md` / `longterm.md`), and the morning routine can
@@ -11,15 +13,22 @@ ordinary file tools.** No API, no plugin, no sync service.
 
 ---
 
-## Why this exists
+## Why I made this
 
-Desktop sticky-note apps are a solved and crowded problem. This one is different in
-exactly one way: **the file format is the API.**
+I have trouble planning my day. I'm also too lazy to sit down and write a decent
+to-do list — which means I procrastinate on writing one at all, which means the day
+runs me instead of the other way around. Handing that job to Claude breaks the loop:
+I'm not lazy about a list that writes itself. Checking the brief is the first thing I
+do when I wake up.
 
-Point Claude Code, or any agent that can read and write files, at `~/Notes` and it can
-add a task, tick one off, restructure a page, or drop in a diagram. The widget watches
-the folder and repaints. There is nothing to integrate — the integration is that both
-sides agree to use markdown.
+That's the personal reason. The technical one is what made it worth building as an
+app rather than a cron job and a text file: **the file format is the API.**
+
+Desktop sticky-note apps are a solved and crowded problem; this one differs in exactly
+one way. Point Claude Code, or any agent that can read and write files, at `~/Notes`
+and it can add a task, tick one off, restructure a page, or drop in a diagram. The
+widget watches the folder and repaints. There is nothing to integrate — the
+integration is that both sides agree to use markdown.
 
 Loaf is two halves joined only by the vault folder (see [DESIGN.md](DESIGN.md) →
 "The two halves"): a scheduled **brains** run writes the files, and the **viewer** app
@@ -34,6 +43,48 @@ flowchart LR
     V -- FSEvents --> A
     A -- "tick a box → writes ✓done" --> V
 ```
+
+## A day with Loaf
+
+The morning routine runs on its own at 6:30am, before I'm up — it reads my calendar
+and recent notes and writes the brief.
+
+I wake around 8:30, have breakfast, shower, then open the laptop to a brief that's
+already written. I read it, add to it, tick off what's done.
+
+When I remember something during the day for tomorrow or next week, I open Claude and
+use the `loaf-notes` skill (below) — I type an incomplete sentence full of typos and it
+puts the task in the right file, in the right format. I never touch `@due` or `·` tokens
+by hand.
+
+Coffee chats and one-off events just sit in my calendar; the morning routine catches
+them and turns them into tasks on its own.
+
+## Jotting things down — the `loaf-notes` skill
+
+Half the point. You're mid-something and think "oh — I have to submit my taxes." You
+don't want to stop, open the vault, and remember the date format. So you don't: open
+Claude anywhere and say it however it comes out. `loaf-notes` is a Claude Code skill
+that knows where your vault is and how a task is written, so a typo-ridden fragment —
+*"submit taxs b4 apr 15"* — lands as a correctly-formatted, correctly-dated task in
+`tasks.md`. The panel repaints; you never opened a file.
+
+It ships in [`skills/loaf-notes/`](skills/loaf-notes/SKILL.md) — install it once:
+
+```bash
+cp -R skills/loaf-notes ~/.claude/skills/loaf-notes
+```
+
+Then just talk to Claude: *"add a task to call the dentist friday," "mark the expense
+report done," "focus on the proposal today."* It edits `tasks.md` / `longterm.md` and
+leaves `brief.md` (Claude's own) alone.
+
+## Demo
+
+Watching the 6:30am brief land, then ticking a box and seeing the file change, says
+more than this README can.
+
+_(video demonstration — to be made)_
 
 ## The vault
 
@@ -59,24 +110,35 @@ vault renders gracefully empty until the morning routine (or you) writes them.
 
 ## Dates
 
-Dates are plain inline text, not frontmatter and not a database — greppable, typeable,
-and still readable if this app disappears.
+Dates are plain text, not frontmatter and not a database — greppable, typeable, and
+still readable if this app disappears. A task's metadata lives on an indented line
+**beneath** the checkbox, tokens separated by ` · `, so the task itself still reads as
+a plain sentence:
 
 ```markdown
-- [ ] Ask about compactness   due:2026-08-12
-- [ ] Send Mei the sketch     due:2026-08-10
-- [ ] Water the plants        every:week
-- [x] Re-read §3.2            done:2026-08-11
+- [ ] Prep the client deck
+      @20aug · !high · #schoolwork · calendar
+      Focus on the pricing slide — they pushed back last time.
+- [ ] Email the landlord
+      @today · manual
+- [x] Read chapter 4
+      @fri · #cs101 · ✓18aug
 ```
 
-| Field | Accepts | Behaviour |
+| Token | Required? | Meaning |
 |---|---|---|
-| `due:` | `2026-08-19`, `2026-08-19T14:00`, `friday`, `+3d` | Sorts the Today view; amber within 2 days, red once overdue |
-| `done:` | `2026-08-11` | Written for you when you tick the box |
-| `every:` | `day`, `week`, `2weeks`, `month`, `mon,thu` | On completion the line is rewritten with the next `due:` |
+| `@due` | **required** | `@today`, a weekday (`@fri`), a day-month (`@20aug`), or ISO (`@2026-08-19`). Weekday/day-month resolve to the nearest occurrence going forward. Buckets the task into Today / This week / Long-term; renders amber within 2 days, red once overdue. |
+| `source` | **required** | `calendar` · `chat` · `manual` — `manual` may be omitted, it's the implicit default. |
+| `✓done` | auto | Stamped (e.g. `✓18aug`) when you tick the box. |
+| `!priority` | optional, on-command only | `!high` / `!med` / `!low`. Absent = normal; Claude only adds this when you ask. |
+| `#type` | optional | A category tag: `#schoolwork`, `#cs101`, whatever fits. |
+| `today` (or legacy `★`) | optional | **Focus flag** — pulls the task into Today regardless of `@due`. You set this from the panel; the morning routine never writes it. |
+| `every:` | optional | Recurrence (`every:week`, `every:2weeks`, `every:month`, `every:mon,thu`). On completion, `@due` is rewritten to the next occurrence. |
+| a note | optional | Free prose on a further-indented line below the metadata — context for the task, like the "Focus on the pricing slide" line above. |
 
-Write `due:friday` and it normalises to the ISO date on save, so both you and an agent
-can be loose while the file stays canonical.
+`@due` and `source` are the two that matter; the rest are there when you want them.
+Write `@fri` and it normalizes to the ISO date on save, so both you and an agent can be
+loose while the file stays canonical.
 
 **Dates are date-only and timezone-naive.** A task due the 19th is due the 19th in
 Melbourne and in Reykjavík. This is deliberate.
@@ -91,31 +153,48 @@ The panel renders in a `WKWebView`, so a theme is one CSS file.
 | `card` | Opaque paper, ruled lines, slight tilt | An object on your desk |
 | `console` | Near-opaque dark, monospaced | Another pane of your editor |
 
-Drop any `*.css` into `~/.config/loaf/themes/` and it appears in the menu.
-See [design/mockup.html](design/mockup.html) for all three rendered against three wallpapers.
+Five more ship ready-made in `Resources/themes/`, each just a different `:root` token
+set on the shared base, and all show up in the menu automatically:
+
+- **`daylight`** — clean, bright, always-light; a modern light mode, no paper texture
+- **`sepia`** — warm parchment reading mode, easy amber tones
+- **`nord`** — arctic, cool blue-grays; an opaque dark alternative to `console`
+- **`solarized-light`** / **`solarized-dark`** — Ethan Schoonover's Solarized, both variants
+
+Pick any of them live from the menu bar — no restart. Drop your own `*.css` into
+`~/.config/loaf/themes/` and it appears in the menu too. See
+[design/mockup.html](design/mockup.html) for the three flagship themes rendered against
+three wallpapers.
 
 ## Configuration
 
-Everything is optional. Copy [`config.example.toml`](config.example.toml) to
-`~/.config/loaf/config.toml` and change what you care about.
+Everything is optional — Loaf runs on defaults with no config file at all. Settings live
+in `~/.config/loaf/config.toml`: `~/.config/` is the conventional per-user spot for app
+and CLI config on macOS and Linux (the XDG "config home"), which keeps dotfile clutter
+out of your home directory. Copy [`config.example.toml`](config.example.toml) there and
+change only what you care about.
 
 ```toml
-vault      = "~/Notes"
-theme      = "frosted"
-start_mode = "preview"
+vault      = "~/Notes"      # where your notes live (tilde expanded); $LOAF_VAULT wins over this
+theme      = "frosted"      # any built-in, or a *.css file you drop in ~/.config/loaf/themes/
+start_mode = "preview"      # "preview" renders the markdown; "source" shows the raw text
+
+[dates]
+soon_within_days = 2        # tasks due within this many days render as "soon" (amber)
+week_starts      = "monday" # anchors every:week and relative dates: "monday" or "sunday"
 ```
 
-`$LOAF_VAULT` overrides the vault path at launch.
+`$LOAF_VAULT` overrides the vault path at launch. The `theme` line is also rewritten for
+you when you pick a theme from the menu bar, so a live switch persists to the next launch.
 
 ## See it live
 
 A fresh vault is empty, so to see the dashboard populated, point the app at the sample
 vault checked into the repo (a synthetic fixture — never your real notes).
 
-Build the app bundle and launch it against the fixture — this is the reliable way to get
-the actual menu-bar panel. (`swift run loaf` builds only the bare executable and won't
-reliably surface as the menu-bar app; `build.sh` assembles a proper `Loaf.app` with the
-`Info.plist` + bundled themes/templates.)
+Build the app bundle and launch it against the fixture — `swift run loaf` builds only
+the bare executable and won't reliably surface as the menu-bar app; `build.sh`
+assembles a proper `Loaf.app` with the `Info.plist` and bundled themes/templates.
 
 ```bash
 ./build.sh   # assembles dist/Loaf.app
@@ -153,8 +232,8 @@ routines/morning-brief/dry_run.sh all  # fixtures only — the test harness, no 
   (`launchctl bootstrap`) are in that file's header comment. It's a
   `StartCalendarInterval` job, so a run missed while the Mac was asleep catches up on
   wake, with no extra code.
-- **Live calendar** = today's events via the Google Calendar MCP tools; the `fixtures/`
-  are for tests only.
+- **Live calendar** = a rolling 7-day window (today through today+7) via the Google
+  Calendar MCP tools; the `fixtures/` are for tests only.
 - **Two first-run snags:** `claude` must be on `PATH` for launchd's minimal environment,
   and the Google Calendar MCP tool names hard-coded in `run.sh` may need matching to how
   the server is registered on your machine.
@@ -175,19 +254,18 @@ quick show/hide.
 
 ### Troubleshooting
 
-**`error: this SDK is not supported by the compiler`** — your Command Line Tools
-compiler and macOS SDK are from mismatched builds, which usually happens after a macOS
-upgrade. Nothing Swift will compile, including `import Foundation`. Reinstall:
+**`this SDK is not supported by the compiler`** — Command Line Tools and macOS SDK are
+from mismatched builds (usually after a macOS upgrade). Fix:
 
 ```bash
 sudo rm -rf /Library/Developer/CommandLineTools
 sudo xcode-select --install
 ```
 
-If it persists, install Xcode from the App Store and run
+Still failing? Install Xcode from the App Store and run
 `sudo xcode-select -s /Applications/Xcode.app`.
 
-**"Loaf is damaged and can't be opened"** — Gatekeeper on an unsigned build:
+**"Loaf is damaged and can't be opened"** — Gatekeeper flagging an unsigned build:
 
 ```bash
 xattr -d com.apple.quarantine ~/Applications/Loaf.app
@@ -201,10 +279,11 @@ Sources/LoafCore/             Vault, TaskBlock (metadata-below parser), Dashboar
 Sources/Loaf/                 NSWindow, WKWebView, menu bar, dashboard render, config
 Sources/LoafSelftest/         The logic suite — a plain executable, no Xcode needed
 Sources/LoafRoutineCheck/     CLI that feeds a vault file through the parser (the routine's dry run uses it)
-Resources/themes/             frosted.css, card.css, console.css
+Resources/themes/             8 ready-made theme CSS files (see Themes)
 templates/CLAUDE.md           Written into a new vault on first run
 routines/morning-brief/       The scheduled "brains" run: SKILL.md, run.sh, dry_run.sh,
                               the launchd plist, and fixtures/ (sample vaults + calendars)
+skills/loaf-notes/            The loaf-notes Claude Code skill — jot/edit tasks in plain language
 design/mockup.html            The design, rendered
 ```
 
@@ -223,7 +302,8 @@ date parser is a bad trade.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). [ROADMAP.md](ROADMAP.md) has a
-*Good first issues* section that needs no architectural context.
+*Good first issues* section that needs no architectural context, and
+[DECISIONS.md](DECISIONS.md) logs why past architectural calls landed where they did.
 
 ## License
 
