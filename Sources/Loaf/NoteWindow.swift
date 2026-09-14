@@ -94,9 +94,9 @@ final class NoteWindow: NSWindow {
         return String(json.dropFirst().dropLast())
     }
 
-    /// Wires up checkbox, focus-toggle, and archive/restore write-back: registers
-    /// `handler` under message names `toggleTask`, `focusTask`, `archiveTask`,
-    /// `restoreTask`, and `showDashboard`, and injects the script that listens for the
+    /// Wires up checkbox, focus-toggle, reorder, and archive/restore write-back: registers
+    /// `handler` under message names `toggleTask`, `focusTask`, `reorderTask`,
+    /// `archiveTask`, `restoreTask`, and `showDashboard`, and injects the script that listens for the
     /// corresponding DOM events and posts to them. Keeping the WKWebView plumbing here
     /// means the app target only ever sees plain `{file, line, ...}` messages — the
     /// dashboard (and the archive viewer, which swaps into the same webView) stitch
@@ -106,6 +106,7 @@ final class NoteWindow: NSWindow {
         let controller = webView.configuration.userContentController
         controller.add(handler, name: "toggleTask")
         controller.add(handler, name: "focusTask")
+        controller.add(handler, name: "reorderTask")
         controller.add(handler, name: "archiveTask")
         controller.add(handler, name: "restoreTask")
         controller.add(handler, name: "showDashboard")
@@ -163,11 +164,12 @@ final class NoteWindow: NSWindow {
         // Drag-to-Today (DECISIONS.md 2026-09-11 — sticky drag placement replaces the ★
         // focus toggle). The small per-row handle (`.focus-toggle`, `draggable`) is the
         // drag SOURCE — scoped to the handle so a drag never swallows the checkbox/archive
-        // clicks beside it. Dropping a row on a section posts the SAME `focusTask`
-        // write-back the click handler above does: `focus:true` onto Today, `focus:false`
-        // onto any other section. `@due` is never touched. A drop that wouldn't change the
-        // row's focus state is dropped as a no-op. Sections are matched by `data-section`,
-        // not their heading text.
+        // clicks beside it. Dropping a row on a DIFFERENT section posts the SAME
+        // `focusTask` write-back the click handler above does: `focus:true` onto Today,
+        // `focus:false` onto any other section. `@due` is never touched. A drop that
+        // wouldn't change the row's focus state is dropped as a no-op. A drop that stays
+        // WITHIN Today instead reorders — see the `reorderTask` branch below (DECISIONS.md
+        // 2026-09-14). Sections are matched by `data-section`, not their heading text.
         function dropSection(target) {
             return target && target.closest && target.closest('.dashboard section[data-section]');
         }
@@ -176,11 +178,13 @@ final class NoteWindow: NSWindow {
             if (!handle) { return; }
             var row = handle.closest('.task');
             if (!row || !row.dataset.file || !row.dataset.line) { return; }
+            var srcSection = row.closest('section[data-section]');
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', JSON.stringify({
                 file: row.dataset.file,
                 line: parseInt(row.dataset.line, 10),
-                focused: handle.getAttribute('aria-pressed') === 'true'
+                focused: handle.getAttribute('aria-pressed') === 'true',
+                fromSection: srcSection ? srcSection.dataset.section : null
             }));
         });
         document.addEventListener('dragover', function (event) {
@@ -208,6 +212,24 @@ final class NoteWindow: NSWindow {
             var payload;
             try { payload = JSON.parse(event.dataTransfer.getData('text/plain')); } catch (e) { return; }
             if (!payload || !payload.file || !payload.line) { return; }
+            // Reorder within Today (DECISIONS.md 2026-09-14): a task can be in Today
+            // without the focus token (it's overdue/due-today on its own @due), so
+            // `fromSection` — not `payload.focused` — is what identifies an intra-Today
+            // drag. Cross-file interleaving isn't representable (Today lists tasks.md
+            // before longterm.md), so a drop that would cross files is a no-op. This
+            // branch always returns without posting focusTask, so reordering never
+            // flips the today token.
+            if (payload.fromSection === 'today' && section.dataset.section === 'today') {
+                var targetRow = event.target.closest && event.target.closest('.task');
+                if (targetRow && targetRow.dataset.file === payload.file && parseInt(targetRow.dataset.line, 10) !== payload.line) {
+                    window.webkit.messageHandlers.reorderTask.postMessage({
+                        file: payload.file,
+                        line: payload.line,
+                        beforeLine: parseInt(targetRow.dataset.line, 10)
+                    });
+                }
+                return;
+            }
             var wantFocus = section.dataset.section === 'today';
             if (wantFocus === payload.focused) { return; }   // already in the desired state
             window.webkit.messageHandlers.focusTask.postMessage({
