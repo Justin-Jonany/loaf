@@ -5,7 +5,8 @@
 # which always wins over this.
 vault = "~/Notes"
 
-# Built-in: "frosted", "card", "console". Only "frosted" is fully styled so far.
+# Built-in themes: frosted, card, console, daylight, nord, sepia, solarized-light,
+# solarized-dark. Also switchable live from the menu bar, which rewrites this line.
 theme = "frosted"
 
 # What you see when the panel opens: "preview" renders markdown, "source" shows raw text.

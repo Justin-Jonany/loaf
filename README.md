@@ -1,8 +1,10 @@
 # Loaf
 
-A note widget that floats on your macOS desktop, backed by plain markdown in a folder
-you own — **with a storage format designed so a coding agent can edit your notes using
-ordinary file tools.** No API, no plugin, no sync service.
+An **agent-native** daily-briefing app for macOS — a small panel that floats on your
+desktop, backed by plain markdown in a folder you own. No API, no plugin, no sync
+service: **the storage format is the interface, so any coding agent can read and write
+your notes with ordinary file tools.** A scheduled Claude run fills it in each morning,
+and a companion skill (`loaf-notes`, below) lets you jot to it in plain language.
 
 > **Status: pre-release.** It builds and launches, composes the four-section dashboard
 > from a vault (`brief.md` / `tasks.md` / `longterm.md`), and the morning routine can
@@ -51,11 +53,31 @@ I wake around 8:30, have breakfast, shower, then open the laptop to a brief that
 already written. I read it, add to it, tick off what's done.
 
 When I remember something during the day for tomorrow or next week, I open Claude and
-type an incomplete sentence full of typos. Claude puts it in the right file, in the
-right format — I never touch `@due` or `·` tokens by hand.
+use the `loaf-notes` skill (below) — I type an incomplete sentence full of typos and it
+puts the task in the right file, in the right format. I never touch `@due` or `·` tokens
+by hand.
 
 Coffee chats and one-off events just sit in my calendar; the morning routine catches
 them and turns them into tasks on its own.
+
+## Jotting things down — the `loaf-notes` skill
+
+Half the point. You're mid-something and think "oh — I have to submit my taxes." You
+don't want to stop, open the vault, and remember the date format. So you don't: open
+Claude anywhere and say it however it comes out. `loaf-notes` is a Claude Code skill
+that knows where your vault is and how a task is written, so a typo-ridden fragment —
+*"submit taxs b4 apr 15"* — lands as a correctly-formatted, correctly-dated task in
+`tasks.md`. The panel repaints; you never opened a file.
+
+It ships in [`skills/loaf-notes/`](skills/loaf-notes/SKILL.md) — install it once:
+
+```bash
+cp -R skills/loaf-notes ~/.claude/skills/loaf-notes
+```
+
+Then just talk to Claude: *"add a task to call the dentist friday," "mark the expense
+report done," "focus on the proposal today."* It edits `tasks.md` / `longterm.md` and
+leaves `brief.md` (Claude's own) alone.
 
 ## Demo
 
@@ -112,7 +134,9 @@ a plain sentence:
 | `#type` | optional | A category tag: `#schoolwork`, `#cs101`, whatever fits. |
 | `today` (or legacy `★`) | optional | **Focus flag** — pulls the task into Today regardless of `@due`. You set this from the panel; the morning routine never writes it. |
 | `every:` | optional | Recurrence (`every:week`, `every:2weeks`, `every:month`, `every:mon,thu`). On completion, `@due` is rewritten to the next occurrence. |
+| a note | optional | Free prose on a further-indented line below the metadata — context for the task, like the "Focus on the pricing slide" line above. |
 
+`@due` and `source` are the two that matter; the rest are there when you want them.
 Write `@fri` and it normalizes to the ISO date on save, so both you and an agent can be
 loose while the file stays canonical.
 
@@ -129,26 +153,39 @@ The panel renders in a `WKWebView`, so a theme is one CSS file.
 | `card` | Opaque paper, ruled lines, slight tilt | An object on your desk |
 | `console` | Near-opaque dark, monospaced | Another pane of your editor |
 
-Five more ship ready-made in `Resources/themes/` and appear in the menu automatically —
-`daylight`, `nord` (dark), `sepia` (warm parchment), `solarized-light`, and
-`solarized-dark` — each just a different `:root` token set.
+Five more ship ready-made in `Resources/themes/`, each just a different `:root` token
+set on the shared base, and all show up in the menu automatically:
 
-Drop any `*.css` into `~/.config/loaf/themes/` and it appears in the menu too.
-See [design/mockup.html](design/mockup.html) for the three flagship themes rendered
-against three wallpapers.
+- **`daylight`** — clean, bright, always-light; a modern light mode, no paper texture
+- **`sepia`** — warm parchment reading mode, easy amber tones
+- **`nord`** — arctic, cool blue-grays; an opaque dark alternative to `console`
+- **`solarized-light`** / **`solarized-dark`** — Ethan Schoonover's Solarized, both variants
+
+Pick any of them live from the menu bar — no restart. Drop your own `*.css` into
+`~/.config/loaf/themes/` and it appears in the menu too. See
+[design/mockup.html](design/mockup.html) for the three flagship themes rendered against
+three wallpapers.
 
 ## Configuration
 
-Everything is optional. Copy [`config.example.toml`](config.example.toml) to
-`~/.config/loaf/config.toml` and change what you care about.
+Everything is optional — Loaf runs on defaults with no config file at all. Settings live
+in `~/.config/loaf/config.toml`: `~/.config/` is the conventional per-user spot for app
+and CLI config on macOS and Linux (the XDG "config home"), which keeps dotfile clutter
+out of your home directory. Copy [`config.example.toml`](config.example.toml) there and
+change only what you care about.
 
 ```toml
-vault      = "~/Notes"
-theme      = "frosted"
-start_mode = "preview"
+vault      = "~/Notes"      # where your notes live (tilde expanded); $LOAF_VAULT wins over this
+theme      = "frosted"      # any built-in, or a *.css file you drop in ~/.config/loaf/themes/
+start_mode = "preview"      # "preview" renders the markdown; "source" shows the raw text
+
+[dates]
+soon_within_days = 2        # tasks due within this many days render as "soon" (amber)
+week_starts      = "monday" # anchors every:week and relative dates: "monday" or "sunday"
 ```
 
-`$LOAF_VAULT` overrides the vault path at launch.
+`$LOAF_VAULT` overrides the vault path at launch. The `theme` line is also rewritten for
+you when you pick a theme from the menu bar, so a live switch persists to the next launch.
 
 ## See it live
 
@@ -246,6 +283,7 @@ Resources/themes/             8 ready-made theme CSS files (see Themes)
 templates/CLAUDE.md           Written into a new vault on first run
 routines/morning-brief/       The scheduled "brains" run: SKILL.md, run.sh, dry_run.sh,
                               the launchd plist, and fixtures/ (sample vaults + calendars)
+skills/loaf-notes/            The loaf-notes Claude Code skill — jot/edit tasks in plain language
 design/mockup.html            The design, rendered
 ```
 

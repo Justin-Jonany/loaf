@@ -157,6 +157,10 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   clearing a task moves it to a monthly-sharded `archive/YYYY-MM.md` (stamped
   `archived:<instant>`) instead of deleting it, with a Restore control that reopens it;
   `TaskBlock.archiving`/`restoring` implement the move and its inverse.
+- `skills/loaf-notes/`: a user-invocable Claude Code skill that adds/edits tasks and
+  long-term goals in the vault from any directory in plain language — it resolves the
+  vault location and writes the metadata-below task format so edits parse correctly,
+  editing `tasks.md`/`longterm.md` while leaving the Claude-owned `brief.md` alone.
 
 ### Changed
 - Project renamed Foolscap → Loaf across the repo.
