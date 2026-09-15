@@ -13,7 +13,7 @@ had drifted out of sync — most visibly, the `★` focus-flag token existed in 
 three copies. All three now reference `TASK-FORMAT.md` instead of restating it: the
 morning-brief routine injects it into its prompt (`run.sh`), and both skills read it via a
 new `contract` pointer in `~/.config/loaf/config.toml`, written by a new
-`scripts/install.sh` (which also symlinks both skills into `~/.claude/skills/`, replacing
+`scripts/install.sh` (which also copies both skills into `~/.claude/skills/`, replacing
 the old manual `cp -R` step). A vault's own `CLAUDE.md` is demoted to personal
 preferences/context only — tone, priorities, the people in the user's life — and never
 carries the format, so it needs no edits when the format changes.

@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Idempotent installer: wires this repo's clone into ~/.claude/skills and points
+# Idempotent installer: copies this repo's skills into ~/.claude/skills and points
 # ~/.config/loaf/config.toml at this repo's TASK-FORMAT.md so loaf-notes and
 # loaf-brief can find the single-source task format. Safe to re-run any time
 # (e.g. after moving the clone) — every step below replaces, not duplicates.
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# --- Symlink skills so they stay in sync with the repo ---
+# --- Copy skills into your personal skills dir. These are independent copies:
+# editing your installed skill never touches the repo, and vice versa. Re-run this
+# installer to overwrite them with the current repo version. rm -rf first so an
+# existing install is replaced cleanly (never nested into, as `ln` would). ---
 mkdir -p "$HOME/.claude/skills"
-ln -sfn "$REPO/skills/loaf-notes" "$HOME/.claude/skills/loaf-notes"
-ln -sfn "$REPO/skills/loaf-brief" "$HOME/.claude/skills/loaf-brief"
+for skill in loaf-notes loaf-brief; do
+  rm -rf "$HOME/.claude/skills/$skill"
+  cp -R "$REPO/skills/$skill" "$HOME/.claude/skills/$skill"
+done
 
 # --- Write the contract pointer into config ---
 CONFIG_DIR="$HOME/.config/loaf"
@@ -26,9 +31,9 @@ else
   printf '\n%s\n' "$CONTRACT_LINE" >> "$CONFIG"
 fi
 
-echo "Installed Loaf skills:"
-echo "  ~/.claude/skills/loaf-notes -> $REPO/skills/loaf-notes"
-echo "  ~/.claude/skills/loaf-brief -> $REPO/skills/loaf-brief"
+echo "Installed Loaf skills (copies) into ~/.claude/skills:"
+echo "  loaf-notes  (copied from $REPO/skills/loaf-notes)"
+echo "  loaf-brief  (copied from $REPO/skills/loaf-brief)"
 echo "Wrote contract pointer to $CONFIG:"
 echo "  $CONTRACT_LINE"
 echo
