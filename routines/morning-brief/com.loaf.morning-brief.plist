@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   routines/morning-brief/com.loaf.morning-brief.plist — launchd schedule for the
-  morning brief routine (ROADMAP.md -> C1). Fires ~6am local time.
+  morning brief routine (ROADMAP.md -> C1). Attempts every morning from ~6am.
 
   Install (once per machine):
     1. Replace REPLACE_WITH_ABSOLUTE_REPO_PATH below with the absolute path to this
@@ -15,14 +15,22 @@
   Uninstall:
     launchctl bootout gui/$(id -u)/com.loaf.morning-brief
 
-  Catch-up on wake: this is a StartCalendarInterval job, not a fixed-delay timer.
-  launchd persists a StartCalendarInterval job that was due while the machine was
-  asleep and runs it as soon as the system is next awake, instead of just skipping it —
-  that's what gives DESIGN.md's "if it missed 6am it catches up on wake" for free, with
-  no extra code in run.sh. If you also want the Mac to physically wake at 6am for this
-  (not just catch up next time you're at it), pair this with, e.g.:
-      sudo pmset repeat wake MTWRFSU 06:00:00
-  which is optional and not configured by this file.
+  Why several fire times, not one: the 6am attempt usually fires on a dark-wake or a
+  just-opened lid whose Wi-Fi isn't up yet, so the hosted Google Calendar connector
+  hangs or errors and the run fails. A single 6am shot then either wins or loses on that
+  one moment's network. Instead we list several morning times; run.sh is idempotent
+  (once brief.md carries today's stamp, every later fire is a instant no-op), so the
+  first attempt that lands on a wake with real network builds the brief and the rest
+  cost nothing. Pair this with run.sh's per-attempt timeout so a wedged attempt can't
+  block the next one.
+
+  Catch-up on wake: StartCalendarInterval entries missed while the Mac was asleep run
+  once on the next wake. So even if every listed time passes while the lid is shut, the
+  most recent one fires when you next open the laptop — you still get today's brief on
+  first wake, at whatever hour that is. That's why forcing a physical 6am wake with
+  `sudo pmset repeat wake ...` is deliberately NOT configured here: a forced dark-wake
+  hits the same no-network problem and drains battery; riding real wakes + retries is
+  more reliable.
 -->
 <plist version="1.0">
 <dict>
@@ -38,17 +46,22 @@
     <key>WorkingDirectory</key>
     <string>REPLACE_WITH_ABSOLUTE_REPO_PATH</string>
 
+    <!-- Several morning attempts, ~40-90 min apart (see the header for why). launchd
+         won't run two instances of this label at once, so run.sh's per-attempt timeout
+         (default 360s) keeps each try well under this spacing. -->
     <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>6</integer>
-        <key>Minute</key>
-        <integer>0</integer>
-    </dict>
+    <array>
+        <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>40</integer></dict>
+        <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>20</integer></dict>
+        <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
 
-    <!-- Belt-and-suspenders: if the job is somehow still due after being missed for a
-         very long stretch (machine off for days), launchd runs it once on next load
-         rather than repeatedly backfilling every missed morning. -->
+    <!-- The idempotency guard in run.sh makes reruns free, so there's no backfill risk
+         to guard against; kept false only so bootstrapping/loading the job doesn't kick
+         off an out-of-band run. -->
     <key>RunAtLoad</key>
     <false/>
 

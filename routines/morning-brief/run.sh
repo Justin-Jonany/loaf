@@ -97,6 +97,20 @@ fi
 
 mkdir -p "$VAULT"
 
+# --- Idempotency guard: already built today? ----------------------------------------
+# The launchd schedule (com.loaf.morning-brief.plist) fires several times each morning
+# rather than once at 6am, because the first attempt often fires on a dark-wake / just-
+# woken machine whose network isn't up yet, so the hosted Google Calendar connector
+# hangs or errors. Retrying lets a later attempt — on a wake where Wi-Fi is actually up —
+# succeed. Once brief.md carries today's build stamp the day's work is done, so every
+# later attempt short-circuits here instead of rebuilding (and burning an API call). A
+# `status: failed` run never stamps brief.md with today, so failures correctly fall
+# through and retry.
+if [[ -f "$BRIEF_FILE" ]] && grep -q "built: $TODAY" "$BRIEF_FILE"; then
+  echo "run.sh: brief.md already built for $TODAY — nothing to do"
+  exit 0
+fi
+
 # --- Build the prompt ----------------------------------------------------------------
 # Strip SKILL.md's leading `---`-fenced YAML frontmatter; everything after the second
 # `---` fence is the actual instructions.
@@ -163,8 +177,18 @@ for d in "${ADD_DIRS[@]}"; do ADD_DIR_ARGS+=(--add-dir "$d"); done
 echo "run.sh: vault=$VAULT today=$TODAY mode=$([[ -n "$CALENDAR_FIXTURE" ]] && echo dry-run || echo live)"
 echo "run.sh: transcript -> $LOG_FILE"
 
+# Hard cap per attempt. A wedged Google Calendar connector once left the run blocked for
+# ~1h48m (a just-woken machine with no network yet); without a cap a hung attempt also
+# blocks launchd from starting the next scheduled retry, since it won't run two instances
+# of the same label at once. macOS ships no GNU `timeout`, so use perl's alarm(2): the
+# ITIMER_REAL timer survives `exec`, and claude (node) installs no SIGALRM handler, so it
+# gets the default terminate action when the alarm fires. Killed-by-alarm exits non-zero,
+# so the run falls through to the failure backstop and the next scheduled attempt retries.
+ATTEMPT_TIMEOUT="${LOAF_ATTEMPT_TIMEOUT:-360}"
+
 set -o pipefail
-claude -p "$PREAMBLE" \
+perl -e 'alarm shift @ARGV; exec @ARGV or die "exec failed: $!"' "$ATTEMPT_TIMEOUT" \
+  claude -p "$PREAMBLE" \
   "${ADD_DIR_ARGS[@]}" \
   --allowedTools "${ALLOWED_TOOLS[@]}" \
   --disallowedTools "${DISALLOWED_TOOLS[@]}" \
@@ -173,6 +197,10 @@ claude -p "$PREAMBLE" \
   2>&1 | tee "$LOG_FILE"
 CLAUDE_EXIT=${PIPESTATUS[0]}
 set +o pipefail
+
+if [[ $CLAUDE_EXIT -eq 142 ]]; then
+  echo "run.sh: attempt exceeded ${ATTEMPT_TIMEOUT}s and was killed (SIGALRM) — a later scheduled retry will pick it up"
+fi
 
 echo "run.sh: claude exited $CLAUDE_EXIT"
 
