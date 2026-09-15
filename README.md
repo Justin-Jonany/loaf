@@ -60,24 +60,33 @@ by hand.
 Coffee chats and one-off events just sit in my calendar; the morning routine catches
 them and turns them into tasks on its own.
 
-## Jotting things down — the `loaf-notes` skill
+## Two skills for talking to your vault
 
-Half the point. You're mid-something and think "oh — I have to submit my taxes." You
-don't want to stop, open the vault, and remember the date format. So you don't: open
-Claude anywhere and say it however it comes out. `loaf-notes` is a Claude Code skill
-that knows where your vault is and how a task is written, so a typo-ridden fragment —
+**`loaf-notes`** is half the point. You're mid-something and think "oh — I have to submit
+my taxes." You don't want to stop, open the vault, and remember the date format. So you
+don't: open Claude anywhere and say it however it comes out. `loaf-notes` is a Claude Code
+skill that knows where your vault is and how a task is written, so a typo-ridden fragment —
 *"submit taxs b4 apr 15"* — lands as a correctly-formatted, correctly-dated task in
-`tasks.md`. The panel repaints; you never opened a file.
+`tasks.md`. The panel repaints; you never opened a file. Just talk to Claude: *"add a task
+to call the dentist friday," "mark the expense report done," "focus on the proposal
+today."* It edits `tasks.md` / `longterm.md` and leaves `brief.md` (Claude's own) alone.
 
-It ships in [`skills/loaf-notes/`](skills/loaf-notes/SKILL.md) — install it once:
+**`loaf-brief`** is for when the 6am run didn't fire — the Mac was asleep past its
+catch-up window, or you just want a fresh read before a big day. It wraps
+`routines/morning-brief/run.sh --force`, so "rebuild my brief" gets you an up-to-date
+`brief.md` on demand without opening a terminal.
+
+Both skills ship in [`skills/`](skills/) — install them once by running the installer
+from the clone:
 
 ```bash
-cp -R skills/loaf-notes ~/.claude/skills/loaf-notes
+./scripts/install.sh
 ```
 
-Then just talk to Claude: *"add a task to call the dentist friday," "mark the expense
-report done," "focus on the proposal today."* It edits `tasks.md` / `longterm.md` and
-leaves `brief.md` (Claude's own) alone.
+This symlinks `loaf-notes` and `loaf-brief` into `~/.claude/skills/` and records the
+clone's location in `~/.config/loaf/config.toml` (the `contract` pointer both skills use
+to find `TASK-FORMAT.md`). Re-run it if you move or re-clone the repo, so the symlinks
+and the pointer stay pointed at the right place.
 
 ## Demo
 
@@ -93,16 +102,19 @@ files from it into the dashboard; it is not a file browser.
 
 ```
 ~/Notes/                 # the vault root (path is configurable; see below)
-├── CLAUDE.md            # the format, documented for agents — seeded on first run
+├── CLAUDE.md            # your personal notes for Claude — seeded on first run
 ├── brief.md             # Claude's morning recap + freshness stamp (Claude-owned)
 ├── tasks.md             # dated tasks, metadata-below format (shared)
 ├── longterm.md          # target-dated goals (shared)
 └── notes/               # your loose notes — a soft convention the run reads for context
 ```
 
-`CLAUDE.md` is written into the vault on first run, so any future Claude session picks
-up the conventions without being briefed. The three dashboard files are optional: a fresh
-vault renders gracefully empty until the morning routine (or you) writes them.
+`CLAUDE.md` is seeded into the vault on first run for *your* context — tone, priorities,
+the people in your life — not the task format. That's authored once, in the repo's
+[`TASK-FORMAT.md`](TASK-FORMAT.md), and the skills and the morning routine read it
+directly, so a vault's `CLAUDE.md` never needs touching when the format changes. The
+three dashboard files are optional: a fresh vault renders gracefully empty until the
+morning routine (or you) writes them.
 
 > **Naming collision.** The vault root is `Notes` (capital N) while `notes/` (lowercase)
 > is just a loose subfolder inside it — easy to confuse. This ties into the open **Name**
@@ -280,10 +292,15 @@ Sources/Loaf/                 NSWindow, WKWebView, menu bar, dashboard render, c
 Sources/LoafSelftest/         The logic suite — a plain executable, no Xcode needed
 Sources/LoafRoutineCheck/     CLI that feeds a vault file through the parser (the routine's dry run uses it)
 Resources/themes/             8 ready-made theme CSS files (see Themes)
-templates/CLAUDE.md           Written into a new vault on first run
+TASK-FORMAT.md                Single source of truth for the task format — read directly by
+                              both skills and the morning routine, never restated elsewhere
+templates/CLAUDE.md           Personal-notes-for-Claude seed, written into a new vault on first run
+scripts/install.sh            Symlinks the skills into ~/.claude/skills/ and writes the
+                              ~/.config/loaf/config.toml contract pointer
 routines/morning-brief/       The scheduled "brains" run: SKILL.md, run.sh, dry_run.sh,
                               the launchd plist, and fixtures/ (sample vaults + calendars)
 skills/loaf-notes/            The loaf-notes Claude Code skill — jot/edit tasks in plain language
+skills/loaf-brief/            The loaf-brief Claude Code skill — rebuild today's brief on demand
 design/mockup.html            The design, rendered
 ```
 

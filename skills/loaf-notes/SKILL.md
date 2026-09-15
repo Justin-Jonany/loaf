@@ -43,31 +43,20 @@ path elsewhere.
 If a target file doesn't exist yet (e.g. no `tasks.md`), create it with a `# Tasks` /
 `# Long-term` heading and the first entry.
 
-## The task format (metadata-below)
+## The task format
 
-A task is a GitHub-style checkbox. Its metadata lives on an **indented line beneath** it (6
-spaces), so the task reads as a plain sentence. An optional further-indented note can follow.
+The task format is defined once in the Loaf repo's `TASK-FORMAT.md` — this skill does not
+restate it, so it can never drift. Before editing tasks:
 
-```markdown
-- [ ] Email the landlord about the lease
-      @2026-09-16 · manual
-- [ ] Draft the proposal
-      @2026-09-19 · chat · !high · #work · ★
-      Lead with the pricing section.
-- [x] Return library books
-      @2026-09-12 · manual · ✓2026-09-13
-```
-
-Metadata tokens are `·`-separated, in this order:
-
-| Token | Required | Meaning |
-|---|---|---|
-| `@<due>` | **yes** | Due date. Prefer ISO (`@2026-09-16`). `@today`, `@fri`, `@20aug` also parse. Every task needs a due date — if the user gives none, ask or pick a sensible one and say which. |
-| `source` | yes | `calendar` · `chat` · `manual`. A task you add at the user's request in a chat is **`chat`**. `manual` is the implicit default and may be omitted. |
-| `!priority` | no | `!high` / `!med` / `!low`. Only when the user asks — never assign priority on your own. |
-| `#type` | no | A freeform category tag, e.g. `#work`, `#health`. |
-| `★` | no | **Focus flag** — pulls the task into the panel's *Today* section regardless of its due date (the deadline is untouched). Add it when the user says they want to focus on / do something *today* even though it's due later; remove it to send the task back to its due-date bucket. |
-| `✓<date>` | auto | Completion stamp. To mark a task done, set `- [x]` **and** add `✓<ISO date>` to the metadata line. |
+1. Read the contract pointer: look for a line `contract = "..."` in `~/.config/loaf/config.toml`
+   (`Bash(cat ~/.config/loaf/config.toml)`), and `Read` the file it points to. That file is
+   authoritative for the metadata-below format and every token.
+2. If there is no `contract =` line (or the file is missing), the Loaf skills aren't wired up
+   on this machine — tell the user to run `scripts/install.sh` from their Loaf repo clone, and
+   stop rather than guessing a format.
+3. Also `Read` `<vault>/CLAUDE.md` (the vault you resolved above) — it holds the user's own
+   personal preferences (tone, people, how they like tasks phrased). Respect it; it is NOT the
+   format spec.
 
 ## Rules
 
@@ -82,8 +71,6 @@ Metadata tokens are `·`-separated, in this order:
 
 - "add a task to call the dentist friday" → append to `tasks.md`: `- [ ] Call the dentist` /
   `@<coming-friday ISO> · chat`.
-- "I want to focus on the proposal today" (already a task due later) → add `★` to that task's
-  metadata line in `tasks.md`.
 - "mark the expense report done" → find it in `tasks.md`, flip to `[x]`, add `✓<today>`.
 - "add a long-term goal: finish the driving test before 15 oct" → append to `longterm.md`:
   `- [ ] Finish the driving test` / `@2026-10-15 · chat`.

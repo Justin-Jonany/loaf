@@ -17,6 +17,9 @@
 #   ./run.sh --vault DIR                         # override the vault path
 #   ./run.sh --calendar-fixture FILE             # dry run: read FILE instead of the
 #                                                 # live Google Calendar MCP tools
+#   ./run.sh --force                             # rebuild even if brief.md was already
+#                                                 # built today; bypasses the idempotency
+#                                                 # guard
 #   LOAF_FORCE_FAILURE=1 ./run.sh                # skip Claude entirely, exercise only
 #                                                 # the shell-level failure-signal path
 #                                                 # (see routines/morning-brief/dry_run.sh)
@@ -37,10 +40,12 @@ CONFIG_PATH="${LOAF_CONFIG:-$HOME/.config/loaf/config.toml}"
 
 VAULT=""
 CALENDAR_FIXTURE=""
+FORCE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --vault) VAULT="$2"; shift 2 ;;
     --calendar-fixture) CALENDAR_FIXTURE="$2"; shift 2 ;;
+    --force) FORCE=1; shift ;;
     *) echo "run.sh: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -106,7 +111,7 @@ mkdir -p "$VAULT"
 # later attempt short-circuits here instead of rebuilding (and burning an API call). A
 # `status: failed` run never stamps brief.md with today, so failures correctly fall
 # through and retry.
-if [[ -f "$BRIEF_FILE" ]] && grep -q "built: $TODAY" "$BRIEF_FILE"; then
+if [[ -z "$FORCE" ]] && [[ -f "$BRIEF_FILE" ]] && grep -q "built: $TODAY" "$BRIEF_FILE"; then
   echo "run.sh: brief.md already built for $TODAY — nothing to do"
   exit 0
 fi
@@ -115,6 +120,14 @@ fi
 # Strip SKILL.md's leading `---`-fenced YAML frontmatter; everything after the second
 # `---` fence is the actual instructions.
 SKILL_BODY="$(awk '/^---$/{n++; next} n>=2{print}' "$ROUTINE_DIR/SKILL.md")"
+
+CONTRACT_FILE="$ROUTINE_DIR/../../TASK-FORMAT.md"
+if [[ ! -f "$CONTRACT_FILE" ]]; then
+  echo "run.sh: TASK-FORMAT.md not found at $CONTRACT_FILE" >&2
+  write_failure_signal "TASK-FORMAT.md missing — cannot inject the task format"
+  exit 1
+fi
+CONTRACT_BODY="$(cat "$CONTRACT_FILE")"
 
 if [[ -n "$CALENDAR_FIXTURE" ]]; then
   CALENDAR_LINE="Calendar source: DRY RUN — read the fixture at $CALENDAR_FIXTURE with the Read tool. Do not call any Google Calendar tool even if offered; none should be available, but this fixture is authoritative if one is."
@@ -158,7 +171,11 @@ PREAMBLE="Facts for this run (authoritative — do not infer or override any of 
 
 ---
 
-$SKILL_BODY"
+$SKILL_BODY
+
+---
+
+$CONTRACT_BODY"
 
 # --- Snapshot brief.md so a bad run can't leave a fresh-looking-but-broken file ------
 BRIEF_BACKUP=""
