@@ -5,6 +5,12 @@
 # which always wins over this.
 vault = "~/Notes"
 
+# Points the loaf-notes and loaf-brief skills at this repo's single-source
+# TASK-FORMAT.md, so they read the task format instead of restating it. Normally
+# set automatically by `scripts/install.sh` to "<your repo>/TASK-FORMAT.md". It's
+# an absolute path, so re-run the installer if you move the clone.
+# contract = "/absolute/path/to/loaf/TASK-FORMAT.md"
+
 # Built-in themes: frosted, card, console, daylight, nord, sepia, solarized-light,
 # solarized-dark. Also switchable live from the menu bar, which rewrites this line.
 theme = "frosted"

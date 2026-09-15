@@ -37,6 +37,27 @@ notes are just files; an agent edits them; the widget watches"* — taken seriou
 never grows an integration, and the intelligence can be rerun or rewritten without touching
 Swift.
 
+## Single source: the task format lives in one file
+
+The task format — the metadata-below shape, its tokens, its rules — is authored **once**,
+in the repo's [`TASK-FORMAT.md`](TASK-FORMAT.md). Nothing else restates it:
+
+- The morning-brief routine injects it into its prompt (`routines/morning-brief/run.sh`
+  reads the file and hands it to the run).
+- The `loaf-notes` and `loaf-brief` skills read it directly, via the `contract` pointer
+  in `~/.config/loaf/config.toml` (written by `scripts/install.sh`).
+
+Skills and the routine *reference* `TASK-FORMAT.md`; they never restate it. This used to be
+duplicated across the vault's `CLAUDE.md` template, the morning-brief SKILL, and the
+loaf-notes SKILL — three copies that drifted apart over time. A vault's own `CLAUDE.md` is
+now the user's personal context only (tone, priorities, the people in their life) — never
+the format — so it never needs editing when the format changes.
+
+The brief itself is an **insight layer**, not a restatement of the task list: it surfaces
+only what the list can't show on its own — spillover, an unusually heavy or light day, a
+scheduling collision, a resolved ambiguity. One phrase is a valid brief; four sentences is
+a hard cap; it never pads to fill space when there's nothing worth noting.
+
 ## The panel — a composed dashboard
 
 The viewer stitches a fixed set of files into one scrolling dashboard with four sections. It

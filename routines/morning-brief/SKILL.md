@@ -25,12 +25,14 @@ failure (see "If something goes wrong").
 
 ## The vault contract
 
-The vault's own `CLAUDE.md` (read it first) is the source of truth for the file formats
-below — this routine and that file must never disagree. In short:
+`TASK-FORMAT.md` (injected into this prompt — see the "The Loaf task format" section
+further down) is the source of truth for the task format; this routine never restates it.
+The vault's own `CLAUDE.md` (read it first) now holds the user's personal
+preferences/context to respect — tone, people, priorities — not the format. In short:
 
-- `brief.md` — **yours.** Regenerated every run: a 2-5 sentence prose recap, a change-log
-  with provenance, and a freshness stamp. Never contains raw `@`/`#`/`!` tokens — it's
-  prose, not a task list.
+- `brief.md` — **yours.** Regenerated every run: a short insight-layer brief — see
+  "Writing `brief.md`" — a change-log with provenance, and a freshness stamp. Never
+  contains raw `@`/`#`/`!` tokens — it's prose, not a task list.
 - `tasks.md` — **shared** with the user. All dated tasks, metadata-below format (see
   below). Don't touch lines you didn't add and don't reformat the user's prose.
 - `longterm.md` — **read-only for you.** It holds the user's standing long-term goals. Read
@@ -72,25 +74,11 @@ say it expected today?). Then look for other `*.md` files in the vault (e.g. und
 this is where context like "they pushed back on pricing last time" lives. Don't go
 digging through the whole vault; a handful of obviously-relevant files is enough.
 
-## The task format (metadata-below)
+## The task format
 
-A task is a checkbox with its metadata on an indented line beneath it:
-
-```markdown
-- [ ] Prep the client deck
-      @20aug · !high · #schoolwork · calendar
-      Focus on the pricing slide — they pushed back last time.
-```
-
-| Token | Required? | Notes |
-|---|---|---|
-| `@due` | **yes** | `@today`, `@fri`, `@20aug`, or ISO `YYYY-MM-DD`. Every task needs one. |
-| `source` | **yes** | `calendar` \| `chat` \| `manual`. Write it explicitly — don't rely on the implicit default when you're the one adding the task. |
-| `!priority` | no | `!high`/`!med`/`!low`. **Never add this yourself.** It's on-command only. |
-| `#type` | no | A short category tag, only if one is obvious. |
-| `every` | no | Recurrence, only if you're editing an existing recurring task. |
-| `✓done` | — | You never add this — that's the checkbox-click write path (A4), not this routine. |
-| note | no | A further-indented line of free prose, only if it adds real context. |
+The task format is defined once in `TASK-FORMAT.md`, which `run.sh` injects into this
+prompt (see the "The Loaf task format" section further down). Follow it. Below are only
+the calendar-specific rules this routine adds on top of that format.
 
 **Calendar tiering:** keyed on the calendar's own recurrence metadata, not on whether an
 event has an action item (DECISIONS.md 2026-09-13) — recurrence tells you a standing block
@@ -160,11 +148,13 @@ Full contents, in order:
    a markdown parser, so don't reformat it, don't add anything else on that line, and
    don't put anything before it.
 
-2. **2-5 sentences of prose, directly** — no heading of your own (the panel already draws
-   a "Brief" section title; a `# Brief` heading here would just stack a second one under
-   it): what got done since yesterday (per yesterday's brief and today's tasks that are
-   now `✓done`... though ticking is the user's job through the day, not yours), what's
-   due today, what slipped. Plain prose, no raw `@`/`#` tokens, no bullet list here.
+2. **A prose brief — the insight layer, not a recap.** Surface only what the task list
+   can't show on its own: spillover that needs a decision, an unusually heavy or light
+   day, a scheduling collision, a resolved ambiguity. Don't re-list today's tasks — the
+   panel already renders them. **One phrase is a valid brief; four sentences is a hard
+   cap.** If nothing genuinely merits comment, say so in a single line and stop — never
+   pad. Plain prose, no raw `@`/`#`/`!` tokens, no bullets, no heading of your own (the
+   panel already draws the "Brief" title).
 
 3. A `## What changed` section: a bullet per task you added or rescheduled this run —
    this routine is add-only, so there's nothing to prune. **Every calendar-derived

@@ -4,6 +4,37 @@ A running log of the decisions that shaped Loaf — newest first. Each entry rec
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-15 — Task format extracted to a single source of truth; brief becomes an insight layer
+
+**Decided:** the task format (the metadata-below shape, its tokens, its rules) is now
+authored once, in a new repo-root `TASK-FORMAT.md`. The vault's `templates/CLAUDE.md`, the
+morning-brief SKILL, and the `loaf-notes` SKILL each used to restate the format in full and
+had drifted out of sync — most visibly, the `★` focus-flag token existed in only one of the
+three copies. All three now reference `TASK-FORMAT.md` instead of restating it: the
+morning-brief routine injects it into its prompt (`run.sh`), and both skills read it via a
+new `contract` pointer in `~/.config/loaf/config.toml`, written by a new
+`scripts/install.sh` (which also symlinks both skills into `~/.claude/skills/`, replacing
+the old manual `cp -R` step). A vault's own `CLAUDE.md` is demoted to personal
+preferences/context only — tone, priorities, the people in the user's life — and never
+carries the format, so it needs no edits when the format changes.
+
+Alongside this, the morning brief's spec changed from a "2–5 sentence recap" to an
+**insight layer**: it now surfaces only what the task list can't show on its own —
+spillover, an unusually heavy or light day, a collision, a resolved ambiguity. One phrase
+is a valid brief; four sentences is a hard cap; it never pads when there's nothing to note.
+The stale `★` focus-flag token is dropped from the format entirely. A new `loaf-brief`
+skill wraps `routines/morning-brief/run.sh --force` so the user can rebuild today's brief
+on demand — e.g. when the 6am run didn't fire.
+
+**Why:** three hand-maintained copies of the same format is exactly the shape that drifts —
+this was caught only because the `★` token happened to exist in just one of them. A single
+authored file that everything else references removes the possibility of drift by
+construction, and demoting the vault's `CLAUDE.md` to personal-only means adding a token or
+changing a rule is now a one-file change instead of a three-file hunt. The brief's rewrite
+from "recap" to "insight layer" follows the same instinct: a recap duplicates what the task
+list already shows, while an insight layer only earns its space when it says something the
+list can't.
+
 ## 2026-09-14 — Today is drag-reorderable; This week/Long-term are not
 
 **Decided:** dragging a row within the dashboard's Today section reorders it by physically
