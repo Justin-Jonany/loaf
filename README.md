@@ -83,10 +83,11 @@ from the clone:
 ./scripts/install.sh
 ```
 
-This symlinks `loaf-notes` and `loaf-brief` into `~/.claude/skills/` and records the
+This copies `loaf-notes` and `loaf-brief` into `~/.claude/skills/` and records the
 clone's location in `~/.config/loaf/config.toml` (the `contract` pointer both skills use
-to find `TASK-FORMAT.md`). Re-run it if you move or re-clone the repo, so the symlinks
-and the pointer stay pointed at the right place.
+to find `TASK-FORMAT.md`). The copies are independent — editing an installed skill never
+touches the repo. Re-run the installer whenever you change a skill in the repo (it
+overwrites your copies), or after moving or re-cloning the repo (it refreshes the pointer).
 
 ## Demo
 
