@@ -206,7 +206,9 @@ Depends only on A's *format*, so it runs parallel to Epic B.
     stays in `tasks.md` rather than getting promoted to Long-term on its due-date distance.
     Reads a rolling 7-day calendar window (today through today+7), not just today, and
     de-dupes calendar-derived tasks across runs so the same upcoming event doesn't get
-    added twice as it stays in view morning after morning (DECISIONS.md 2026-09-12).
+    added twice as it stays in view morning after morning (DECISIONS.md 2026-09-12). That
+    de-dup spans the permanent archive too, so a task finished early and cleared is not
+    resurrected from the calendar (DECISIONS.md 2026-09-18).
     Calendar tiering (task vs. context) is keyed on the event's own `recurringEventId`,
     not on whether its description reads like it has an action item (DECISIONS.md
     2026-09-13).

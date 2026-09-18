@@ -4,6 +4,40 @@ A running log of the decisions that shaped Loaf — newest first. Each entry rec
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-18 — Cross-run de-dup spans the archive, bounded by the due-date window
+
+**Decided:** before adding a calendar-derived task, the morning routine now checks the
+permanent archive (`archive/YYYY-MM.md` — the current month's shard and the previous
+month's) in addition to `tasks.md`. A matching archived entry suppresses the addition
+outright: nothing is added, and nothing is reported under "What changed." The match is
+bounded to the run's today-through-today+7 window — only an archived entry whose `@due`
+falls inside that window can suppress. The archive stays read-only to the routine: it never
+un-archives, re-dates, or copies an entry back into `tasks.md`.
+
+**Why:** the 2026-09-12 de-dup matched against `tasks.md` alone, but archiving is precisely
+the act of *removing* a task from `tasks.md`. Combined with the add-only rule (DECISIONS.md
+2026-09-11), which makes archiving the user's only way to say "I'm done with this," the two
+rules composed into a bug: a task finished early and cleared became invisible to the check
+meant to stop it being re-added, so the routine resurrected it every morning until the event
+date passed. Seen in a real vault with "Submit REC 101 Case #1" (archived 09-14, event
+09-16) — the user clears it, and tomorrow it is back. Reading the archive closes the loop
+by making "cleared" mean the same thing to the routine that it means to the user.
+
+The due-date bound is the non-obvious half, and it is load-bearing. Matching on title alone
+against months of archived history would silently swallow legitimately new events: "Dentist
+appointment" and "Coffee chat with Hunter" recur as distinct one-offs with new dates, and an
+entry archived in August would suppress September's for good — a false negative the user
+would never see, which is a worse failure than the duplicate it prevents. Keying on event +
+date makes "same event" mean same event, not same words. Two shards rather than a date-range
+scan because the shards are monthly and small; a calendar-derived task cannot have been
+archived more than seven days before its event, so the pair is comfortably sufficient.
+
+**Not decided:** task identity remains fuzzy prose matching. The exact fix is stamping the
+calendar event id onto the task, but `TaskBlock.applyMetadata` ignores unrecognized tokens
+on parse and drops them on render, so any such token is destroyed on the next archive or
+checkbox write-back — it needs a real `LoafCore` field, not a prompt change. Deferred until
+prose matching demonstrably misses.
+
 ## 2026-09-15 — Task format extracted to a single source of truth; brief becomes an insight layer
 
 **Decided:** the task format (the metadata-below shape, its tokens, its rules) is now

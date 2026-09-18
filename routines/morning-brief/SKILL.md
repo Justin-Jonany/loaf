@@ -117,6 +117,27 @@ match on the event itself (its title/subject and date), not on exact wording, si
 the one who phrased the sentence and won't phrase it identically twice. Found one already?
 Leave it, add nothing.
 
+**Check the archive too — a cleared task is not a missing one.** Archiving is the user's
+only way to say "I'm done with this": this routine is add-only, so a task they finished
+early and cleared has *left* `tasks.md` altogether. Match against `tasks.md` alone and
+you'll resurrect it every single morning until the event date passes — the exact failure
+this rule exists to stop. The permanent archive is `<vault>/archive/YYYY-MM.md`, one shard
+per calendar month, bucketed by **when the task was archived**, not by its due date
+(DECISIONS.md 2026-09-11). Read the current month's shard and the previous month's — that
+pair is the whole search space worth scanning, and both are small — then treat any entry
+in them exactly as you'd treat a live task for de-dup: match on the event, leave it, add
+nothing. Nothing goes under "What changed" either; you changed nothing.
+
+**Bound the archive match by due date.** Only an archived entry whose `@due` falls inside
+this run's today-through-today+7 window may suppress an addition. That bound is
+load-bearing: a one-off like "Dentist appointment" or "Coffee chat with Hunter" recurs
+with a *new* date, and matching on title alone against months of history would silently
+swallow the new event. Same event **and** same date ⇒ already handled, skip it. Same
+title, different date ⇒ a genuinely new event, add it.
+
+The archive is read-only to you. Never un-archive a task, never re-date one, never copy
+one back into `tasks.md` — it stays where the user put it.
+
 If an event you already captured has since moved to a new date, that's the one calendar
 case where you edit an existing task's `@due` rather than adding a second one — update the
 `@due` to the new date and cite the reschedule under "What changed." If an event you

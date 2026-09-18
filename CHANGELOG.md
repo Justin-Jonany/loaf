@@ -168,6 +168,12 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   7-day calendar window (today through today+7, inclusive) instead of today only, and
   de-dupes calendar-derived tasks across runs — a rescheduled event edits its existing
   task's `@due` instead of adding a duplicate. See DECISIONS.md 2026-09-12.
+- `routines/morning-brief/SKILL.md`: that cross-run de-dup now also consults the permanent
+  archive (`archive/YYYY-MM.md`, current month + previous), so a task the user finished
+  early and cleared is no longer re-added from the calendar every morning until its event
+  date passes. The archive match is bounded to the run's today-through-today+7 window, so a
+  same-titled entry archived under an older date never suppresses a genuinely new event.
+  See DECISIONS.md 2026-09-18.
 - `routines/morning-brief/SKILL.md`: calendar tiering now keys on the event's own
   `recurringEventId` (recurring series instance → never a task, context only; no
   `recurringEventId` → a one-off, added as a `calendar` task) instead of inferring
