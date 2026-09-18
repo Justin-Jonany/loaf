@@ -7,9 +7,11 @@
 #
 #   decision-day           overlapping calendar events -> expects a decision signal
 #   clear-day               an uneventful day -> expects NO interruption
-#   lookahead                a 7-day-out event, a same-day-window event, and one beyond
-#                            the window -> expects the window bound + cross-run de-dup
-#                            (DECISIONS.md 2026-09-12)
+#   lookahead                a 7-day-out event, a same-day-window event, one beyond the
+#                            window, and one whose task the user already finished early
+#                            and archived -> expects the window bound + cross-run de-dup
+#                            (DECISIONS.md 2026-09-12) + de-dup against archive/, bounded
+#                            by due date so a same-titled older entry suppresses nothing
 #   recurrence-tiering       a recurring class + a recurring focus block alongside a
 #                            one-off coffee chat and a one-off graded deliverable ->
 #                            expects the recurring pair to stay context (never tasks) and
@@ -129,6 +131,20 @@ scenario_lookahead() {
     echo "PASS: exactly one task references @2026-09-17 — the pre-seeded vendor-call task was not duplicated"
   else
     echo "FAIL: expected exactly 1 task line with @2026-09-17, found $vendor_count"
+  fi
+
+  local archived_count
+  archived_count="$(grep -c '@2026-09-19' "$vault/tasks.md" | tr -d ' ')"
+  if [[ "$archived_count" -eq 0 ]]; then
+    echo "PASS: no task references @2026-09-19 — the compliance training was left alone, its task having already been archived (archive/2026-09.md)"
+  else
+    echo "FAIL: expected 0 task lines with @2026-09-19, found $archived_count — an archived task was resurrected from the calendar"
+  fi
+
+  if grep -q '@2026-09-16' "$vault/tasks.md"; then
+    echo "PASS: the Design review (@2026-09-16) survived the archive scan — a same-titled entry archived under a different date (archive/2026-08.md) did not suppress it"
+  else
+    echo "FAIL: the Design review (@2026-09-16) was suppressed by the August archive entry — the archive match is not bounded by due date"
   fi
 
   board_count="$(grep -c '@2026-09-24' "$vault/tasks.md" | tr -d ' ')"

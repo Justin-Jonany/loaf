@@ -1,5 +1,5 @@
 {
-  "_comment": "Fixture for routines/morning-brief/dry_run.sh (lookahead scenario). Pinned to LOAF_TODAY=2026-09-14. Exercises the 7-day window + cross-run de-dup. See routines/morning-brief/SKILL.md -> 'Reading the calendar'.",
+  "_comment": "Fixture for routines/morning-brief/dry_run.sh (lookahead scenario). Pinned to LOAF_TODAY=2026-09-14. Exercises the 7-day window, cross-run de-dup, and de-dup against the archive. See routines/morning-brief/SKILL.md -> 'Reading the calendar' and \"Don't double-add across days\".",
   "events": [
     {
       "id": "evt-standup",
@@ -22,6 +22,13 @@
       "start": "2026-09-17T11:00:00-07:00",
       "end": "2026-09-17T11:30:00-07:00",
       "description": "Decide on renewal terms; have the pricing comparison ready."
+    },
+    {
+      "id": "evt-compliance-training",
+      "summary": "Compliance training — annual module",
+      "start": "2026-09-19T13:00:00-07:00",
+      "end": "2026-09-19T14:00:00-07:00",
+      "description": "Complete the annual compliance module before the session."
     },
     {
       "id": "evt-board-meeting",
