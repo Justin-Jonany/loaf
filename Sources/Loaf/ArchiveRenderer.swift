@@ -9,7 +9,7 @@ import LoafCore
 /// slice, once there's more than one month of history worth browsing.
 enum ArchiveRenderer {
     static func renderBody(_ shardMarkdown: String, shardFile: String, today: CalendarDate) -> String {
-        let tasks = parseArchivedBlocks(shardMarkdown)
+        let tasks = sortedByDue(parseArchivedBlocks(shardMarkdown))
         var html = "<div class=\"dashboard archive\">\n"
         html += "<section class=\"section\">\n"
         html += "<h2>Archive</h2>\n"
@@ -65,6 +65,20 @@ enum ArchiveRenderer {
             }
         }
         return results
+    }
+
+    /// The shard is in archive order (append-only), which reads as random once tasks are
+    /// cleared out of due order. Oldest `@due` first; a block missing `@due` sorts last;
+    /// source line breaks ties so equal-date rows keep their shard order.
+    private static func sortedByDue(_ tasks: [(TaskBlock, Int)]) -> [(TaskBlock, Int)] {
+        tasks.sorted { lhs, rhs in
+            switch (lhs.0.due, rhs.0.due) {
+            case let (l?, r?) where l != r: return l < r
+            case (_?, nil): return true
+            case (nil, _?): return false
+            default: return lhs.1 < rhs.1
+            }
+        }
     }
 
     private static func escape(_ text: String) -> String {
