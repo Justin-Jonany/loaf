@@ -122,7 +122,7 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 .dashboard .brief p { margin: 0 0 6px; }
 .dashboard .empty { color: var(--ink-dim); font-style: italic; margin: 0; }
 
-/* Freshness stamp (ROADMAP D1; DESIGN.md → Trust): "built 7:58am" next to the Brief
+/* Freshness stamp (ROADMAP D1; DESIGN.md → Trust): "built Sep 23, 7:58am" next to the Brief
    heading, so you never act on a stale plan without knowing. A missing/unparseable stamp
    ("build time unknown") tints with `--due-over` instead of `--ink-dim` — the same
    semantic used for overdue tasks — so a stale/unknown brief actually reads as a warning,

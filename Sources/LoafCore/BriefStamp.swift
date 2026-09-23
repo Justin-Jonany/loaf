@@ -76,25 +76,26 @@ public enum BriefStamp: Equatable, Sendable {
         return formatter
     }()
 
-    /// "built 7:58am" (DESIGN.md's own example) for a known instant; a clear stale/unknown
-    /// state otherwise — never a guessed time. `timeZone` defaults to the viewer's own, so
-    /// the displayed hour matches the wall clock the user reads it against.
+    /// "built Sep 23, 7:58am" for a known instant; a clear stale/unknown state otherwise —
+    /// never a guessed time. The date is shown, not just the time, so a brief left over from
+    /// a run that didn't fire today can't pass for this morning's. `timeZone` defaults to the
+    /// viewer's own, so the displayed hour matches the wall clock the user reads it against.
     public func displayString(timeZone: TimeZone = .current) -> String {
         switch self {
         case .known(let date):
-            return "built \(Self.timeFormatter(timeZone: timeZone).string(from: date))"
+            return "built \(Self.stampFormatter(timeZone: timeZone).string(from: date))"
         case .unknown:
             return "build time unknown"
         }
     }
 
-    private static func timeFormatter(timeZone: TimeZone) -> DateFormatter {
+    private static func stampFormatter(timeZone: TimeZone) -> DateFormatter {
         let formatter = DateFormatter()
         // Fixed locale so "am"/"pm" render lowercase regardless of the user's own locale —
         // matching DESIGN.md's literal example, not a locale-formatted alternative.
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = timeZone
-        formatter.dateFormat = "h:mma"
+        formatter.dateFormat = "MMM d, h:mma"
         formatter.amSymbol = "am"
         formatter.pmSymbol = "pm"
         return formatter

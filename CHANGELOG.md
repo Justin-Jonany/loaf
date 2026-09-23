@@ -163,6 +163,9 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   editing `tasks.md`/`longterm.md` while leaving the Claude-owned `brief.md` alone.
 
 ### Changed
+- `BriefStamp`: the freshness stamp now shows the build date as well as the time
+  ("built Sep 23, 7:58am" instead of "built 7:58am"), so a brief left over from a morning
+  run that didn't fire today is recognisable at a glance.
 - Project renamed Foolscap → Loaf across the repo.
 - `routines/morning-brief` (SKILL.md, run.sh): the morning routine now reads a rolling
   7-day calendar window (today through today+7, inclusive) instead of today only, and
