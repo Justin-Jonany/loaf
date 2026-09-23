@@ -66,7 +66,7 @@ is *not* a folder browser: it reads three known files, nothing else.
 1. **Brief** — 2–5 sentences of prose Claude writes: what you got done yesterday and across
    the week, and what's slipping. It's where *past* days' finished work is recapped, but a
    completed task isn't only there — it stays visible struck-through in its own section
-   (below) until you archive it. Also carries the freshness stamp ("built 7:58am").
+   (below) until you archive it. Also carries the freshness stamp ("built Sep 23, 7:58am").
 2. **Today** — every task with `@due` at or before today (spillover + due-tonight, computed
    automatically from due dates), **plus any task you've _starred_ (`★`) for today**, whatever
    its deadline. Nothing is stored as a literal "today list": the due-date part is derived, and

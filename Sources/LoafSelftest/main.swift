@@ -1625,7 +1625,7 @@ expect(
     "an out-of-range stamp payload parses as unknown"
 )
 
-// The formatter renders the expected "built h:mma" string for a known instant, driven by
+// The formatter renders the expected "built MMM d, h:mma" string for a known instant, driven by
 // an explicit `DateComponents` + `TimeZone` — never the wall clock.
 var knownStampComponents = DateComponents()
 knownStampComponents.year = 2026
@@ -1639,15 +1639,15 @@ var knownStampCalendar = Calendar(identifier: .gregorian)
 knownStampCalendar.timeZone = knownStampZone
 let knownStampInstant = knownStampCalendar.date(from: knownStampComponents)!
 expect(
-    BriefStamp.known(knownStampInstant).displayString(timeZone: knownStampZone), "built 7:58am",
-    "formats a known instant as \"built h:mma\""
+    BriefStamp.known(knownStampInstant).displayString(timeZone: knownStampZone), "built Aug 22, 7:58am",
+    "formats a known instant as \"built MMM d, h:mma\""
 )
 
-// A single-digit minute still renders two digits ("built 6:03am", not "built 6:3am").
+// A single-digit minute still renders two digits ("built Aug 22, 7:03am", not "built Aug 22, 7:3am").
 knownStampComponents.minute = 3
 let paddedMinuteInstant = knownStampCalendar.date(from: knownStampComponents)!
 expect(
-    BriefStamp.known(paddedMinuteInstant).displayString(timeZone: knownStampZone), "built 7:03am",
+    BriefStamp.known(paddedMinuteInstant).displayString(timeZone: knownStampZone), "built Aug 22, 7:03am",
     "pads a single-digit minute"
 )
 
@@ -1710,7 +1710,7 @@ let doubleHeadingBrief = "<!-- built: 2026-08-22T06:03:11-07:00 -->\n# Brief\n\n
 let doubleHeadingStripped = BriefStamp.stripStampLine(from: doubleHeadingBrief).trimmingCharacters(in: .whitespacesAndNewlines)
 let doubleHeadingTrimmed = BriefStamp.stripLeadingBriefHeading(from: doubleHeadingStripped)
 let doubleHeadingBody = MarkdownRenderer.renderHTML(from: doubleHeadingTrimmed)
-let doubleHeadingSection = "<section class=\"brief\">\n<h2>Brief <span class=\"freshness\">built 6:03am</span></h2>\n\(doubleHeadingBody)</section>\n"
+let doubleHeadingSection = "<section class=\"brief\">\n<h2>Brief <span class=\"freshness\">built Aug 22, 6:03am</span></h2>\n\(doubleHeadingBody)</section>\n"
 
 expect(
     doubleHeadingSection.components(separatedBy: "<h2>Brief").count - 1, 1,
