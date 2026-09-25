@@ -1,4 +1,10 @@
-# Loaf
+<p align="center">
+  <img src="logo/loaf-app.png" width="128" height="128" alt="Loaf logo: a line-art loaf of bread on a gold tile">
+</p>
+
+<h1 align="center">Loaf</h1>
+
+<p align="center"><b>A daily brief that writes itself, in plain markdown any agent can edit.</b></p>
 
 An **agent-native** daily-briefing app for macOS — a small panel that floats on your
 desktop, backed by plain markdown in a folder you own. No API, no plugin, no sync
@@ -6,10 +12,11 @@ service: **the storage format is the interface, so any coding agent can read and
 your notes with ordinary file tools.** A scheduled Claude run fills it in each morning,
 and a companion skill (`loaf-notes`, below) lets you jot to it in plain language.
 
-> **Status: pre-release.** It builds and launches, composes the four-section dashboard
-> from a vault (`brief.md` / `tasks.md` / `longterm.md`), and the morning routine can
-> write that vault. Reminders, the freshness/decision signals, and the tidy task
-> rendering are still landing — see [ROADMAP.md](ROADMAP.md).
+**Status:** early, and in daily use. The panel, task write-back, archive, themes,
+freshness stamp, and the morning routine all work; builds are unsigned and macOS 14+.
+What's next is in [ROADMAP.md](ROADMAP.md).
+
+<!-- Demo: watching the 6:30am brief land, then ticking a box and seeing the file change. -->
 
 ---
 
@@ -60,6 +67,89 @@ by hand.
 Coffee chats and one-off events just sit in my calendar; the morning routine catches
 them and turns them into tasks on its own.
 
+## Install
+
+Requires macOS 14+ and a working Swift toolchain. The morning routine also needs
+[Claude Code](https://claude.com/claude-code).
+
+```bash
+git clone https://github.com/Justin-Jonany/loaf
+cd loaf
+./build.sh                          # assembles dist/Loaf.app
+cp -R dist/Loaf.app ~/Applications/
+./scripts/install.sh                # installs the two Claude Code skills (below)
+```
+
+Loaf is an ordinary app: it shows in the Dock and Cmd+Tab, plus a menu-bar item for
+quick show/hide. It runs on defaults with no config file; see [Configuration](#configuration)
+to change the vault path or theme.
+
+### Try it with the sample vault
+
+A fresh vault is empty, so to see the dashboard populated, point the app at the sample
+vault checked into the repo (a synthetic fixture — never your real notes):
+
+```bash
+LOAF_VAULT=routines/morning-brief/fixtures/decision-day/vault dist/Loaf.app/Contents/MacOS/Loaf
+```
+
+`LOAF_VAULT` is inherited from the shell when you launch the bundled binary directly
+(`open` doesn't forward it). `swift run loaf` builds only the bare executable and won't
+reliably surface as the menu-bar app, which is why `build.sh` assembles a proper
+`Loaf.app` with the `Info.plist`, icons, and bundled themes/templates.
+
+Or render the dashboard straight to HTML without launching the panel at all:
+
+```bash
+swift run loaf --dump-dashboard \
+  routines/morning-brief/fixtures/decision-day/vault /tmp/loaf-dash.html
+```
+
+That fixture uses fixed August 2026 dates, so on today's clock its tasks read as
+overdue / long-term rather than a fresh-morning spread — it still populates all four
+sections.
+
+### Schedule the morning routine
+
+The "brains" half is a scheduled **local** Claude Code run — a full headless agent loop
+(`claude -p`), **not** an API call. It reads your calendar + recent notes and writes
+`brief.md` / `tasks.md`.
+
+```bash
+routines/morning-brief/run.sh          # production: real vault, live calendar
+routines/morning-brief/dry_run.sh all  # fixtures only — the test harness, no live calendar
+```
+
+- **Schedule** it daily at ~6am via launchd using
+  `routines/morning-brief/com.loaf.morning-brief.plist` — the install steps
+  (`launchctl bootstrap`) are in that file's header comment. It's a
+  `StartCalendarInterval` job, so a run missed while the Mac was asleep catches up on
+  wake, with no extra code.
+- **Live calendar** = a rolling 7-day window (today through today+7) via the Google
+  Calendar MCP tools; the `fixtures/` are for tests only.
+- **Two first-run snags:** `claude` must be on `PATH` for launchd's minimal environment,
+  and the Google Calendar MCP tool names hard-coded in `run.sh` may need matching to how
+  the server is registered on your machine.
+
+### Troubleshooting
+
+**`this SDK is not supported by the compiler`** — Command Line Tools and macOS SDK are
+from mismatched builds (usually after a macOS upgrade). Fix:
+
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+sudo xcode-select --install
+```
+
+Still failing? Install Xcode from the App Store and run
+`sudo xcode-select -s /Applications/Xcode.app`.
+
+**"Loaf is damaged and can't be opened"** — Gatekeeper flagging an unsigned build:
+
+```bash
+xattr -d com.apple.quarantine ~/Applications/Loaf.app
+```
+
 ## Two skills for talking to your vault
 
 **`loaf-notes`** is half the point. You're mid-something and think "oh — I have to submit
@@ -76,25 +166,12 @@ catch-up window, or you just want a fresh read before a big day. It wraps
 `routines/morning-brief/run.sh --force`, so "rebuild my brief" gets you an up-to-date
 `brief.md` on demand without opening a terminal.
 
-Both skills ship in [`skills/`](skills/) — install them once by running the installer
-from the clone:
-
-```bash
-./scripts/install.sh
-```
-
-This copies `loaf-notes` and `loaf-brief` into `~/.claude/skills/` and records the
-clone's location in `~/.config/loaf/config.toml` (the `contract` pointer both skills use
-to find `TASK-FORMAT.md`). The copies are independent — editing an installed skill never
-touches the repo. Re-run the installer whenever you change a skill in the repo (it
-overwrites your copies), or after moving or re-cloning the repo (it refreshes the pointer).
-
-## Demo
-
-Watching the 6:30am brief land, then ticking a box and seeing the file change, says
-more than this README can.
-
-_(video demonstration — to be made)_
+Both ship in [`skills/`](skills/). `./scripts/install.sh` copies them into
+`~/.claude/skills/` and records the clone's location in `~/.config/loaf/config.toml`
+(the `contract` pointer both skills use to find `TASK-FORMAT.md`). The copies are
+independent — editing an installed skill never touches the repo. Re-run the installer
+whenever you change a skill in the repo (it overwrites your copies), or after moving or
+re-cloning the repo (it refreshes the pointer).
 
 ## The vault
 
@@ -117,9 +194,8 @@ directly, so a vault's `CLAUDE.md` never needs touching when the format changes.
 three dashboard files are optional: a fresh vault renders gracefully empty until the
 morning routine (or you) writes them.
 
-> **Naming collision.** The vault root is `Notes` (capital N) while `notes/` (lowercase)
-> is just a loose subfolder inside it — easy to confuse. This ties into the open **Name**
-> decision (ROADMAP.md → Open decisions); `loaf` and these names are placeholders.
+Mind the case: `Notes` (capital N) is the vault root, while `notes/` (lowercase) is just a
+loose-notes subfolder inside it.
 
 ## Dates
 
@@ -200,103 +276,21 @@ week_starts      = "monday" # anchors every:week and relative dates: "monday" or
 `$LOAF_VAULT` overrides the vault path at launch. The `theme` line is also rewritten for
 you when you pick a theme from the menu bar, so a live switch persists to the next launch.
 
-## See it live
-
-A fresh vault is empty, so to see the dashboard populated, point the app at the sample
-vault checked into the repo (a synthetic fixture — never your real notes).
-
-Build the app bundle and launch it against the fixture — `swift run loaf` builds only
-the bare executable and won't reliably surface as the menu-bar app; `build.sh`
-assembles a proper `Loaf.app` with the `Info.plist` and bundled themes/templates.
-
-```bash
-./build.sh   # assembles dist/Loaf.app
-LOAF_VAULT=routines/morning-brief/fixtures/decision-day/vault dist/Loaf.app/Contents/MacOS/Loaf
-```
-
-`LOAF_VAULT` is inherited from the shell when you launch the bundled binary directly.
-For everyday use against your own vault, `open dist/Loaf.app` (or install it with
-`cp -R dist/Loaf.app ~/Applications/`).
-
-Or render the dashboard straight to HTML without launching the panel at all:
-
-```bash
-swift run loaf --dump-dashboard \
-  routines/morning-brief/fixtures/decision-day/vault /tmp/loaf-dash.html
-```
-
-That fixture uses fixed August 2026 dates, so on today's clock its tasks read as
-overdue / long-term rather than a fresh-morning spread — it still populates all four
-sections.
-
-## Running the morning routine
-
-The "brains" half is a scheduled **local** Claude Code run — a full headless agent loop
-(`claude -p`), **not** an API call. It reads your calendar + recent notes and writes
-`brief.md` / `tasks.md`.
-
-```bash
-routines/morning-brief/run.sh          # production: real vault, live calendar
-routines/morning-brief/dry_run.sh all  # fixtures only — the test harness, no live calendar
-```
-
-- **Schedule** it daily at ~6am via launchd using
-  `routines/morning-brief/com.loaf.morning-brief.plist` — the install steps
-  (`launchctl bootstrap`) are in that file's header comment. It's a
-  `StartCalendarInterval` job, so a run missed while the Mac was asleep catches up on
-  wake, with no extra code.
-- **Live calendar** = a rolling 7-day window (today through today+7) via the Google
-  Calendar MCP tools; the `fixtures/` are for tests only.
-- **Two first-run snags:** `claude` must be on `PATH` for launchd's minimal environment,
-  and the Google Calendar MCP tool names hard-coded in `run.sh` may need matching to how
-  the server is registered on your machine.
-
-## Building
-
-Requires macOS 14+ and a working Swift toolchain.
-
-```bash
-git clone https://github.com/Justin-Jonany/loaf
-cd loaf
-./build.sh
-cp -R dist/Loaf.app ~/Applications/
-```
-
-Loaf is an ordinary app: it shows in the Dock and Cmd+Tab, plus a menu-bar item for
-quick show/hide.
-
-### Troubleshooting
-
-**`this SDK is not supported by the compiler`** — Command Line Tools and macOS SDK are
-from mismatched builds (usually after a macOS upgrade). Fix:
-
-```bash
-sudo rm -rf /Library/Developer/CommandLineTools
-sudo xcode-select --install
-```
-
-Still failing? Install Xcode from the App Store and run
-`sudo xcode-select -s /Applications/Xcode.app`.
-
-**"Loaf is damaged and can't be opened"** — Gatekeeper flagging an unsigned build:
-
-```bash
-xattr -d com.apple.quarantine ~/Applications/Loaf.app
-```
-
 ## Repository layout
 
 ```
 Sources/LoafCore/             Vault, TaskBlock (metadata-below parser), Dashboard
                               (four-section composer), dates, recurrence — no AppKit
-Sources/Loaf/                 NSWindow, WKWebView, menu bar, dashboard render, config
+Sources/Loaf/                 NSWindow, WKWebView, menu bar, dashboard render, task
+                              write-back, notifications, and the --demo-* CLI commands
 Sources/LoafSelftest/         The logic suite — a plain executable, no Xcode needed
 Sources/LoafRoutineCheck/     CLI that feeds a vault file through the parser (the routine's dry run uses it)
-Resources/themes/             8 ready-made theme CSS files (see Themes)
+Resources/                    Info.plist, app + menu-bar icons, and 8 theme CSS files (see Themes)
+logo/                         SVG sources for the icons; scripts/make-icons.sh re-renders them
 TASK-FORMAT.md                Single source of truth for the task format — read directly by
                               both skills and the morning routine, never restated elsewhere
 templates/CLAUDE.md           Personal-notes-for-Claude seed, written into a new vault on first run
-scripts/install.sh            Symlinks the skills into ~/.claude/skills/ and writes the
+scripts/install.sh            Copies the skills into ~/.claude/skills/ and writes the
                               ~/.config/loaf/config.toml contract pointer
 routines/morning-brief/       The scheduled "brains" run: SKILL.md, run.sh, dry_run.sh,
                               the launchd plist, and fixtures/ (sample vaults + calendars)
