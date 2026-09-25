@@ -1,0 +1,13 @@
+{
+  "name": "loaf",
+  "version": "0.1.0",
+  "description": "A daily brief that writes itself: sets up the Loaf macOS panel and its morning Claude routine, and lets you add or tick off tasks in plain language.",
+  "author": {
+    "name": "Justin Jonany",
+    "url": "https://github.com/Justin-Jonany"
+  },
+  "homepage": "https://github.com/Justin-Jonany/loaf",
+  "repository": "https://github.com/Justin-Jonany/loaf",
+  "license": "MIT",
+  "keywords": ["productivity", "tasks", "daily-brief", "macos", "markdown"]
+}

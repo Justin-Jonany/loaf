@@ -7,16 +7,33 @@
 <p align="center"><b>A daily brief that writes itself, in plain markdown any agent can edit.</b></p>
 
 An **agent-native** daily-briefing app for macOS — a small panel that floats on your
-desktop, backed by plain markdown in a folder you own. No API, no plugin, no sync
-service: **the storage format is the interface, so any coding agent can read and write
-your notes with ordinary file tools.** A scheduled Claude run fills it in each morning,
-and a companion skill (`loaf-notes`, below) lets you jot to it in plain language.
+desktop, backed by plain markdown in a folder you own. No API and no sync service:
+**the storage format is the interface, so any coding agent can read and write your
+notes with ordinary file tools.** A scheduled Claude run fills it in each morning, and a
+companion skill (`loaf-notes`, below) lets you jot to it in plain language.
 
 **Status:** early, and in daily use. The panel, task write-back, archive, themes,
 freshness stamp, and the morning routine all work; builds are unsigned and macOS 14+.
 What's next is in [ROADMAP.md](ROADMAP.md).
 
 <!-- Demo: watching the 6:30am brief land, then ticking a box and seeing the file change. -->
+
+## Quick start
+
+You need a Mac on macOS 14+ and [Claude Code](https://claude.com/claude-code). No clone,
+no build.
+
+1. For the brief to read your calendar, connect **Google Calendar** at claude.ai →
+   Settings → Connectors.
+2. In Claude Code, add Loaf and install it:
+   ```
+   /plugin marketplace add Justin-Jonany/loaf
+   /plugin install loaf@loaf
+   ```
+3. Say **"set up loaf"**. Claude asks where your notes should live, installs the app,
+   schedules the morning brief, and builds your first one.
+4. From then on the brief writes itself each morning. Add tasks by telling Claude, e.g.
+   *"add a task to call the dentist friday"*, and tick them off in the panel.
 
 ---
 
@@ -69,20 +86,32 @@ them and turns them into tasks on its own.
 
 ## Install
 
-Requires macOS 14+ and a working Swift toolchain. The morning routine also needs
-[Claude Code](https://claude.com/claude-code).
+The [Quick start](#quick-start) above is the whole install. In detail, "set up loaf" (or
+`/loaf:loaf-setup`) checks your macOS version and that `claude` is reachable for the
+scheduled run, asks where your notes should live and whether to schedule the brief,
+downloads the app from the latest release, checks your Google Calendar connection, and
+offers to build today's brief. Re-run it any time to repair or update the setup; to pick
+up a new version, run `claude plugin update loaf@loaf` in a terminal first.
+
+Loaf is an ordinary app: it shows in the Dock and Cmd+Tab, plus a menu-bar item for
+quick show/hide. It runs on defaults with no config file; see [Configuration](#configuration)
+to change the vault path or theme.
+
+### From source
+
+With a Swift toolchain you can build it yourself instead:
 
 ```bash
 git clone https://github.com/Justin-Jonany/loaf
 cd loaf
 ./build.sh                          # assembles dist/Loaf.app
 cp -R dist/Loaf.app ~/Applications/
-./scripts/install.sh                # installs the two Claude Code skills (below)
+./scripts/install.sh --schedule     # skills, config, and the morning schedule
 ```
 
-Loaf is an ordinary app: it shows in the Dock and Cmd+Tab, plus a menu-bar item for
-quick show/hide. It runs on defaults with no config file; see [Configuration](#configuration)
-to change the vault path or theme.
+`install.sh` copies what the morning run needs into `~/Library/Application Support/Loaf/`
+and points the config and schedule there, so re-run it after pulling changes. Add
+`--vault PATH` to use a folder other than `~/Notes`.
 
 ### Try it with the sample vault
 
@@ -120,16 +149,16 @@ routines/morning-brief/run.sh          # production: real vault, live calendar
 routines/morning-brief/dry_run.sh all  # fixtures only — the test harness, no live calendar
 ```
 
-- **Schedule** it daily at ~6am via launchd using
-  `routines/morning-brief/com.loaf.morning-brief.plist` — the install steps
-  (`launchctl bootstrap`) are in that file's header comment. It's a
-  `StartCalendarInterval` job, so a run missed while the Mac was asleep catches up on
-  wake, with no extra code.
+- **Schedule:** `loaf-setup` or `scripts/install.sh --schedule` installs
+  `routines/morning-brief/com.loaf.morning-brief.plist` as a launchd job that tries from
+  6am. It's a `StartCalendarInterval` job, so a run missed while the Mac was asleep
+  catches up on wake, with no extra code. Remove it with
+  `launchctl bootout gui/$(id -u)/com.loaf.morning-brief`.
 - **Live calendar** = a rolling 7-day window (today through today+7) via the Google
   Calendar MCP tools; the `fixtures/` are for tests only.
-- **Two first-run snags:** `claude` must be on `PATH` for launchd's minimal environment,
-  and the Google Calendar MCP tool names hard-coded in `run.sh` may need matching to how
-  the server is registered on your machine.
+- **Two first-run snags** (`loaf-setup` checks both): `claude` must be on `PATH` for
+  launchd's minimal environment, and `run.sh` expects the claude.ai Google Calendar
+  connector's tool names (`mcp__claude_ai_Google_Calendar__*`).
 
 ### Troubleshooting
 
@@ -166,12 +195,11 @@ catch-up window, or you just want a fresh read before a big day. It wraps
 `routines/morning-brief/run.sh --force`, so "rebuild my brief" gets you an up-to-date
 `brief.md` on demand without opening a terminal.
 
-Both ship in [`skills/`](skills/). `./scripts/install.sh` copies them into
-`~/.claude/skills/` and records the clone's location in `~/.config/loaf/config.toml`
-(the `contract` pointer both skills use to find `TASK-FORMAT.md`). The copies are
-independent — editing an installed skill never touches the repo. Re-run the installer
-whenever you change a skill in the repo (it overwrites your copies), or after moving or
-re-cloning the repo (it refreshes the pointer).
+Both ship in [`skills/`](skills/) and come with the plugin. From a clone,
+`./scripts/install.sh` copies them into `~/.claude/skills/` instead. Either way, the
+`contract` line in `~/.config/loaf/config.toml` tells both skills where to find
+`TASK-FORMAT.md`. Installed copies are independent — editing one never touches the repo —
+so re-run the installer after changing a skill in the repo.
 
 ## The vault
 
@@ -290,12 +318,15 @@ logo/                         SVG sources for the icons; scripts/make-icons.sh r
 TASK-FORMAT.md                Single source of truth for the task format — read directly by
                               both skills and the morning routine, never restated elsewhere
 templates/CLAUDE.md           Personal-notes-for-Claude seed, written into a new vault on first run
-scripts/install.sh            Copies the skills into ~/.claude/skills/ and writes the
-                              ~/.config/loaf/config.toml contract pointer
+.claude-plugin/               Claude Code plugin + marketplace manifests (the repo is the plugin)
+scripts/install.sh            Installs the routine's runtime copy, config, skills, and schedule
+scripts/install-app.sh        Downloads the latest release into ~/Applications (used by loaf-setup)
+scripts/test-install.sh       Checks both installers against a throwaway HOME (runs in CI)
 routines/morning-brief/       The scheduled "brains" run: SKILL.md, run.sh, dry_run.sh,
                               the launchd plist, and fixtures/ (sample vaults + calendars)
 skills/loaf-notes/            The loaf-notes Claude Code skill — jot/edit tasks in plain language
 skills/loaf-brief/            The loaf-brief Claude Code skill — rebuild today's brief on demand
+skills/loaf-setup/            The loaf-setup skill (plugin only) — install, schedule, and first run
 design/mockup.html            The design, rendered
 ```
 

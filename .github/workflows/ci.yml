@@ -42,7 +42,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Assemble Loaf.app
-        run: ./build.sh
+        # Universal, exactly as the release job builds it, so a PR proves the release build.
+        run: LOAF_UNIVERSAL=1 ./build.sh
+      - name: Confirm both architectures
+        run: info="$(lipo -info dist/Loaf.app/Contents/MacOS/Loaf)"; echo "$info"; [[ $info == *x86_64* && $info == *arm64* ]]
+      - name: Installer checks
+        run: bash scripts/test-install.sh
       - uses: actions/upload-artifact@v4
         with:
           name: Loaf-app-unsigned

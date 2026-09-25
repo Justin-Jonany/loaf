@@ -1,0 +1,46 @@
+name: Release
+
+# Pushing a tag like v0.1.0 builds a universal Loaf.app and attaches it to a GitHub
+# Release as Loaf.zip — the file scripts/install-app.sh (and so the loaf-setup skill)
+# downloads via releases/latest.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches both version fields
+        # The app and the plugin ship together, so a release where they disagree would
+        # leave `/plugin update` and the app's About version telling different stories.
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          app="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"
+          plugin="$(python3 -c 'import json; print(json.load(open(".claude-plugin/plugin.json"))["version"])')"
+          if [[ "$tag" != "$app" || "$tag" != "$plugin" ]]; then
+            echo "::error::tag $tag, Info.plist $app and plugin.json $plugin must all match"
+            exit 1
+          fi
+
+      - name: Self-test
+        run: swift run loaf-selftest
+
+      - name: Build universal Loaf.app
+        run: LOAF_UNIVERSAL=1 ./build.sh
+
+      - name: Confirm both architectures
+        run: info="$(lipo -info dist/Loaf.app/Contents/MacOS/Loaf)"; echo "$info"; [[ $info == *x86_64* && $info == *arm64* ]]
+
+      - name: Zip
+        run: ditto -c -k --keepParent dist/Loaf.app Loaf.zip
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" Loaf.zip --title "Loaf $GITHUB_REF_NAME" --generate-notes

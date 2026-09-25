@@ -52,8 +52,8 @@ restate it, so it can never drift. Before editing tasks:
    (`Bash(cat ~/.config/loaf/config.toml)`), and `Read` the file it points to. That file is
    authoritative for the metadata-below format and every token.
 2. If there is no `contract =` line (or the file is missing), the Loaf skills aren't wired up
-   on this machine — tell the user to run `scripts/install.sh` from their Loaf repo clone, and
-   stop rather than guessing a format.
+   on this machine — tell the user to run the `loaf-setup` skill (or `scripts/install.sh` from
+   a clone), and stop rather than guessing a format.
 3. Also `Read` `<vault>/CLAUDE.md` (the vault you resolved above) — it holds the user's own
    personal preferences (tone, people, how they like tasks phrased). Respect it; it is NOT the
    format spec.

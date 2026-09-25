@@ -15,12 +15,13 @@ routine now — use it when the scheduled run didn't fire or the user wants a fr
 
 ## How
 
-1. Find the Loaf repo: read `~/.config/loaf/config.toml` (`Bash(cat ~/.config/loaf/config.toml)`)
-   and take the `contract = "..."` path. The repo root is the directory that contains that
-   `TASK-FORMAT.md`. If there is no `contract =` line, the skills aren't installed — tell the
-   user to run `scripts/install.sh` from their clone, and stop.
+1. Find Loaf's install: read `~/.config/loaf/config.toml` (`Bash(cat ~/.config/loaf/config.toml)`)
+   and take the `contract = "..."` path. The directory that contains that `TASK-FORMAT.md`
+   also holds `routines/morning-brief/`. If there is no `contract =` line, Loaf isn't set
+   up — tell the user to run the `loaf-setup` skill (or `scripts/install.sh` from a clone),
+   and stop.
 2. Run the routine, forcing a rebuild even if today's brief already exists:
-   `bash <repo>/routines/morning-brief/run.sh --force`
+   `bash "<that directory>/routines/morning-brief/run.sh" --force`
 3. The routine writes `brief.md` (and may add calendar tasks to `tasks.md`) in the vault, then
    the panel repaints. Report to the user what the run printed — especially whether it
    succeeded, or wrote a failure signal.

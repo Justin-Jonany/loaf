@@ -1,0 +1,15 @@
+{
+  "name": "loaf",
+  "description": "Loaf: a daily-briefing panel for macOS backed by plain markdown.",
+  "owner": {
+    "name": "Justin Jonany",
+    "url": "https://github.com/Justin-Jonany"
+  },
+  "plugins": [
+    {
+      "name": "loaf",
+      "source": "./",
+      "description": "Set up Loaf (/loaf:loaf-setup), jot tasks in plain language (loaf-notes), and rebuild the brief on demand (loaf-brief)."
+    }
+  ]
+}
