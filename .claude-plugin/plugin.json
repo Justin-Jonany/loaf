@@ -1,6 +1,6 @@
 {
   "name": "loaf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A daily brief that writes itself: sets up the Loaf macOS panel and its morning Claude routine, and lets you add or tick off tasks in plain language.",
   "author": {
     "name": "Justin Jonany",
