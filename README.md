@@ -16,7 +16,22 @@ companion skill (`loaf-notes`, below) lets you jot to it in plain language.
 freshness stamp, and the morning routine all work; builds are unsigned and macOS 14+.
 What's next is in [ROADMAP.md](ROADMAP.md).
 
-<!-- Demo: watching the 6:30am brief land, then ticking a box and seeing the file change. -->
+<p align="center">
+  <img src="docs/screenshots/2-brief.png" width="560" alt="The Loaf panel showing a morning brief built from the calendar">
+</p>
+
+**Tell Claude in whatever words you've got, and it turns them into real tasks with real dates:**
+
+<p align="center">
+  <img src="docs/screenshots/3-claude.png" width="49%" alt="Asking Claude to add tasks in messy, vague language">
+  <img src="docs/screenshots/4-after.png" width="49%" alt="Claude picks dates for each task">
+</p>
+
+**Tick them off in the panel. The markdown file updates too.**
+
+<p align="center">
+  <img src="docs/screenshots/5-done.png" width="420" alt="Tasks checked off in the panel">
+</p>
 
 ## Quick start
 
@@ -322,6 +337,7 @@ templates/CLAUDE.md           Personal-notes-for-Claude seed, written into a new
 scripts/install.sh            Installs the routine's runtime copy, config, skills, and schedule
 scripts/install-app.sh        Downloads the latest release into ~/Applications (used by loaf-setup)
 scripts/test-install.sh       Checks both installers against a throwaway HOME (runs in CI)
+scripts/demo-vault.sh         Builds a throwaway demo vault and calendar dated from today (for screenshots)
 routines/morning-brief/       The scheduled "brains" run: SKILL.md, run.sh, dry_run.sh,
                               the launchd plist, and fixtures/ (sample vaults + calendars)
 skills/loaf-notes/            The loaf-notes Claude Code skill — jot/edit tasks in plain language
