@@ -50,7 +50,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         self.window = window
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.title = "◳"
+        // `image(forResource:)` picks up the @2x variant on Retina. The image is only in the
+        // assembled Loaf.app, so a bare `swift run` falls back to a text glyph.
+        if let icon = Bundle.main.image(forResource: "MenuBarIcon") {
+            icon.isTemplate = true // tints to match light/dark menu bars
+            item.button?.image = icon
+        } else {
+            item.button?.title = "◳"
+        }
         item.menu = buildMenu()
         self.statusItem = item
 

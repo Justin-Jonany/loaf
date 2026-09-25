@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#000" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- The same loaf, tuned for an 18pt template image: heavier stroke, two score marks,
+       vertically centered so it sits on the menu bar's baseline like system icons. -->
+  <path d="M10 51 H54 Q59 51 59 46 V38 C59 27 52 20 41 20 H23 C12 20 5 27 5 38 V46 Q5 51 10 51 Z"/>
+  <path d="M23 28 Q27 32 28.5 37"/>
+  <path d="M36 28 Q40 32 41.5 37"/>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#3a3a3a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Side profile of a tin loaf: flat base, rounded heels, a crust that domes over the top -->
+  <path d="M10 47 H54 Q59 47 59 42 V35 C59 25 52 19 41 19 H23 C12 19 5 25 5 35 V42 Q5 47 10 47 Z"/>
+  <!-- Three score marks slashed across the crust -->
+  <path d="M19 25 Q22.5 28 24 32"/>
+  <path d="M29 23 Q32.5 26.5 34 31"/>
+  <path d="M39 23 Q42.5 26.5 44 31"/>
+</svg>
