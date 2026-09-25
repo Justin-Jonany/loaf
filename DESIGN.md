@@ -45,7 +45,8 @@ in the repo's [`TASK-FORMAT.md`](TASK-FORMAT.md). Nothing else restates it:
 - The morning-brief routine injects it into its prompt (`routines/morning-brief/run.sh`
   reads the file and hands it to the run).
 - The `loaf-notes` and `loaf-brief` skills read it directly, via the `contract` pointer
-  in `~/.config/loaf/config.toml` (written by `scripts/install.sh`).
+  in `~/.config/loaf/config.toml` (written by `scripts/install.sh`, pointing at the copy
+  it keeps in `~/Library/Application Support/Loaf/`).
 
 Skills and the routine *reference* `TASK-FORMAT.md`; they never restate it. This used to be
 duplicated across the vault's `CLAUDE.md` template, the morning-brief SKILL, and the

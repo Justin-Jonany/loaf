@@ -4,6 +4,41 @@ A running log of the decisions that shaped Loaf — newest first. Each entry rec
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-09-25 — Distribute as a Claude Code plugin; the routine runs from a support-dir copy
+
+**Decided:** Loaf installs through Claude Code: the repo is its own plugin marketplace
+(`.claude-plugin/`), so `/plugin marketplace add Justin-Jonany/loaf` then
+`/plugin install loaf@loaf` delivers `loaf-notes`, `loaf-brief`, and a new `loaf-setup`
+skill. `loaf-setup` asks for the vault, runs `scripts/install.sh`, downloads the app from
+the latest GitHub Release (`scripts/install-app.sh`), checks the calendar connector, and
+builds a first brief. Releases are cut by pushing a `vX.Y.Z` tag; CI builds a universal,
+ad-hoc-signed `Loaf.app` and attaches `Loaf.zip`. The tag, `Info.plist`, and
+`plugin.json` versions must match or the release job fails.
+
+`scripts/install.sh` now copies the routine's runtime files (`TASK-FORMAT.md`,
+`routines/morning-brief/run.sh` + `SKILL.md`) into `~/Library/Application Support/Loaf/`,
+and both the `contract` pointer and the launchd job point there, for clone installs too.
+It also writes `vault =` (`--vault`) and installs the launchd job itself (`--schedule`),
+replacing the hand-edited plist step.
+
+**Why:** installing meant cloning, building with a Swift toolchain, and hand-editing a
+plist, which is a lot to ask of someone who saw a LinkedIn post. Everyone who can use Loaf
+already has Claude Code, since it writes the brief, so a plugin plus a setup skill is the
+shortest path and needs no Homebrew tap. The support-dir copy is forced by that choice: a
+plugin's install directory (`${CLAUDE_PLUGIN_ROOT}`) moves on every update, so a launchd
+job or config pointer aimed into it would break on the first `/plugin update`. Using the
+same copy for clones keeps one code path, at the cost that edits to `run.sh` in a clone
+take effect only after re-running the installer, which is already the rule for skills.
+
+Downloading with `curl` rather than a browser means no quarantine attribute, so the
+unsigned build opens without the Gatekeeper workaround. Notarization stays deferred
+(ROADMAP.md → Open decisions → Gatekeeper).
+
+**Supersedes:** 2026-09-15's "`contract` points at `<repo>/TASK-FORMAT.md`" detail; the
+single-source rule itself is unchanged.
+
+**Status:** settled; implemented in the plugin + release PR.
+
 ## 2026-09-18 — Cross-run de-dup spans the archive, bounded by the due-date window
 
 **Decided:** before adding a calendar-derived task, the morning routine now checks the
