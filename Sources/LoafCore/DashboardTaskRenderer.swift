@@ -3,7 +3,7 @@ import Foundation
 /// Renders the tidy display fragment for one task block: the plain sentence, a due-date
 /// chip, and a priority dot — with none of the storage-format `@`/`#`/`!` tokens reaching
 /// the DOM (DESIGN.md → Tasks: "Display ≠ storage"). The caller (the app's
-/// `DashboardRenderer`, B1) wraps this fragment in the
+/// `DashboardRenderer`) wraps this fragment in the
 /// `<li>` that carries the write-back `data-file`/`data-line` attributes; this piece owns
 /// the part that actually hides the storage tokens, so it lives in `LoafCore` where
 /// `LoafSelftest` can assert against it directly — the same split `MarkdownRenderer`
@@ -12,9 +12,8 @@ public enum DashboardTaskRenderer {
     public static func render(
         _ block: TaskBlock, today: CalendarDate, soonWithinDays: Int = Config.defaultSoonWithinDays
     ) -> String {
-        // A completed-today task lingers in its bucket rather than vanishing (ROADMAP
-        // B6) — the `done` class is what the frosted theme hooks the struck-through/
-        // dimmed treatment on.
+        // A completed-today task lingers in its bucket rather than vanishing; the `done`
+        // class is what the themes hook the struck-through/dimmed treatment on.
         let doneClass = block.isDone ? " done" : ""
         var html = "<span class=\"label\(doneClass)\">\(escape(block.text))</span>"
 
@@ -29,7 +28,7 @@ public enum DashboardTaskRenderer {
             case .dueToday, .soon: urgencyClass = " due-soon"
             case .later, .none: urgencyClass = ""
             }
-            // Human phrasing for the chip's visible text (C1 — "Today"/"Tomorrow"/"MMM d"),
+            // Human phrasing for the chip's visible text ("Today"/"Tomorrow"/"MMM d"),
             // with the exact ISO date kept in `title` so hovering still shows the real date.
             html += "<span class=\"due\(urgencyClass)\" title=\"\(escape(due.description))\">\(escape(humanDue(due, today: today)))</span>"
         }
@@ -44,7 +43,7 @@ public enum DashboardTaskRenderer {
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ]
 
-    /// The due chip's human phrasing (C1), computed against `today` — the raw ISO date
+    /// The due chip's human phrasing, computed against `today` — the raw ISO date
     /// (`2026-09-10`) reads fine in a file but not at a glance in a chip. Built entirely
     /// from `CalendarDate`'s own fields/arithmetic rather than round-tripping through
     /// `Date`: a `Date`-based formatter would need a time zone to turn `due` back into a
@@ -62,14 +61,14 @@ public enum DashboardTaskRenderer {
         return "\(month) \(due.day), \(due.year)"
     }
 
-    /// The accessible `<input type="checkbox">` for a task row (ROADMAP X2 — Accessibility
-    /// pass, Hazards → Accessibility). A plain `<input type="checkbox">` with no label gets
+    /// The accessible `<input type="checkbox">` for a task row (ROADMAP.md → Hazards →
+    /// Accessibility). A plain `<input type="checkbox">` with no label gets
     /// announced by VoiceOver as just "checkbox" with no indication of *which* task or
     /// whether it's already ticked — hence explicit `role="checkbox"`, `aria-checked`
     /// mirroring `isDone`, and `aria-label` carrying the task sentence as its accessible
     /// name. Kept in `LoafCore` (rather than the app's `DashboardRenderer`, which wraps
     /// this in the `<li>` that carries the write-back `data-file`/`data-line` attributes)
-    /// so `LoafSelftest` can assert the ARIA contract directly, the same split B4 set up
+    /// so `LoafSelftest` can assert the ARIA contract directly, the same split used
     /// for the tidy label/chip rendering above. `disabled` is for the archive viewer
     /// (`ArchiveRenderer`), which reuses this same checkbox purely as a was-it-done
     /// indicator on a row that has no write-back for it — undisabled, the box would still
@@ -95,7 +94,7 @@ public enum DashboardTaskRenderer {
     /// beside it. Keeps the exact ARIA contract it always had (`aria-pressed` mirroring
     /// `block.focus`, an `aria-label` naming both the action and the task) so a
     /// keyboard/VoiceOver user can still toggle Today-placement by click/Enter without a
-    /// mouse drag (ROADMAP X2). Kept in `LoafCore` (rather than the app's
+    /// mouse drag. Kept in `LoafCore` (rather than the app's
     /// `DashboardRenderer`, which wraps this in the `<li>` that carries the write-back
     /// `data-file`/`data-line` attributes) so `LoafSelftest` can assert the ARIA
     /// contract directly.

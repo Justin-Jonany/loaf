@@ -3,11 +3,10 @@ import LoafCore
 
 /// Turns an already-bucketed `Dashboard` (LoafCore's pure `DashboardComposer`) into
 /// the HTML the WKWebView loads. Composition into HTML is deliberately kept out of
-/// LoafCore (ROADMAP B1) — this file is the app/renderer layer, plain Foundation, no
-/// AppKit.
+/// LoafCore — this file is the app/renderer layer, plain Foundation, no AppKit.
 ///
 /// Each task row's tidy content (sentence + due chip + type tag + priority dot + source
-/// icon, no raw `@`/`#`/`!` tokens — DESIGN.md → Tasks, ROADMAP B4) is rendered by
+/// icon, no raw `@`/`#`/`!` tokens — DESIGN.md → Tasks) is rendered by
 /// `LoafCore.DashboardTaskRenderer`; this file only wraps that fragment in the `<li>`
 /// that carries the write-back `data-file`/`data-line` attributes and the checkbox.
 enum DashboardRenderer {
@@ -26,8 +25,8 @@ enum DashboardRenderer {
     /// Brief is free prose from `brief.md` — run through the same markdown renderer as a
     /// note, so basic formatting (paragraphs, emphasis) survives.
     ///
-    /// The first line may carry the morning routine's build-time stamp (ROADMAP D1;
-    /// DESIGN.md → Trust → "Freshness") — parsed by `LoafCore.BriefStamp` and shown
+    /// The first line may carry the morning routine's build-time stamp (DESIGN.md →
+    /// Trust → "Freshness") — parsed by `LoafCore.BriefStamp` and shown
     /// next to the heading, then stripped before the rest renders as prose so the raw
     /// `<!-- built: ... -->` comment never shows up as text.
     private static func renderBrief(_ brief: String) -> String {
@@ -71,16 +70,14 @@ enum DashboardRenderer {
         return html
     }
 
-    /// `data-file`/`data-line` carry enough for a later write-back path (A4) to find its
-    /// way back to the source line; nothing wires them up to a click yet — see A4.
+    /// `data-file`/`data-line` let a click find its way back to the exact source line
+    /// (see `AppDelegate.userContentController`).
     ///
-    /// A completed-today task (ROADMAP B6) still renders here — `DashboardComposer` now
-    /// keeps it in its bucket — so the row and its checkbox must show as done too,
-    /// mirroring `MarkdownRenderer`'s `.task.done` / `checked` convention for the
-    /// single-note view.
+    /// A completed-today task still renders here, since `DashboardComposer` keeps it in its
+    /// bucket, so the row and its checkbox must show as done too, mirroring
+    /// `MarkdownRenderer`'s `.task.done` / `checked` convention for the single-note view.
     ///
-    /// The checkbox itself is `DashboardTaskRenderer.renderCheckbox` (ROADMAP X2 —
-    /// Accessibility pass): `role="checkbox"`/`aria-checked`/`aria-label` so VoiceOver
+    /// The checkbox itself is `DashboardTaskRenderer.renderCheckbox`: `role="checkbox"`/`aria-checked`/`aria-label` so VoiceOver
     /// announces the row as a checkbox with its state and the task sentence as its name,
     /// rather than a bare, unlabelled checkbox.
     private static func renderTask(_ task: DashboardTask, today: CalendarDate, soonWithinDays: Int) -> String {

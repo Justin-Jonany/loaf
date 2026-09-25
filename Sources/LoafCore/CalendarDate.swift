@@ -53,7 +53,7 @@ public struct CalendarDate: Hashable, Comparable, CustomStringConvertible, Senda
         return CalendarDate(unchecked: parts.year!, parts.month!, parts.day!)
     }
 
-    /// The "today" the dashboard buckets against (ROADMAP B5; DESIGN.md → "The daily
+    /// The "today" the dashboard buckets against (DESIGN.md → "The daily
     /// loop"): rollover happens at `rolloverHour` local time (6am _(default)_), not
     /// midnight. Before the rollover hour, the effective day is still the previous
     /// calendar day — spillover from yesterday hasn't rolled over into a fresh "today"

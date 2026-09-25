@@ -98,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
 
     /// Writes the picked theme to the config file, then repaints — `renderDashboard`/
-    /// `renderArchiveView`'s own re-read (Part A) is what actually swaps the CSS live.
+    /// `renderArchiveView` re-read the theme on every repaint, which is what swaps the CSS live.
     /// Rebuilds the whole status-item menu afterward so the checkmark moves to the new
     /// selection.
     @objc private func selectTheme(_ sender: NSMenuItem) {
@@ -202,7 +202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     /// The dashboard's bucketing depends on the effective day, so it must recompute
     /// whenever that day could have changed — and *only* then. Deliberately not a timer:
-    /// the run only fires on wake or an actual calendar day change (ROADMAP B5), so a
+    /// the run only fires on wake or an actual calendar day change, so a
     /// sleeping Mac doesn't burn cycles polling a clock that isn't moving for it anyway.
     /// `NSCalendarDayChangedNotification` catches the midnight-while-awake case;
     /// `NSWorkspace.didWakeNotification` catches "missed 6am asleep, catches up on wake"
@@ -222,7 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         refreshCurrentView()
     }
 
-    // MARK: - Accessibility display options (ROADMAP X2 — Accessibility pass)
+    // MARK: - Accessibility display options
 
     /// Reduce Transparency has no CSS-only fix — only Swift can turn off the native
     /// `NSVisualEffectView` vibrancy — so this reads the current system setting and pushes
@@ -250,7 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// (DECISIONS.md 2026-09-11). Runs once at launch, BEFORE the watcher starts, so a
     /// migration write can't be mistaken for an external edit or race a pending toggle.
     /// Covers every shared file that could carry the token: `tasks.md` and `longterm.md`
-    /// (a long-term goal can be pulled into Today too — ticket B7), and each existing
+    /// (a long-term goal can be pulled into Today too), and each existing
     /// `archive/*.md` shard (a focused task may have been archived). `TokenMigration`
     /// returns `nil` when a file has no `★`, so a clean vault is never rewritten and a
     /// second launch is a no-op — the parser accepts both spellings regardless, so nothing

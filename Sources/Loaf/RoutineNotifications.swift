@@ -3,7 +3,7 @@ import UserNotifications
 import LoafCore
 
 /// The vault-root sidecar the morning routine writes when today needs a decision or a run
-/// failed (ROADMAP.md → D2; DECISIONS.md 2026-08-23). A dotfile, so `VaultWatcher`'s `.md`
+/// failed (DECISIONS.md 2026-08-23). A dotfile, so `VaultWatcher`'s `.md`
 /// filter still catches changes to it while `Vault.notePaths()` skips it as a note.
 let routineSignalFileName = ".routine-signal.md"
 
@@ -21,7 +21,7 @@ func routineDecisionBody(reason: String, questions: [String]) -> String {
 }
 
 extension AppDelegate {
-    // MARK: - Decision / failure notification (ticket D2)
+    // MARK: - Decision / failure notification
 
     /// Asks macOS for permission to post user notifications. Fired once at launch; if the
     /// user has already answered (or denied) this is a no-op beyond the one system call.

@@ -1,91 +1,61 @@
 import Foundation
 import LoafCore
 
-/// Handles the non-GUI entry points (`--dump-dashboard`, `--demo-*`). Each one does its
-/// work and exits, so this must run before AppKit is touched. Returns normally only when
-/// no such flag was passed and the app should launch.
+/// Handles the non-GUI entry points. Each one does its work and exits, so this must run
+/// before AppKit is touched; it returns only when no such flag was passed and the app
+/// should launch. They drive the real `LoafCore` logic without a display, which makes the
+/// app's behavior checkable from a terminal or CI:
+///
+/// - `--dump-dashboard <vault> <out.html>`: the exact HTML the panel would show.
+/// - `--demo-conflict-guard <dir>`: the write-conflict guard against a temp vault.
+/// - `--demo-archive <dir>`: archive and restore, showing the crash-safe write order.
+/// - `--demo-signal <vault>`: which notification the routine's signal file would post.
 func runCommandLineToolIfRequested() {
-    // The `--dump-dashboard <vault> <output.html>` entry point renders the composed
-    // dashboard for `vault` to a standalone HTML file and exits — no GUI, no NSApplication
-    // run loop. It exists so the B1 screenshot proof (and any future tooling) can produce
-    // the exact HTML the app would show without driving the real window. Must run before
-    // AppKit is touched below.
-    if let flagIndex = CommandLine.arguments.firstIndex(of: "--dump-dashboard"),
-       CommandLine.arguments.count > flagIndex + 2 {
-        let vaultPath = CommandLine.arguments[flagIndex + 1]
-        let outputPath = CommandLine.arguments[flagIndex + 2]
-        let vault = Vault(root: URL(fileURLWithPath: vaultPath))
-        // Matches `DashboardComposer.compose`'s own default (`.today()`, not the 6am-rollover
-        // `.effectiveToday()` the real app uses) — this dump is a standalone snapshot tool, so
-        // composing and rendering must agree on the same "today" the composer already used.
-        let today = CalendarDate.today()
-        let dashboard = DashboardComposer.compose(vault: vault, today: today)
-        let body = DashboardRenderer.renderBody(dashboard, today: today)
-        // Reads the real config's theme (same default path the app itself loads) rather than
-        // the hardcoded default — now that the live app re-reads `theme` on every repaint
-        // (live theme switching, DECISIONS.md 2026-09-11), this dump tool would otherwise
-        // silently stop matching "the exact HTML the app would show" for a non-default theme.
-        let html = HTMLPage.wrap(body: body, theme: Config.load().theme)
+    let args = CommandLine.arguments
+    func value(after flag: String, count: Int = 1) -> [String]? {
+        guard let i = args.firstIndex(of: flag), args.count > i + count else { return nil }
+        return Array(args[(i + 1)...(i + count)])
+    }
+    func runAndExit(_ failure: String, _ body: () throws -> Void) -> Never {
         do {
-            try html.write(toFile: outputPath, atomically: true, encoding: .utf8)
+            try body()
             exit(0)
         } catch {
-            FileHandle.standardError.write("Loaf: couldn't write dashboard HTML: \(error)\n".data(using: .utf8)!)
+            FileHandle.standardError.write("Loaf: \(failure): \(error)\n".data(using: .utf8)!)
             exit(1)
         }
     }
 
-    // The `--demo-conflict-guard <dir>` entry point is X1's non-GUI proof path (mirrors
-    // `--dump-dashboard` above): screencapture has no display to run against in a headless
-    // sandbox, so this drives the real guard logic against a real temp vault and leaves the
-    // BEFORE/AFTER files on disk as evidence instead. No GUI, no NSApplication run loop — must
-    // run before AppKit is touched below.
-    if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-conflict-guard"),
-       CommandLine.arguments.count > flagIndex + 1 {
-        let demoDir = URL(fileURLWithPath: CommandLine.arguments[flagIndex + 1])
-        do {
-            try runConflictGuardDemo(in: demoDir)
-            exit(0)
-        } catch {
-            FileHandle.standardError.write("Loaf: conflict-guard demo failed: \(error)\n".data(using: .utf8)!)
-            exit(1)
-        }
+    if let paths = value(after: "--dump-dashboard", count: 2) {
+        runAndExit("couldn't write dashboard HTML") { try dumpDashboard(vaultPath: paths[0], outputPath: paths[1]) }
     }
-
-    // The `--demo-archive <dir>` entry point, the archive's non-GUI proof path (mirrors
-    // `--demo-conflict-guard` above) — must run before AppKit is touched below.
-    if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-archive"),
-       CommandLine.arguments.count > flagIndex + 1 {
-        let demoDir = URL(fileURLWithPath: CommandLine.arguments[flagIndex + 1])
-        do {
-            try runArchiveDemo(in: demoDir)
-            exit(0)
-        } catch {
-            FileHandle.standardError.write("Loaf: archive demo failed: \(error)\n".data(using: .utf8)!)
-            exit(1)
-        }
+    if let dir = value(after: "--demo-conflict-guard")?[0] {
+        runAndExit("conflict-guard demo failed") { try runConflictGuardDemo(in: URL(fileURLWithPath: dir)) }
     }
-
-    // The `--demo-signal <vault>` entry point, D2's non-GUI proof path (mirrors
-    // `--demo-conflict-guard` above) — must run before AppKit is touched below.
-    if let flagIndex = CommandLine.arguments.firstIndex(of: "--demo-signal"),
-       CommandLine.arguments.count > flagIndex + 1 {
-        let demoVaultPath = CommandLine.arguments[flagIndex + 1]
-        do {
-            try runSignalDemo(vaultPath: demoVaultPath)
-            exit(0)
-        } catch {
-            FileHandle.standardError.write("Loaf: signal demo failed: \(error)\n".data(using: .utf8)!)
-            exit(1)
-        }
+    if let dir = value(after: "--demo-archive")?[0] {
+        runAndExit("archive demo failed") { try runArchiveDemo(in: URL(fileURLWithPath: dir)) }
+    }
+    if let vaultPath = value(after: "--demo-signal")?[0] {
+        runAndExit("signal demo failed") { try runSignalDemo(vaultPath: vaultPath) }
     }
 }
 
-/// The body of `--demo-conflict-guard`, factored out so it reads top-to-bottom as the demo
-/// script it is. Seeds a vault, simulates the morning run rewriting `tasks.md` while the
-/// app has an in-flight checkbox toggle based on the version it originally read, runs the
-/// real X1 guard logic (`ConflictGuard`/`ConflictDecision` from `LoafCore`), and prints
-/// + leaves the resulting BEFORE/AFTER files under `dir` for inspection.
+func dumpDashboard(vaultPath: String, outputPath: String) throws {
+    let vault = Vault(root: URL(fileURLWithPath: vaultPath))
+    // Plain `.today()`, not the app's 6am-rollover `.effectiveToday()`: this is a snapshot
+    // tool, and composing and rendering must agree with the composer's own default.
+    let today = CalendarDate.today()
+    let dashboard = DashboardComposer.compose(vault: vault, today: today)
+    let body = DashboardRenderer.renderBody(dashboard, today: today)
+    // The configured theme, not the default, so the dump matches what the app shows.
+    let html = HTMLPage.wrap(body: body, theme: Config.load().theme)
+    try html.write(toFile: outputPath, atomically: true, encoding: .utf8)
+}
+
+/// Seeds a vault, simulates the morning run rewriting `tasks.md` while the app has an
+/// in-flight checkbox toggle based on the version it read, runs the real guard logic
+/// (`ConflictGuard`/`ConflictDecision`), and prints + leaves the resulting BEFORE/AFTER
+/// files under `dir` for inspection.
 func runConflictGuardDemo(in dir: URL) throws {
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let vault = Vault(root: dir)
@@ -143,16 +113,11 @@ func runConflictGuardDemo(in dir: URL) throws {
     }
 }
 
-/// The body of `--demo-archive`, factored out so it reads top-to-bottom as the demo
-/// script it is (mirrors `runConflictGuardDemo` above). Seeds a vault with one open and
-/// one already-completed task, archives the completed one — exercising the same
-/// archive-shard-first-then-strip write ORDER `archiveTask` uses in the real app
-/// (DECISIONS.md 2026-09-11: a crash between the two writes must leave a recoverable
-/// duplicate, never a loss) — then restores it back, the symmetric mirror. Also archives
-/// the still-open task (DECISIONS.md 2026-09-11, widened: archiving is no longer gated
-/// on done), proving that path lands in the shard with no `✓done` rather than a done
-/// task's `✓done` surviving unchanged. Prints `tasks.md`/the archive shard at each step
-/// so the two-file write and its ordering are inspectable without a GUI.
+/// Seeds a vault with one open and one completed task, archives both, then restores one,
+/// printing `tasks.md` and the archive shard at each step. Uses the same write order as
+/// `archiveTask` in the real app (shard first, then strip), since a crash between the two
+/// writes must leave a recoverable duplicate, never a loss (DECISIONS.md 2026-09-11).
+/// The open task shows that archiving doesn't require done: it lands with no `✓done`.
 func runArchiveDemo(in dir: URL) throws {
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let vault = Vault(root: dir)
@@ -244,12 +209,9 @@ func runArchiveDemo(in dir: URL) throws {
     }
 }
 
-/// The body of `--demo-signal`, factored out so it reads top-to-bottom as the demo script
-/// it is. Reads `.routine-signal.md` from `vaultPath` (if present at all) through the real
-/// `RoutineSignal.parse`/`SignalNudge.decide` logic from `LoafCore` and prints which
-/// nudge it would fire — title/body — without touching `UNUserNotificationCenter` or
-/// AppKit. This is D2's non-GUI proof path (mirrors `--demo-conflict-guard` above): the
-/// sandbox has no display to capture a real notification banner in.
+/// Reads `.routine-signal.md` from `vaultPath` (if present) through the real
+/// `RoutineSignal.parse`/`SignalNudge.decide` logic and prints the notification it would
+/// post, without touching `UNUserNotificationCenter`.
 func runSignalDemo(vaultPath: String) throws {
     let vault = Vault(root: URL(fileURLWithPath: vaultPath))
     let signalURL = vault.root.appendingPathComponent(routineSignalFileName)
