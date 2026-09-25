@@ -7,16 +7,33 @@
 <p align="center"><b>A daily brief that writes itself, in plain markdown any agent can edit.</b></p>
 
 An **agent-native** daily-briefing app for macOS — a small panel that floats on your
-desktop, backed by plain markdown in a folder you own. No API, no plugin, no sync
-service: **the storage format is the interface, so any coding agent can read and write
-your notes with ordinary file tools.** A scheduled Claude run fills it in each morning,
-and a companion skill (`loaf-notes`, below) lets you jot to it in plain language.
+desktop, backed by plain markdown in a folder you own. No API and no sync service:
+**the storage format is the interface, so any coding agent can read and write your
+notes with ordinary file tools.** A scheduled Claude run fills it in each morning, and a
+companion skill (`loaf-notes`, below) lets you jot to it in plain language.
 
 **Status:** early, and in daily use. The panel, task write-back, archive, themes,
 freshness stamp, and the morning routine all work; builds are unsigned and macOS 14+.
 What's next is in [ROADMAP.md](ROADMAP.md).
 
 <!-- Demo: watching the 6:30am brief land, then ticking a box and seeing the file change. -->
+
+## Quick start
+
+You need a Mac on macOS 14+ and [Claude Code](https://claude.com/claude-code). No clone,
+no build.
+
+1. For the brief to read your calendar, connect **Google Calendar** at claude.ai →
+   Settings → Connectors.
+2. In Claude Code, add Loaf and install it:
+   ```
+   /plugin marketplace add Justin-Jonany/loaf
+   /plugin install loaf@loaf
+   ```
+3. Say **"set up loaf"**. Claude asks where your notes should live, installs the app,
+   schedules the morning brief, and builds your first one.
+4. From then on the brief writes itself each morning. Add tasks by telling Claude, e.g.
+   *"add a task to call the dentist friday"*, and tick them off in the panel.
 
 ---
 
@@ -69,18 +86,12 @@ them and turns them into tasks on its own.
 
 ## Install
 
-Requires macOS 14+ and [Claude Code](https://claude.com/claude-code), which writes the
-brief. In Claude Code:
-
-```
-/plugin marketplace add Justin-Jonany/loaf
-/plugin install loaf@loaf
-```
-
-Then say **"set up loaf"** (or run `/loaf:loaf-setup`). It asks where your notes should
-live, downloads the app, schedules the morning brief, checks your Google Calendar
-connection, and builds a first brief so you see it work. Re-run it any time to repair or
-update the setup.
+The [Quick start](#quick-start) above is the whole install. In detail, "set up loaf" (or
+`/loaf:loaf-setup`) checks your macOS version and that `claude` is reachable for the
+scheduled run, asks where your notes should live and whether to schedule the brief,
+downloads the app from the latest release, checks your Google Calendar connection, and
+offers to build today's brief. Re-run it any time to repair or update the setup; to pick
+up a new version, run `claude plugin update loaf@loaf` in a terminal first.
 
 Loaf is an ordinary app: it shows in the Dock and Cmd+Tab, plus a menu-bar item for
 quick show/hide. It runs on defaults with no config file; see [Configuration](#configuration)
