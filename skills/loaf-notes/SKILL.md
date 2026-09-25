@@ -1,6 +1,6 @@
 ---
 name: loaf-notes
-description: Add or edit tasks and long-term goals in the user's Loaf vault (~/Notes) from any directory. Use when the user asks to add/change/complete a task, jot a to-do, add a long-term goal, or "put X in my loaf notes / my notes / my brief". Knows the vault location and the metadata-below task format so edits parse correctly.
+description: Add or edit tasks and long-term goals in the user's Loaf vault ($LOAF_VAULT, the config's vault, or ~/Notes) from any directory. Use when the user asks to add/change/complete a task, jot a to-do, add a long-term goal, or "put X in my loaf notes / my notes / my brief". Knows the vault location and the metadata-below task format so edits parse correctly.
 user-invocable: true
 allowed-tools:
   - Read
@@ -19,14 +19,14 @@ those files at the user's request. The panel watches the files and repaints on s
 
 ## Find the vault
 
-Resolve the vault root in this order (first that exists wins):
+Resolve the vault root in this order (first that exists wins). Run the checks every time
+before touching a file — don't assume a path from an earlier session or from memory:
 
 1. `$LOAF_VAULT` if set — `printenv LOAF_VAULT`.
 2. The `vault = "..."` line in `~/.config/loaf/config.toml` (tilde is expanded).
 3. Default: `~/Notes`.
 
-Currently this is **`~/Notes`**. Operate on files *inside the resolved vault* — never guess a
-path elsewhere.
+Operate on files *inside the resolved vault* — never guess a path elsewhere.
 
 ## The three files (edit the right one)
 
