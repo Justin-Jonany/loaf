@@ -7,8 +7,8 @@ import WebKit
 /// other Mac app.
 final class NoteWindow: NSWindow {
     let webView: WKWebView
-    /// Stored so `applyReduceTransparency` can hide/show it later (ROADMAP X2 —
-    /// Accessibility pass): the vibrant blur it provides is exactly what Reduce
+    /// Stored so `applyReduceTransparency` can hide/show it later:
+    /// the vibrant blur it provides is exactly what Reduce
     /// Transparency asks us to turn off.
     private let effectView: NSVisualEffectView
 
@@ -243,7 +243,7 @@ final class NoteWindow: NSWindow {
         controller.addUserScript(script)
     }
 
-    /// Reduce Transparency (ROADMAP X2 — Accessibility pass, Hazards → Accessibility):
+    /// Reduce Transparency:
     /// forces the window to an opaque, non-vibrant appearance instead of the translucent
     /// frosted look. Hides `effectView` (turning off its blur/vibrancy outright) and makes
     /// the window itself opaque; `webView.drawsBackground` is switched back on so the page

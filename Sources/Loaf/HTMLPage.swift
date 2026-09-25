@@ -1,8 +1,8 @@
 import Foundation
 
 /// Wraps rendered body HTML in the page shell, inlining the theme CSS. Shared by the
-/// live app window and the `--dump-dashboard` CLI entry point (main.swift) used to
-/// produce a standalone HTML fixture for the B1 screenshot proof.
+/// live app window and the `--dump-dashboard` CLI entry point (DemoCommands.swift), used to
+/// produce a standalone HTML copy of the panel.
 enum HTMLPage {
     static func wrap(body: String, theme: String) -> String {
         let css = themeCSS(named: theme)

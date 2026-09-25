@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="crust" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D9A857"/>
+      <stop offset="1" stop-color="#B98335"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: an 824px rounded tile centered in the 1024 canvas -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#crust)"/>
+  <!-- The line-art loaf from loaf.svg, scaled into the tile in cream -->
+  <g transform="translate(512 530) scale(11) translate(-32 -33)" fill="none" stroke="#FFF4DE" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 47 H54 Q59 47 59 42 V35 C59 25 52 19 41 19 H23 C12 19 5 25 5 35 V42 Q5 47 10 47 Z"/>
+    <path d="M19 25 Q22.5 28 24 32"/>
+    <path d="M29 23 Q32.5 26.5 34 31"/>
+    <path d="M39 23 Q42.5 26.5 44 31"/>
+  </g>
+</svg>

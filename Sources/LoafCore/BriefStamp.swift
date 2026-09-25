@@ -2,10 +2,10 @@ import Foundation
 
 /// The build-time stamp `brief.md` carries on its first line (DESIGN.md → "The panel":
 /// Brief "carries the freshness stamp"; → Trust → "Freshness"): a comment of the form
-/// `<!-- built: <ISO8601-local> -->`, written by the morning routine (ticket C1).
+/// `<!-- built: <ISO8601-local> -->`, written by the morning routine.
 ///
-/// Acting on a stale plan without knowing is the failure mode this guards against
-/// (ROADMAP.md → D1), so a missing or malformed stamp must read as a clear "unknown," never
+/// Acting on a stale plan without knowing is the failure mode this guards against, so a
+/// missing or malformed stamp must read as a clear "unknown," never
 /// a fabricated time. Parsing and display formatting live here, in `LoafCore`, so both
 /// are unit-testable without a `WKWebView` — the app layer (`DashboardRenderer`) only calls
 /// `parse` and `displayString`.

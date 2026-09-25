@@ -6,7 +6,7 @@ import LoafCore
 // reports every block found, flagging any that's missing the required `@due` token.
 //
 // This is what `routines/morning-brief/dry_run.sh` runs against the morning routine's
-// output to prove it round-trips through A1's parser (ROADMAP.md -> C1's Tests). It
+// output to prove it round-trips through the real task parser. It
 // takes no dependency on the routine itself — it only knows the metadata-below format,
 // same as the parser it's driving.
 //

@@ -13,6 +13,8 @@ mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 
 cp "$(swift build -c release --show-bin-path)/loaf" "$CONTENTS/MacOS/Loaf"
 cp Resources/Info.plist "$CONTENTS/Info.plist"
+# Pre-rendered by scripts/make-icons.sh, so the build itself needs no image tooling.
+cp Resources/AppIcon.icns Resources/MenuBarIcon.png Resources/MenuBarIcon@2x.png "$CONTENTS/Resources/"
 cp -R Resources/themes "$CONTENTS/Resources/themes"
 cp -R templates "$CONTENTS/Resources/templates"
 

@@ -1,7 +1,7 @@
 import Foundation
 
-/// The morning routine's "needs a decision" / "failed" signal (ROADMAP.md → Wave 3 →
-/// D2; DECISIONS.md 2026-08-23): a sidecar dotfile, `.routine-signal.md`, at the vault
+/// The morning routine's "needs a decision" / "failed" signal (DECISIONS.md
+/// 2026-08-23): a sidecar dotfile, `.routine-signal.md`, at the vault
 /// root. Its absence is the clear-day state — DESIGN.md → Trust is explicit that a clear
 /// day produces no interruption. `VaultWatcher` already delivers change events for it
 /// (a dotfile still matches the `.md` filter — see `VaultWatcher`), and `Vault.notePaths()`

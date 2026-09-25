@@ -1,7 +1,7 @@
 import Foundation
 
 /// A task bucketed onto the dashboard, with enough provenance (`sourceFile`, `line`) for
-/// a later write-back path (A4) to find its way back to the exact line it came from.
+/// a click's write-back to find its way back to the exact line it came from.
 public struct DashboardTask: Equatable, Sendable {
     public var block: TaskBlock
     /// `"tasks.md"` or `"longterm.md"` — never a path, just the known filename.
@@ -35,7 +35,7 @@ public struct Dashboard: Equatable, Sendable {
 
 /// Reads `brief.md`, `tasks.md`, `longterm.md` and buckets their unchecked tasks into the
 /// dashboard's four sections. Pure logic, no AppKit — HTML composition for the WKWebView
-/// lives in the app/renderer layer (ROADMAP B1).
+/// lives in the app/renderer layer.
 public enum DashboardComposer {
     /// Default "within the week" lookahead: a sliding 7-day window from `today`, not a
     /// calendar-week boundary — simpler and matches the ticket's "due in 3 days" case
@@ -84,8 +84,8 @@ public enum DashboardComposer {
             guard let due = task.block.due else { continue }
 
             if task.block.focus {
-                // A starred task is pulled into Today regardless of @due (B7 — Curated
-                // Today) — @due is left untouched, it just stops driving the bucket.
+                // A focused task is pulled into Today regardless of @due. @due is left
+                // untouched; it just stops driving the bucket.
                 todayBucket.append(task)
             } else if due <= today {
                 // Spillover (overdue) + due-tonight both read as "Today."
@@ -100,8 +100,8 @@ public enum DashboardComposer {
         var longTermBucket: [DashboardTask] = []
         for task in parseBlocks(longtermMarkdown, sourceFile: "longterm.md", today: today) {
             guard task.block.due != nil else { continue }
-            // Same star pull-forward as tasks.md: a focused long-term goal shows up in
-            // Today rather than waiting in Long-term (B7 — Curated Today).
+            // Same pull-forward as tasks.md: a focused long-term goal shows up in Today
+            // rather than waiting in Long-term.
             if task.block.focus {
                 todayBucket.append(task)
             } else {
@@ -110,9 +110,8 @@ public enum DashboardComposer {
         }
 
         // Today stays in parse order — a completed task keeps its position rather than
-        // sorting to the bottom on completion (DECISIONS.md 2026-09-11, reversing the
-        // earlier B6 "sorts to the bottom" call), and it's the one bucket the user
-        // reorders by hand (B7 — Curated Today), so nothing here may reshuffle it.
+        // sorting to the bottom on completion (DECISIONS.md 2026-09-11), and it's the one
+        // bucket the user reorders by hand, so nothing here may reshuffle it.
         // This week and Long-term aren't curated, so they sort earliest-due-first for a
         // glanceable date order; `sortedByDue` is stable so same-day ties still fall back
         // to parse order.

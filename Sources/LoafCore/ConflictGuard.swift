@@ -3,8 +3,7 @@ import Foundation
 /// The write-conflict rule for shared vault files (`tasks.md`, `longterm.md` — DESIGN.md
 /// → "Files in the vault": Brief is Claude-owned, the lists are shared). The scheduled
 /// morning run and the app can both write these, so a plain read-modify-write race can
-/// silently clobber one side (ROADMAP.md → Hazards → "Write conflicts on shared files";
-/// ticket X1).
+/// silently clobber one side (ROADMAP.md → Hazards → "Write conflicts on shared files").
 ///
 /// `ConflictDecision.decide` is the pure rule, with no file I/O — fully unit-testable.
 /// `ConflictGuard.hasExternalChange` is the one bit of I/O the rule needs (comparing
