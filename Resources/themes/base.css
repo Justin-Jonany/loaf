@@ -235,9 +235,9 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
   opacity: 1;
 }
 
-/* Archive viewer (minimal — current month only; ArchiveRenderer, Sources/Loaf). It
-   reuses the dashboard's own .section/.task chrome above; these two rules are its only
-   additions — the back-navigation control and the restore action (styled bolder, as an
+/* Archive viewer (one month at a time; ArchiveRenderer, Sources/Loaf). It reuses the
+   dashboard's own .section/.task chrome above; its only additions are the back-navigation
+   control, the ‹ month › pager, and the restore action (styled bolder, as an
    outlined pill, than the archive button above — it's the one action on an archived row
    worth making unmissable, not muted chrome). */
 .dashboard.archive .back-to-dashboard {
@@ -252,6 +252,31 @@ ul.tasks, ol.tasks { list-style: none; margin: 0; padding-left: 0; }
 }
 .dashboard.archive .back-to-dashboard:hover {
   color: var(--ink);
+}
+.dashboard.archive .archive-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.dashboard.archive .archive-month-step {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0 4px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.dashboard.archive .archive-month-step:hover:not(:disabled) {
+  color: var(--ink);
+}
+.dashboard.archive .archive-month-step:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 .dashboard .task .restore-button {
   appearance: none;

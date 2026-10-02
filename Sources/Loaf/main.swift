@@ -28,6 +28,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// live document (`NoteWindow.refresh`), which needs a document to patch — so the very
     /// first paint must be a full load even though `currentView` already reads `.dashboard`.
     private var hasLoadedOnce = false
+    /// The month the archive viewer is showing. Survives repaints (a restore, the watcher)
+    /// so paging back to September doesn't snap to October on the next refresh; reset to
+    /// the current month each time the viewer is opened from the menu.
+    private var archiveMonth = Archive.Month(containing: Date())
 
     /// The three known files the dashboard composes from — nothing else. Matched by
     /// filename against watcher events so an unrelated vault edit doesn't trigger a
@@ -136,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
 
     @objc private func viewArchive() {
+        archiveMonth = Archive.Month(containing: Date())
         renderArchiveView()
         guard let window else { return }
         if !window.isVisible {
@@ -174,9 +179,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
 
     /// The minimal archive viewer (DECISIONS.md 2026-09-11): swaps the same webView to a
-    /// listing of the CURRENT month's archive shard, built by `ArchiveRenderer`. No second
-    /// window/config — see `currentView`'s doc comment. Multi-month navigation is
-    /// deferred; this only ever reads this month's shard.
+    /// listing of one month's archive shard (`archiveMonth`), built by `ArchiveRenderer`.
+    /// No second window/config — see `currentView`'s doc comment. Paging is bounded by the
+    /// oldest shard on disk and the current month (DECISIONS.md 2026-10-02).
     func renderArchiveView() {
         let sameView = currentView == .archive && hasLoadedOnce
         currentView = .archive
@@ -184,16 +189,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         // whichever view is actually being painted.
         config.theme = Config.load().theme
         let today = CalendarDate.effectiveToday()
-        let archiveURL = Archive.archiveShardURL(for: Date(), vault: vault)
+        let archiveURL = Archive.shardURL(for: archiveMonth, vault: vault)
         let shardMarkdown = (try? vault.read(archiveURL)) ?? ""
         let shardRelativePath = "archive/\(archiveURL.lastPathComponent)"
-        let body = ArchiveRenderer.renderBody(shardMarkdown, shardFile: shardRelativePath, today: today)
+        let currentMonth = Archive.Month(containing: Date())
+        let earliest = Archive.earliestMonth(vault: vault) ?? currentMonth
+        let body = ArchiveRenderer.renderBody(
+            shardMarkdown, shardFile: shardRelativePath, month: archiveMonth,
+            canGoBack: archiveMonth > earliest, canGoForward: archiveMonth < currentMonth, today: today
+        )
         if sameView {
             window?.refresh(body: body, css: HTMLPage.themeCSS(named: config.theme))
         } else {
             window?.load(html: HTMLPage.wrap(body: body, theme: config.theme), baseURL: vault.root)
         }
         hasLoadedOnce = true
+    }
+
+    /// The archive viewer's ‹ › buttons. Moves without a full reload, the same way a
+    /// restore repaints, so the panel doesn't flash between months.
+    func stepArchiveMonth(by offset: Int) {
+        archiveMonth = archiveMonth.shifted(by: offset)
+        renderArchiveView()
     }
 
     /// Refreshes whichever view is actually on screen — used by repaint triggers that

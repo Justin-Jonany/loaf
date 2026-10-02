@@ -96,7 +96,7 @@ final class NoteWindow: NSWindow {
 
     /// Wires up checkbox, focus-toggle, reorder, and archive/restore write-back: registers
     /// `handler` under message names `toggleTask`, `focusTask`, `reorderTask`,
-    /// `archiveTask`, `restoreTask`, and `showDashboard`, and injects the script that listens for the
+    /// `archiveTask`, `restoreTask`, `showDashboard`, and `showArchiveMonth`, and injects the script that listens for the
     /// corresponding DOM events and posts to them. Keeping the WKWebView plumbing here
     /// means the app target only ever sees plain `{file, line, ...}` messages — the
     /// dashboard (and the archive viewer, which swaps into the same webView) stitch
@@ -110,6 +110,7 @@ final class NoteWindow: NSWindow {
         controller.add(handler, name: "archiveTask")
         controller.add(handler, name: "restoreTask")
         controller.add(handler, name: "showDashboard")
+        controller.add(handler, name: "showArchiveMonth")
 
         let source = """
         document.addEventListener('change', function (event) {
@@ -159,6 +160,13 @@ final class NoteWindow: NSWindow {
             var btn = event.target.closest && event.target.closest('.back-to-dashboard');
             if (!btn) { return; }
             window.webkit.messageHandlers.showDashboard.postMessage({});
+        });
+        document.addEventListener('click', function (event) {
+            var btn = event.target.closest && event.target.closest('.archive-month-step');
+            if (!btn || btn.disabled) { return; }
+            window.webkit.messageHandlers.showArchiveMonth.postMessage({
+                offset: parseInt(btn.dataset.offset, 10)
+            });
         });
 
         // Drag-to-Today (DECISIONS.md 2026-09-11 — sticky drag placement replaces the ★
