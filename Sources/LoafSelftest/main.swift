@@ -639,6 +639,31 @@ let januaryInstant = localDate(2026, 1, 3, 9, 0, timeZone: archiveTestUTC)
 let januaryShard = Archive.archiveShardURL(for: januaryInstant, vault: archiveTestVault, timeZone: archiveTestUTC)
 expect(januaryShard.lastPathComponent, "2026-01.md", "archiveShardURL zero-pads a single-digit month")
 
+// MARK: - Archive.Month (archive viewer paging)
+
+let september = Archive.Month(year: 2026, month: 9)
+expect(Archive.Month(containing: shardInstant, timeZone: archiveTestUTC), september, "Month(containing:) agrees with archiveShardURL's bucketing")
+expect(september.shifted(by: 1), Archive.Month(year: 2026, month: 10), "stepping forward one month")
+expect(september.shifted(by: -1), Archive.Month(year: 2026, month: 8), "stepping back one month")
+expect(Archive.Month(year: 2026, month: 1).shifted(by: -1), Archive.Month(year: 2025, month: 12), "stepping back from January crosses into the previous year")
+expect(Archive.Month(year: 2025, month: 12).shifted(by: 1), Archive.Month(year: 2026, month: 1), "stepping forward from December crosses into the next year")
+expect(september.shardFileName, "2026-09.md", "a Month names the same shard file archiveShardURL writes")
+expect(september.title, "September 2026", "the viewer heading reads month name then year")
+expect(Archive.Month(shardFileName: "2026-09.md"), september, "a shard filename parses back into its month")
+expectNil(Archive.Month(shardFileName: "2026-09.conflict.md"), "a conflict copy in archive/ isn't mistaken for a shard")
+expectNil(Archive.Month(shardFileName: "2026-13.md"), "an out-of-range month isn't a shard")
+expect(september < september.shifted(by: 1), true, "months order chronologically")
+
+// earliestMonth: nil with no archive yet, then the oldest real shard, ignoring strays.
+expectNil(Archive.earliestMonth(vault: archiveTestVault), "no archive/ directory means no earliest month")
+let archiveTestDir = archiveTestVaultDir.appendingPathComponent("archive", isDirectory: true)
+try! FileManager.default.createDirectory(at: archiveTestDir, withIntermediateDirectories: true)
+for name in ["2026-09.md", "2026-07.md", "2026-10.md", "2026-06.conflict.md", "notes.md"] {
+    try! "".write(to: archiveTestDir.appendingPathComponent(name), atomically: true, encoding: .utf8)
+}
+expect(Archive.earliestMonth(vault: archiveTestVault), Archive.Month(year: 2026, month: 7), "earliestMonth is the oldest shard, ignoring non-shard files")
+expect(Archive.shardURL(for: september, vault: archiveTestVault).path, shardURL.path, "shardURL(for:) and archiveShardURL(for:) agree on the path")
+
 // MARK: - Vault
 
 func tempVaultDir() -> URL {

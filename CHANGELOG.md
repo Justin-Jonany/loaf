@@ -157,6 +157,10 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   clearing a task moves it to a monthly-sharded `archive/YYYY-MM.md` (stamped
   `archived:<instant>`) instead of deleting it, with a Restore control that reopens it;
   `TaskBlock.archiving`/`restoring` implement the move and its inverse.
+- Archive viewer: ‹ month › paging back through older `archive/YYYY-MM.md` shards, bounded
+  by the oldest shard on disk and the current month (`Archive.Month`). Previously the
+  viewer only ever showed the current month, so anything cleared last month vanished from
+  the UI on the 1st. See DECISIONS.md 2026-10-02.
 - `skills/loaf-notes/`: a user-invocable Claude Code skill that adds/edits tasks and
   long-term goals in the vault from any directory in plain language — it resolves the
   vault location and writes the metadata-below task format so edits parse correctly,

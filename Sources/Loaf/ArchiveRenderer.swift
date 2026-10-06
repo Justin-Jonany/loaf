@@ -3,17 +3,25 @@ import LoafCore
 
 /// The minimal archive viewer (DECISIONS.md 2026-09-11 — keep it low-risk: there is no
 /// second-window precedent in this codebase, so this reuses the single `NoteWindow`'s
-/// existing `webView` instead of standing up a second `WKWebView`/config). Renders the
-/// CURRENT month's archive shard as a plain list with a Restore button per row and a
-/// "Back to dashboard" control. Multi-month navigation/date-picker is deferred — a later
-/// slice, once there's more than one month of history worth browsing.
+/// existing `webView` instead of standing up a second `WKWebView`/config). Renders ONE
+/// month's archive shard as a plain list with a Restore button per row, a "Back to
+/// dashboard" control, and ‹ › month paging (DECISIONS.md 2026-10-02). `canGoBack`/
+/// `canGoForward` disable an arrow that would only lead to empty months.
 enum ArchiveRenderer {
-    static func renderBody(_ shardMarkdown: String, shardFile: String, today: CalendarDate) -> String {
+    static func renderBody(
+        _ shardMarkdown: String, shardFile: String, month: Archive.Month,
+        canGoBack: Bool, canGoForward: Bool, today: CalendarDate
+    ) -> String {
         let tasks = sortedByDue(parseArchivedBlocks(shardMarkdown))
         var html = "<div class=\"dashboard archive\">\n"
         html += "<section class=\"section\">\n"
         html += "<h2>Archive</h2>\n"
         html += "<button type=\"button\" class=\"back-to-dashboard\">← Back to dashboard</button>\n"
+        html += "<div class=\"archive-month-nav\">"
+        html += monthButton("‹", offset: -1, label: "Previous month", enabled: canGoBack)
+        html += "<span class=\"archive-month\">\(escape(month.title))</span>"
+        html += monthButton("›", offset: 1, label: "Next month", enabled: canGoForward)
+        html += "</div>\n"
         if tasks.isEmpty {
             html += "<p class=\"empty\">Nothing archived this month.</p>\n"
         } else {
@@ -25,6 +33,11 @@ enum ArchiveRenderer {
         }
         html += "</section>\n</div>\n"
         return html
+    }
+
+    private static func monthButton(_ glyph: String, offset: Int, label: String, enabled: Bool) -> String {
+        "<button type=\"button\" class=\"archive-month-step\" data-offset=\"\(offset)\""
+            + " aria-label=\"\(label)\" title=\"\(label)\"\(enabled ? "" : " disabled")>\(glyph)</button>"
     }
 
     /// `data-file`/`data-line` carry the archive shard's own relative path (`archive/

@@ -10,6 +10,13 @@ extension AppDelegate {
             renderDashboard()
             return
         }
+        if message.name == "showArchiveMonth" {
+            // Only ever ±1 from the arrows; anything else off the page is ignored.
+            guard let offset = ((message.body as? [String: Any])?["offset"] as? NSNumber)?.intValue,
+                  abs(offset) == 1 else { return }
+            stepArchiveMonth(by: offset)
+            return
+        }
         guard let body = message.body as? [String: Any],
               let file = body["file"] as? String,
               let line = (body["line"] as? NSNumber)?.intValue
@@ -141,9 +148,8 @@ extension AppDelegate {
     }
 
     /// Guards a `restoreTask` message payload the same way `dashboardFiles` guards the
-    /// other handlers — never trust a path straight off a `WKScriptMessage`. Only the
-    /// current month's shard is ever rendered with a restore button, but this holds for
-    /// any past shard too, since a restore from an older month is a legitimate action.
+    /// other handlers — never trust a path straight off a `WKScriptMessage`. Any month's
+    /// shard is fair game, since the viewer pages back through older months.
     private static func isArchiveShardPath(_ file: String) -> Bool {
         file.hasPrefix("archive/") && file.hasSuffix(".md")
     }

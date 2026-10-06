@@ -4,6 +4,25 @@ A running log of the decisions that shaped Loaf — newest first. Each entry rec
 was decided, why, and what it replaced, so a choice (and any later reversal) has a home that
 ROADMAP (the plan) and CHANGELOG (shipped history) don't provide.
 
+## 2026-10-02 — Archive viewer pages by month
+
+**Decided:** The archive viewer gets ‹ › arrows around a "September 2026" heading and
+shows one month's shard at a time. Opening it from the menu always starts on the current
+month; the viewed month then survives repaints (a restore, a watcher refresh) until the
+viewer is reopened. ‹ is disabled at the oldest shard on disk and › at the current month,
+so paging never lands in empty months past either end. Restore works from any month.
+
+**Why:** The current-month-only viewer hid every task cleared last month as soon as the
+1st rolled over. A task finished early and archived on Sep 29 but due Oct 2 was
+invisible on Oct 2, even though it was sitting in `archive/2026-09.md`. Arrows are the
+smallest change that fixes it and keeps the "load only the month in view" property the
+sharded storage was chosen for. A date picker or all-months list can come later if the
+history gets long enough to need it.
+
+**Supersedes:** 2026-09-11's "Multi-month navigation/date-picker is deferred".
+
+**Status:** settled; implemented in the archive month-nav PR.
+
 ## 2026-09-25 — Distribute as a Claude Code plugin; the routine runs from a support-dir copy
 
 **Decided:** Loaf installs through Claude Code: the repo is its own plugin marketplace
