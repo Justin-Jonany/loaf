@@ -184,6 +184,14 @@ if [[ -f "$BRIEF_FILE" ]]; then
   cp "$BRIEF_FILE" "$BRIEF_BACKUP"
 fi
 
+# why: the post-run check below reads status: failed from this file to decide whether to
+# restore brief.md. A failure signal left by an earlier attempt would be mistaken for this
+# run's and discard a good brief, so clear it first. Only "failed" — a needs-decision
+# signal is an unanswered question for the user and must survive (SKILL.md).
+if [[ -f "$SIGNAL_FILE" ]] && grep -q "^status: failed$" "$SIGNAL_FILE"; then
+  rm -f "$SIGNAL_FILE"
+fi
+
 LOG_DIR="${LOAF_ROUTINE_LOG_DIR:-$HOME/Library/Logs/Loaf/morning-brief}"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/$(date +%Y-%m-%dT%H%M%S).log"
